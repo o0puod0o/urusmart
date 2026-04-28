@@ -6,6 +6,8 @@ import Homepage from './src/screens/Homepage'
 import Cardpage from './src/screens/Card'
 import Schedulepage from './src/screens/Schedule';
 import Settingpage from './src/screens/Setting';
+import Login from './src/screens/login'
+import LoginScreen from './src/screens/login';
 
 const Stacks = createNativeStackNavigator();
 const Tabs = createBottomTabNavigator();
@@ -13,7 +15,8 @@ const Tabs = createBottomTabNavigator();
 function HomeTab(){
   return(
     <Stacks.Navigator>
-      <Stacks.Screen name="Homepage" component={Homepage}/>  
+      <Stacks.Screen name="Login" component={LoginScreen}/>
+
     </Stacks.Navigator>
   )
 }
