@@ -9,9 +9,10 @@ import {
   ScrollView,
   ActivityIndicator,
   StyleSheet,
+  Image,
 } from "react-native";
 
-const LoginScreen = ({ navigation }) => {
+const Login = ({ navigation }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -24,9 +25,9 @@ const LoginScreen = ({ navigation }) => {
     }
     setLoading(true);
     try {
-      // TODO: เชื่อม Laravel API
       setTimeout(() => {
         setLoading(false);
+        navigation.navigate("MainTabs");
       }, 1500);
     } catch (error) {
       setLoading(false);
@@ -47,9 +48,11 @@ const LoginScreen = ({ navigation }) => {
         <View style={styles.inner}>
           {/* Logo */}
           <View style={styles.logoWrapper}>
-            <View style={styles.logoCircle}>
-              <Text style={styles.logoText}>URUSmart</Text>
-            </View>
+            <Image
+              source={require("../assets/urusmartlogo.png")}
+              style={styles.logo}
+              resizeMode="contain"
+            />
           </View>
 
           {/* Title */}
@@ -108,22 +111,6 @@ const LoginScreen = ({ navigation }) => {
                 <Text style={styles.buttonText}>Sign in</Text>
               )}
             </TouchableOpacity>
-
-            {/* Forgot Password */}
-            <TouchableOpacity
-              onPress={() => navigation?.navigate("ForgotPassword")}
-              style={styles.forgotWrapper}
-            >
-              <Text style={styles.forgotText}>Forgot password?</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Sign Up */}
-          <View style={styles.signupRow}>
-            <Text style={styles.signupText}>Don't have an account? </Text>
-            <TouchableOpacity onPress={() => navigation?.navigate("Register")}>
-              <Text style={styles.signupLink}>Sign up</Text>
-            </TouchableOpacity>
           </View>
         </View>
       </ScrollView>
@@ -145,20 +132,11 @@ const styles = StyleSheet.create({
   },
   logoWrapper: {
     alignItems: "center",
-    marginBottom: 24,
+    marginBottom: 8,
   },
-  logoCircle: {
-    width: 112,
-    height: 112,
-    borderRadius: 56,
-    backgroundColor: "#f0fdf4",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  logoText: {
-    color: "#166534",
-    fontSize: 16,
-    fontWeight: "bold",
+  logo: {
+    width: 220,
+    height: 220,
   },
   title: {
     fontSize: 24,
@@ -203,6 +181,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginTop: 16,
+    shadowColor: "#15803d",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   buttonText: {
     color: "#fff",
@@ -210,28 +193,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     letterSpacing: 0.5,
   },
-  forgotWrapper: {
-    alignItems: "center",
-    marginTop: 16,
-  },
-  forgotText: {
-    fontSize: 14,
-    color: "#6b7280",
-  },
-  signupRow: {
-    flexDirection: "row",
-    marginTop: 40,
-    alignItems: "center",
-  },
-  signupText: {
-    fontSize: 14,
-    color: "#6b7280",
-  },
-  signupLink: {
-    fontSize: 14,
-    color: "#15803d",
-    fontWeight: "bold",
-  },
 });
 
-export default LoginScreen;
+export default Login;
