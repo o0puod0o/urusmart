@@ -72,94 +72,113 @@ const styles = StyleSheet.create({
   header: {
     backgroundColor: "#1a6b3c",
     paddingHorizontal: 16,
-    paddingTop: 16,
+    paddingTop: 44,
     paddingBottom: 20,
+    borderBottomLeftRadius: 26,
+    borderBottomRightRadius: 26,
   },
+
   top: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 14,
+    marginBottom: 18,
   },
+
   avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     backgroundColor: "#ffffff22",
-    borderWidth: 2,
-    borderColor: "#ffffff44",
+    borderWidth: 1.5,
+    borderColor: "#ffffff55",
     alignItems: "center",
     justifyContent: "center",
   },
+
   avatarText: {
-    color: "#fff",
-    fontSize: 13,
-    fontWeight: "500",
-  },
-  logoWrap: {
-    alignItems: "center",
-  },
-  logoText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
-    letterSpacing: 1,
-  },
-  logoSub: {
-    color: "#ffffff88",
-    fontSize: 9,
-    letterSpacing: 0.5,
-  },
-  actions: {
-    flexDirection: "row",
-    gap: 8,
-  },
-  iconBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: "#ffffff1a",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  iconText: {
-    fontSize: 15,
-    color: "#fff",
-  },
-  greetCard: {
-    backgroundColor: "#ffffff18",
-    borderRadius: 14,
-    padding: 12,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  greetName: {
     color: "#fff",
     fontSize: 14,
     fontWeight: "600",
   },
-  greetFaculty: {
-    color: "#ffffff99",
-    fontSize: 10,
-    marginTop: 3,
-  },
-  dateBox: {
-    backgroundColor: "#ffffff22",
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+
+  logoWrap: {
     alignItems: "center",
   },
+
+  logoText: {
+    color: "#fff",
+    fontSize: 17,
+    fontWeight: "700",
+    letterSpacing: 1,
+  },
+
+  logoSub: {
+    color: "#ffffffaa",
+    fontSize: 10,
+    marginTop: 2,
+  },
+
+  actions: {
+    flexDirection: "row",
+    gap: 8,
+  },
+
+  iconBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: "#ffffff22",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  iconText: {
+    fontSize: 16,
+    color: "#fff",
+  },
+
+  greetCard: {
+    backgroundColor: "#ffffff1f",
+    borderRadius: 18,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+
+  greetName: {
+    color: "#fff",
+    fontSize: 15,
+    fontWeight: "700",
+  },
+
+  greetFaculty: {
+    color: "#ffffffcc",
+    fontSize: 11,
+    marginTop: 4,
+  },
+
+  dateBox: {
+    backgroundColor: "#ffffff26",
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    alignItems: "center",
+  },
+
   dateDay: {
     color: "#fff",
-    fontSize: 20,
-    fontWeight: "600",
-    lineHeight: 22,
+    fontSize: 22,
+    fontWeight: "700",
+    lineHeight: 24,
   },
+
   dateMonth: {
-    color: "#ffffff88",
-    fontSize: 9,
+    color: "#ffffffaa",
+    fontSize: 10,
+    marginTop: 2,
   },
 });
 

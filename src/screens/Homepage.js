@@ -1,7 +1,6 @@
 import React from "react";
 import { View, ScrollView, StyleSheet } from "react-native";
 import HeaderBar from "../components/HeaderBar";
-import StatCard from "../components/StatCard";
 import SectionHeader from "../components/SectionHeader";
 import ServiceIconGrid from "../components/ServiceIconGrid";
 import ResearchCard from "../components/ResearchCard";
@@ -38,12 +37,6 @@ const Homepage = ({ navigation }) => {
         contentContainerStyle={styles.bodyContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Stats */}
-        <View style={styles.statsRow}>
-          <StatCard value="3" label="วิชาที่สอนวันนี้" dotColor="#1a6b3c" />
-          <StatCard value="2" label="งานวิจัยค้างส่ง" dotColor="#e67e22" />
-        </View>
-
         {/* Services */}
         <SectionHeader
           title="ระบบที่ใช้งาน"
@@ -78,11 +71,6 @@ const styles = StyleSheet.create({
   bodyContent: {
     padding: 14,
     paddingBottom: 30,
-  },
-  statsRow: {
-    flexDirection: "row",
-    gap: 10,
-    marginBottom: 16,
   },
 });
 

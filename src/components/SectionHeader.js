@@ -1,66 +1,41 @@
 import React from "react";
-import {
-  TouchableOpacity,
-  View,
-  Text,
-  StyleSheet,
-  Linking,
-} from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 
-const ServiceIconItem = ({
-  icon,
-  label,
-  url,
-  onPress,
-  bgColor = "#e8f5ee",
-}) => {
-  const handlePress = () => {
-    if (onPress) {
-      onPress();
-    } else if (url) {
-      Linking.openURL(url);
-    }
-  };
-
+const SectionHeader = ({ title, linkText, onPress }) => {
   return (
-    <TouchableOpacity
-      style={styles.wrapper}
-      onPress={handlePress}
-      activeOpacity={0.75}
-    >
-      <View style={[styles.box, { backgroundColor: bgColor }]}>
-        <Text style={styles.icon}>{icon}</Text>
-      </View>
-      <Text style={styles.label} numberOfLines={2}>
-        {label}
-      </Text>
-    </TouchableOpacity>
+    <View style={styles.row}>
+      <Text style={styles.title}>{title}</Text>
+      {linkText && (
+        <TouchableOpacity onPress={onPress} style={styles.pill}>
+          <Text style={styles.link}>{linkText}</Text>
+        </TouchableOpacity>
+      )}
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  wrapper: {
+  row: {
+    flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "center",
-    gap: 5,
+    marginBottom: 10,
   },
-  box: {
-    width: 52,
-    height: 52,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "#00000008",
+  title: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#1a1a2e",
   },
-  icon: {
-    fontSize: 22,
+  pill: {
+    backgroundColor: "#e8f5ee",
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
   },
-  label: {
-    fontSize: 9,
-    color: "#555",
-    textAlign: "center",
-    lineHeight: 13,
+  link: {
+    fontSize: 11,
+    color: "#1a6b3c",
   },
 });
 
-export default ServiceIconItem;
+export default SectionHeader;
