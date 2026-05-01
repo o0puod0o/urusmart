@@ -37,7 +37,7 @@ const SERVICES = [
     icon: "🚗",
     label: "จองรถ",
     bgColor: "#e3f2fd",
-    url: "https://car.uru.ac.th",
+    url: "http://202.29.52.231/reserve/public/login",
   },
   {
     icon: "🎓",
@@ -55,25 +55,25 @@ const SERVICES = [
     icon: "📅",
     label: "ตารางสอน",
     bgColor: "#fff8e1",
-    url: "https://time.uru.ac.th",
+    url: "https://academic.uru.ac.th/addteacherNew/show_timetable_teacher.php",
   },
   {
     icon: "🏫",
     label: "ห้องเรียน",
     bgColor: "#e8f5e9",
-    url: "https://room.uru.ac.th",
+    url: "https://academic.uru.ac.th/appl/admin/check_room.asp",
   },
   {
     icon: "📰",
     label: "ACD",
     bgColor: "#fbe9e7",
-    url: "https://acd.uru.ac.th",
+    url: "https://academic.uru.ac.th",
   },
   {
     icon: "⭐",
     label: "AUN-QA",
     bgColor: "#ede7f6",
-    url: "https://aunqa.uru.ac.th",
+    url: "http://aunqa.uru.ac.th",
   },
 ];
 
@@ -111,11 +111,6 @@ const ServiceIconGrid = ({ navigation }) => {
               </Text>
             </TouchableOpacity>
           ))}
-          {/* เติม placeholder ถ้าแถวสุดท้ายไม่ครบ 4 */}
-          {row.length < 4 &&
-            Array(4 - row.length)
-              .fill(null)
-              .map((_, i) => <View key={`empty-${i}`} style={styles.item} />)}
         </View>
       ))}
     </View>
@@ -124,40 +119,46 @@ const ServiceIconGrid = ({ navigation }) => {
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: 16,
     backgroundColor: "#fff",
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#e8ecf0",
-    padding: 12,
+    borderRadius: 20,
+    paddingVertical: 18,
+    paddingHorizontal: 10,
+    marginBottom: 20,
+
+    shadowColor: "#000",
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    elevation: 2,
   },
+
   row: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 12,
+    marginBottom: 16,
   },
+
   item: {
     flex: 1,
     alignItems: "center",
-    gap: 6,
   },
+
   iconBox: {
-    width: 52,
-    height: 52,
-    borderRadius: 14,
+    width: 54,
+    height: 54,
+    borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "#00000008",
+    marginBottom: 6,
   },
+
   icon: {
     fontSize: 22,
   },
+
   label: {
-    fontSize: 10,
-    color: "#555",
+    fontSize: 11,
+    color: "#444",
     textAlign: "center",
-    lineHeight: 13,
+    lineHeight: 14,
   },
 });
 

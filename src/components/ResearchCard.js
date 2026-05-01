@@ -16,6 +16,11 @@ const ResearchItem = ({ badge, badgeBg, badgeColor, title, subtitle }) => (
 );
 
 const ResearchCard = ({ items = [], onAdd }) => {
+  // ⛔ ถ้าไม่มีข้อมูล ไม่ต้อง render อะไรเลย
+  if (!items || items.length === 0) {
+    return null;
+  }
+
   return (
     <View style={styles.card}>
       <View style={styles.header}>
@@ -25,20 +30,16 @@ const ResearchCard = ({ items = [], onAdd }) => {
         </View>
       </View>
 
-      {items.length === 0 ? (
-        <Text style={styles.empty}>ยังไม่มีผลงานวิชาการ</Text>
-      ) : (
-        items.map((item, i) => (
-          <ResearchItem
-            key={i}
-            badge={item.badge}
-            badgeBg={item.badgeBg}
-            badgeColor={item.badgeColor}
-            title={item.title}
-            subtitle={item.subtitle}
-          />
-        ))
-      )}
+      {items.map((item, i) => (
+        <ResearchItem
+          key={i}
+          badge={item.badge}
+          badgeBg={item.badgeBg}
+          badgeColor={item.badgeColor}
+          title={item.title}
+          subtitle={item.subtitle}
+        />
+      ))}
 
       <TouchableOpacity
         style={styles.addBtn}
@@ -54,84 +55,89 @@ const ResearchCard = ({ items = [], onAdd }) => {
 const styles = StyleSheet.create({
   card: {
     backgroundColor: "#fff",
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#e8ecf0",
-    padding: 12,
-    marginBottom: 16,
+    borderRadius: 20,
+    padding: 14,
+    marginBottom: 20,
+    marginTop: 6,
+    shadowColor: "#000",
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
   },
+
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 10,
+    marginBottom: 12,
   },
+
   headerTitle: {
-    fontSize: 13,
-    fontWeight: "600",
+    fontSize: 14,
+    fontWeight: "700",
     color: "#1a1a2e",
   },
+
   pill: {
     backgroundColor: "#e8f5ee",
     borderRadius: 20,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
   },
+
   pillText: {
     fontSize: 10,
+    fontWeight: "600",
     color: "#1a6b3c",
   },
+
   item: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-    paddingVertical: 9,
+    gap: 12,
+    paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: "#f0f4f7",
+    borderBottomColor: "#eef2f5",
   },
+
   badge: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+    width: 42,
+    height: 42,
+    borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
-    flexShrink: 0,
   },
+
   badgeText: {
     fontSize: 11,
-    fontWeight: "600",
+    fontWeight: "700",
   },
-  textWrap: {
-    flex: 1,
-  },
+
   itemTitle: {
-    fontSize: 12,
-    fontWeight: "500",
+    fontSize: 13,
+    fontWeight: "600",
     color: "#1a1a2e",
-    lineHeight: 16,
+    lineHeight: 17,
   },
+
   itemSub: {
-    fontSize: 10,
-    color: "#888",
-    marginTop: 2,
+    fontSize: 11,
+    color: "#777",
+    marginTop: 3,
   },
-  empty: {
-    fontSize: 12,
-    color: "#aaa",
-    textAlign: "center",
-    paddingVertical: 16,
-  },
+
   addBtn: {
-    marginTop: 10,
-    paddingVertical: 10,
-    borderRadius: 10,
+    marginTop: 12,
+    paddingVertical: 12,
+    borderRadius: 12,
     backgroundColor: "#e8f5ee",
     alignItems: "center",
   },
+
   addText: {
-    fontSize: 12,
+    fontSize: 13,
+    fontWeight: "600",
     color: "#1a6b3c",
-    fontWeight: "500",
   },
 });
 

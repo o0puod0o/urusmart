@@ -7,6 +7,9 @@ import Homepage from "./src/screens/Homepage";
 import Cardpage from "./src/screens/Card";
 import Schedulepage from "./src/screens/Schedule";
 import Settingpage from "./src/screens/Setting";
+import Research from "./src/screens/Research";
+import ResearchList from "./src/screens/ResearchList";
+import ResearchForm from "./src/screens/ResearchForm";
 
 const Stacks = createNativeStackNavigator();
 const Tabs = createBottomTabNavigator();
@@ -33,7 +36,7 @@ function MainTabs() {
         component={Homepage}
         options={{
           tabBarLabel: "หน้าหลัก",
-          tabBarIcon: ({ color }) => <Text style={{ fontSize: 20 }}>🏠</Text>,
+          tabBarIcon: () => <Text style={{ fontSize: 20 }}>🏠</Text>,
         }}
       />
       <Tabs.Screen
@@ -41,7 +44,7 @@ function MainTabs() {
         component={Cardpage}
         options={{
           tabBarLabel: "บัตร",
-          tabBarIcon: ({ color }) => <Text style={{ fontSize: 20 }}>🪪</Text>,
+          tabBarIcon: () => <Text style={{ fontSize: 20 }}>🪪</Text>,
         }}
       />
       <Tabs.Screen
@@ -49,7 +52,7 @@ function MainTabs() {
         component={Schedulepage}
         options={{
           tabBarLabel: "ตาราง",
-          tabBarIcon: ({ color }) => <Text style={{ fontSize: 20 }}>📅</Text>,
+          tabBarIcon: () => <Text style={{ fontSize: 20 }}>📅</Text>,
         }}
       />
       <Tabs.Screen
@@ -57,7 +60,7 @@ function MainTabs() {
         component={Settingpage}
         options={{
           tabBarLabel: "ตั้งค่า",
-          tabBarIcon: ({ color }) => <Text style={{ fontSize: 20 }}>⚙️</Text>,
+          tabBarIcon: () => <Text style={{ fontSize: 20 }}>⚙️</Text>,
         }}
       />
     </Tabs.Navigator>
@@ -70,8 +73,14 @@ export default function App() {
       <Stacks.Navigator screenOptions={{ headerShown: false }}>
         {/* Login ไม่มี tab bar */}
         <Stacks.Screen name="Login" component={LoginScreen} />
+
         {/* หลัง login เข้า MainTabs */}
         <Stacks.Screen name="MainTabs" component={MainTabs} />
+
+        {/* Research stack — ไม่มี tab bar, รองรับ back navigation */}
+        <Stacks.Screen name="Research" component={Research} />
+        <Stacks.Screen name="ResearchList" component={ResearchList} />
+        <Stacks.Screen name="ResearchForm" component={ResearchForm} />
       </Stacks.Navigator>
     </NavigationContainer>
   );
