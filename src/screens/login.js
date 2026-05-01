@@ -12,26 +12,45 @@ import {
   Image,
 } from "react-native";
 
+const API_URL = 'http://10.6.129.208:8000/api';
+
 const Login = ({ navigation }) => {
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
-    if (!email || !password) {
-      alert("กรุณากรอกอีเมลและรหัสผ่าน");
+    if (!username || !password) {
+      alert("กรุณากรอก username และรหัสผ่าน");
       return;
     }
     setLoading(true);
     try {
-      setTimeout(() => {
-        setLoading(false);
+      const response = await fetch(`${API_URL}/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({
+          username: username,
+          password: password,
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        console.log('Login success:', data.token);
         navigation.navigate("MainTabs");
-      }, 1500);
+      } else {
+        alert(data.message || 'username หรือรหัสผ่านไม่ถูกต้อง');
+      }
     } catch (error) {
+      alert('ไม่สามารถเชื่อมต่อ server ได้');
+    } finally {
       setLoading(false);
-      alert("อีเมลหรือรหัสผ่านไม่ถูกต้อง");
     }
   };
 
@@ -61,16 +80,15 @@ const Login = ({ navigation }) => {
 
           {/* Form */}
           <View style={styles.form}>
-            {/* Email */}
+            {/* Username */}
             <View style={styles.inputBox}>
-              <Text style={styles.inputIcon}>✉</Text>
+              <Text style={styles.inputIcon}>👤</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Enter your email"
+                placeholder="Enter your username"
                 placeholderTextColor="#aaa"
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
+                value={username}
+                onChangeText={setUsername}
                 autoCapitalize="none"
                 autoCorrect={false}
               />
