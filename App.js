@@ -2,7 +2,7 @@ import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Text } from "react-native";
-import LoginScreen from "./src/screens/Login";
+import LoginScreen from "./src/screens/login";
 import Homepage from "./src/screens/Homepage";
 import Cardpage from "./src/screens/Card";
 import Schedulepage from "./src/screens/Schedule";
