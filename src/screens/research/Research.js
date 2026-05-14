@@ -8,7 +8,8 @@ import {
   TextInput,
   ActivityIndicator,
 } from "react-native";
-import AppHeader from "../components/AppHeader";
+import { Ionicons } from "@expo/vector-icons";
+import AppHeader from "../../components/AppHeader";
 
 const BASE_URL = "https://your-api.example.com";
 
@@ -25,9 +26,13 @@ export const api = {
   },
   searchExperts: async (params) => {
     const query = new URLSearchParams(params).toString();
-    const res = await fetch(`${BASE_URL}/api/experts/search?${query}`);
-    if (!res.ok) throw new Error("search failed");
-    return res.json();
+    try {
+      const res = await fetch(`${BASE_URL}/api/experts/search?${query}`);
+      if (!res.ok) throw new Error("search failed");
+      return res.json();
+    } catch {
+      return { data: [] };
+    }
   },
 };
 
@@ -43,44 +48,72 @@ const SEARCH_BY_OPTIONS = [
 ];
 
 const PERSONAL_MENUS = [
-  { id: "profile", label: "แก้ไขประวัติส่วนตัว", icon: "👤" },
-  { id: "education", label: "จัดการข้อมูลประวัติการศึกษา", icon: "🎓" },
-  { id: "work_history", label: "จัดการข้อมูลประวัติการทำงาน", icon: "💼" },
-  { id: "admin_history", label: "จัดการข้อมูลประวัติการบริหาร", icon: "🏛️" },
+  { id: "profile", label: "แก้ไขประวัติส่วนตัว", icon: "person-outline" },
+  {
+    id: "education",
+    label: "จัดการข้อมูลประวัติการศึกษา",
+    icon: "school-outline",
+  },
+  {
+    id: "work_history",
+    label: "จัดการข้อมูลประวัติการทำงาน",
+    icon: "briefcase-outline",
+  },
+  {
+    id: "admin_history",
+    label: "จัดการข้อมูลประวัติการบริหาร",
+    icon: "business-outline",
+  },
 ];
 
 const EXPERT_MENUS = [
-  { id: "expertise", label: "จัดการข้อมูลความเชี่ยวชาญ", icon: "🔬" },
-  { id: "interest", label: "จัดการข้อมูลความสนใจ", icon: "💡" },
-  { id: "research", label: "จัดการข้อมูลผลงานวิจัย", icon: "📊" },
+  {
+    id: "expertise",
+    label: "จัดการข้อมูลความเชี่ยวชาญ",
+    icon: "flask-outline",
+  },
+  { id: "interest", label: "จัดการข้อมูลความสนใจ", icon: "bulb-outline" },
+  {
+    id: "research",
+    label: "จัดการข้อมูลผลงานวิจัย",
+    icon: "bar-chart-outline",
+  },
   {
     id: "journal",
     label: "จัดการข้อมูลบทความวิจัย/วิชาการ (Journal)",
-    icon: "📰",
+    icon: "newspaper-outline",
   },
   {
     id: "proceeding",
     label: "จัดการข้อมูลบทความวิจัย/วิชาการ (Proceeding)",
-    icon: "📄",
+    icon: "document-text-outline",
   },
   {
     id: "book",
     label: "จัดการข้อมูลหนังสือ/ตำรา/เอกสารประกอบการสอน",
-    icon: "📚",
+    icon: "library-outline",
   },
-  { id: "patent", label: "จัดการข้อมูลทรัพย์สินทางปัญญา", icon: "💎" },
-  { id: "award", label: "จัดการข้อมูลรางวัล", icon: "🏆" },
-  { id: "speaker", label: "จัดการข้อมูลวิทยากร", icon: "🎤" },
-  { id: "training", label: "ประวัติการฝึกอบรม/ศึกษาดูงาน", icon: "📋" },
+  {
+    id: "patent",
+    label: "จัดการข้อมูลทรัพย์สินทางปัญญา",
+    icon: "ribbon-outline",
+  },
+  { id: "award", label: "จัดการข้อมูลรางวัล", icon: "trophy-outline" },
+  { id: "speaker", label: "จัดการข้อมูลวิทยากร", icon: "mic-outline" },
+  {
+    id: "training",
+    label: "ประวัติการฝึกอบรม/ศึกษาดูงาน",
+    icon: "clipboard-outline",
+  },
   {
     id: "service",
     label: "จัดการข้อมูลการบริการวิชาการ/พันธกิจสัมพันธ์",
-    icon: "🤝",
+    icon: "people-outline",
   },
   {
     id: "human_subjects",
     label: "จัดการข้อมูล Human Subjects Protection Standard Course",
-    icon: "🛡️",
+    icon: "shield-checkmark-outline",
   },
 ];
 
@@ -97,8 +130,7 @@ const InlineDropdown = ({
   const selected = options.find((o) => o.id === value);
 
   return (
-    <View style={[fullWidth && { width: "100%" }]}>
-      {/* ปุ่มกด */}
+    <View style={fullWidth && { width: "100%" }}>
       <TouchableOpacity
         style={[styles.dropdown, open && styles.dropdownOpen]}
         onPress={() => setOpen(!open)}
@@ -114,18 +146,13 @@ const InlineDropdown = ({
             {selected?.id ? selected.label : placeholder}
           </Text>
         )}
-        {/* ลูกศรหมุนเมื่อเปิด */}
-        <Text
-          style={[
-            styles.dropdownArrow,
-            open && { transform: [{ rotate: "180deg" }] },
-          ]}
-        >
-          ⌄
-        </Text>
+        <Ionicons
+          name={open ? "chevron-up" : "chevron-down"}
+          size={16}
+          color="#888"
+        />
       </TouchableOpacity>
 
-      {/* List ขยายลงข้างล่าง inline (ไม่ใช้ absolute) */}
       {open && (
         <View style={styles.dropdownInlineList}>
           <ScrollView
@@ -146,14 +173,15 @@ const InlineDropdown = ({
                 }}
               >
                 <View style={styles.dropdownItemRow}>
-                  {opt.id === value && (
-                    <Text style={styles.dropdownCheck}>✓</Text>
-                  )}
+                  <View style={styles.dropdownCheckBox}>
+                    {opt.id === value && (
+                      <Ionicons name="checkmark" size={14} color="#1a6b3c" />
+                    )}
+                  </View>
                   <Text
                     style={[
                       styles.dropdownItemText,
                       opt.id === value && styles.dropdownItemTextActive,
-                      opt.id === value ? { marginLeft: 0 } : { marginLeft: 20 },
                     ]}
                   >
                     {opt.label}
@@ -189,7 +217,6 @@ const SearchSection = ({ onSearch }) => {
           ...groups,
         ]);
       } catch {
-        // mock ไว้ก่อน API พร้อม — เหมือนเว็บเลย
         setExpertGroups([
           { id: "", label: "กลุ่มความเชี่ยวชาญทั้งหมด" },
           { id: "1", label: "กลุ่มครุศาสตร์ ศึกษาศาสตร์พลศึกษา และพลศึกษา" },
@@ -218,7 +245,6 @@ const SearchSection = ({ onSearch }) => {
         const data = await api.getInterests();
         setInterests([{ id: "", label: "ความสนใจทั้งหมด" }, ...data]);
       } catch {
-        // ความสนใจดึงจาก DB จริง ใส่ทั้งหมดไว้ก่อน
         setInterests([{ id: "", label: "ความสนใจทั้งหมด" }]);
       } finally {
         setLoadingInterests(false);
@@ -227,7 +253,6 @@ const SearchSection = ({ onSearch }) => {
     load();
   }, []);
 
-  // ✅ handlers อยู่ก่อน return
   const handleKeywordSearch = () => {
     onSearch({ searchBy, keyword });
   };
@@ -240,13 +265,16 @@ const SearchSection = ({ onSearch }) => {
     });
   };
 
-  // ✅ return เดียว
   return (
     <View style={styles.searchCard}>
-      <Text style={styles.cardTitle}>🔍 สืบค้นข้อมูลผู้เชี่ยวชาญ</Text>
+      {/* Header */}
+      <View style={styles.cardTitleRow}>
+        <Ionicons name="search-outline" size={16} color="#1a6b3c" />
+        <Text style={styles.cardTitle}>สืบค้นข้อมูลผู้เชี่ยวชาญ</Text>
+      </View>
 
       <View style={styles.searchBody}>
-        {/* Block 1: ค้นหาด้วยคำค้น */}
+        {/* Block 1 */}
         <View style={styles.searchBlock}>
           <Text style={styles.blockLabel}>ค้นหาด้วยคำค้น</Text>
           <InlineDropdown
@@ -282,7 +310,7 @@ const SearchSection = ({ onSearch }) => {
           <View style={styles.orLine} />
         </View>
 
-        {/* Block 2: ค้นหาตามกลุ่ม */}
+        {/* Block 2 */}
         <View style={styles.searchBlock}>
           <Text style={styles.blockLabel}>ค้นหาตามกลุ่มความเชี่ยวชาญ</Text>
           <InlineDropdown
@@ -305,7 +333,8 @@ const SearchSection = ({ onSearch }) => {
             style={styles.searchBtnFull}
             onPress={handleGroupSearch}
           >
-            <Text style={styles.searchBtnText}>🔍 ค้นหา</Text>
+            <Ionicons name="search-outline" size={16} color="#fff" />
+            <Text style={styles.searchBtnText}> ค้นหา</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -322,17 +351,20 @@ const MenuItem = ({ item, onPress }) => (
   >
     <View style={styles.menuLeft}>
       <View style={styles.iconBox}>
-        <Text style={styles.menuIcon}>{item.icon}</Text>
+        <Ionicons name={item.icon} size={20} color="#1a6b3c" />
       </View>
       <Text style={styles.menuLabel}>{item.label}</Text>
     </View>
-    <Text style={styles.chevron}>›</Text>
+    <Ionicons name="chevron-forward" size={18} color="#ccc" />
   </TouchableOpacity>
 );
 
-const SectionCard = ({ title, items, onPress }) => (
+const SectionCard = ({ title, sectionIcon, items, onPress }) => (
   <View style={styles.card}>
-    <Text style={styles.cardTitle}>{title}</Text>
+    <View style={styles.cardTitleRow}>
+      <Ionicons name={sectionIcon} size={16} color="#1a6b3c" />
+      <Text style={styles.cardTitle}>{title}</Text>
+    </View>
     {items.map((item, index) => (
       <View key={item.id}>
         <MenuItem item={item} onPress={onPress} />
@@ -345,7 +377,67 @@ const SectionCard = ({ title, items, onPress }) => (
 // ─── Main Screen ──────────────────────────
 const Research = ({ navigation }) => {
   const handleMenuPress = (item) => {
-    navigation.navigate("ResearchList", {
+    if (item.id === "profile") {
+      navigation.navigate("ProfileForm", { item: null });
+      return;
+    }
+    if (item.id === "education") {
+      navigation.navigate("EducationForm");
+      return;
+    }
+    if (item.id === "work_history") {
+      navigation.navigate("WorkHistoryForm");
+      return;
+    }
+    if (item.id === "admin_history") {
+      navigation.navigate("AdminHistoryForm");
+      return;
+    }
+    if (item.id === "expertise") {
+      navigation.navigate("ExpertiseForm", { item: null });
+      return;
+    }
+    if (item.id === "interest") {
+      navigation.navigate("InterestForm", { item: null });
+      return;
+    }
+    if (item.id === "journal") {
+      navigation.navigate("JournalForm", { item: null });
+      return;
+    }
+    if (item.id === "proceeding") {
+      navigation.navigate("ProceedingForm", { item: null });
+      return;
+    }
+    if (item.id === "book") {
+      navigation.navigate("BookForm", { item: null });
+      return;
+    }
+    if (item.id === "patent") {
+      navigation.navigate("PatentForm", { item: null });
+      return;
+    }
+    if (item.id === "award") {
+      navigation.navigate("AwardForm", { item: null });
+      return;
+    }
+    if (item.id === "speaker") {
+      navigation.navigate("SpeakerForm", { item: null });
+      return;
+    }
+    if (item.id === "training") {
+      navigation.navigate("TrainingForm", { item: null });
+      return;
+    }
+    if (item.id === "service") {
+      navigation.navigate("ServiceForm", { item: null });
+      return;
+    }
+    if (item.id === "human_subjects") {
+      navigation.navigate("HumanSubjectsForm", { item: null });
+      return;
+    }
+    navigation.navigate("ResearchForm", {
       type: item.id,
       title: item.label,
       icon: item.icon,
@@ -356,7 +448,7 @@ const Research = ({ navigation }) => {
     navigation.navigate("ResearchList", {
       type: "search",
       title: "ผลการค้นหา",
-      icon: "🔍",
+      icon: "search-outline",
       searchParams: params,
     });
   };
@@ -371,12 +463,14 @@ const Research = ({ navigation }) => {
       >
         <SearchSection onSearch={handleSearch} />
         <SectionCard
-          title="✏️  ข้อมูลส่วนตัว"
+          title="ข้อมูลส่วนตัว"
+          sectionIcon="pencil-outline"
           items={PERSONAL_MENUS}
           onPress={handleMenuPress}
         />
         <SectionCard
-          title="📁  จัดการข้อมูลผู้เชี่ยวชาญ"
+          title="จัดการข้อมูลผู้เชี่ยวชาญ"
+          sectionIcon="folder-open-outline"
           items={EXPERT_MENUS}
           onPress={handleMenuPress}
         />
@@ -389,6 +483,7 @@ const Research = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#eef2f7" },
   body: { padding: 14, paddingBottom: 30, gap: 14 },
+
   searchCard: {
     backgroundColor: "#fff",
     borderRadius: 16,
@@ -396,12 +491,11 @@ const styles = StyleSheet.create({
     borderColor: "#e8ecf0",
     paddingBottom: 12,
     overflow: "visible",
-    zIndex: 10,
   },
-  cardTitle: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#1a1a2e",
+  cardTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
     paddingHorizontal: 16,
     paddingVertical: 12,
     backgroundColor: "#f8fafb",
@@ -410,19 +504,17 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
   },
+  cardTitle: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#1a1a2e",
+  },
+
   searchBody: { padding: 14, gap: 10 },
   searchBlock: { gap: 8 },
   blockLabel: { fontSize: 12, fontWeight: "600", color: "#666" },
   inputRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  dropdown: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#f0f4f8",
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 10,
-    gap: 4,
-  },
+
   dropdown: {
     flexDirection: "row",
     alignItems: "center",
@@ -439,6 +531,7 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 0,
     borderBottomRightRadius: 0,
   },
+  dropdownText: { fontSize: 13, color: "#1a1a2e", flex: 1 },
   dropdownInlineList: {
     backgroundColor: "#fff",
     borderWidth: 1.5,
@@ -455,52 +548,50 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#f0f4f7",
   },
-  dropdownItemRow: {
+  dropdownItemRow: { flexDirection: "row", alignItems: "center" },
+  dropdownCheckBox: {
+    width: 20,
+    alignItems: "center",
+    marginRight: 6,
+  },
+  dropdownItemActive: { backgroundColor: "#f0faf4" },
+  dropdownItemText: { fontSize: 13, color: "#444", flex: 1 },
+  dropdownItemTextActive: { color: "#1a6b3c", fontWeight: "600" },
+
+  orRow: {
     flexDirection: "row",
     alignItems: "center",
-  },
-  dropdownCheck: {
-    fontSize: 13,
-    color: "#1a6b3c",
-    fontWeight: "700",
-    marginRight: 6,
-    width: 14,
-  },
-  dropdownItemActive: {
-    backgroundColor: "#f0faf4",
-  },
-  dropdownItemText: {
-    fontSize: 13,
-    color: "#444",
-  },
-  dropdownItemTextActive: {
-    color: "#1a6b3c",
-    fontWeight: "600",
+    paddingHorizontal: 4,
+    gap: 8,
   },
   orLine: { flex: 1, height: 1, backgroundColor: "#e8ecf0" },
   orText: { fontSize: 12, color: "#999" },
+
   searchInput: {
     flex: 1,
     backgroundColor: "#f0f4f8",
     borderRadius: 10,
     paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingVertical: 12,
     fontSize: 13,
     color: "#1a1a2e",
   },
   searchBtn: {
     backgroundColor: "#1a6b3c",
     borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
   searchBtnFull: {
     backgroundColor: "#1a6b3c",
     borderRadius: 10,
-    paddingVertical: 12,
+    paddingVertical: 13,
     alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "center",
   },
   searchBtnText: { color: "#fff", fontSize: 13, fontWeight: "600" },
+
   card: {
     backgroundColor: "#fff",
     borderRadius: 16,
@@ -520,13 +611,11 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: "#f0f4f8",
+    backgroundColor: "#eef7f2",
     alignItems: "center",
     justifyContent: "center",
   },
-  menuIcon: { fontSize: 18 },
   menuLabel: { fontSize: 13, color: "#1a1a2e", flex: 1, lineHeight: 18 },
-  chevron: { fontSize: 22, color: "#ccc", fontWeight: "300" },
   divider: { height: 1, backgroundColor: "#f0f4f7", marginLeft: 64 },
 });
 
