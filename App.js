@@ -97,7 +97,6 @@ export default function App() {
         <Stacks.Screen name="Login" component={LoginScreen} />
         <Stacks.Screen name="MainTabs" component={MainTabs} />
         <Stacks.Screen name="Research" component={Research} />
-
         <Stacks.Screen name="ProfileForm" component={ProfileForm} />
         <Stacks.Screen name="EducationForm" component={EducationForm} />
         <Stacks.Screen name="WorkHistoryForm" component={WorkHistoryForm} />
