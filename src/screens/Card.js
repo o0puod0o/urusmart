@@ -18,9 +18,9 @@ import {
   ActivityIndicator,
   Animated,
   Image,
-  SafeAreaView,
   ScrollView,
   Share,
+  StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -28,6 +28,9 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import QRCode from "react-native-qrcode-svg";
+import { useTranslation } from "react-i18next";
+import HeaderBar from "../components/HeaderBar";
+import useCurrentUser from "../hook/useCurrentUser";
 
 const logo = require("../assets/urusmartlogo.png");
 
@@ -93,9 +96,6 @@ const normalize = (d) => ({
   photoUrl: d.photoUrl ?? d.photo_url ?? d.avatar ?? "",
 });
 
-// ปี พ.ศ. ถัดไป (ค.ศ. + 543 + 1)
-const nextThaiYear = () => String(new Date().getFullYear() + 544);
-
 const initial = (name) =>
   name?.replace(/^(อาจารย์|ดร\.|ผศ\.|รศ\.)\s*/, "")?.trim()?.[0] ?? "อ";
 // ─────────────────────────────────────────────────────────────────────────────
@@ -115,14 +115,16 @@ const InfoRow = ({ icon, label, value }) => (
 
 const Divider = () => <View style={s.divider} />;
 
-const TABS = [
-  { key: "info", icon: "person-circle-outline", label: "ข้อมูล" },
-  { key: "qr", icon: "qr-code-outline", label: "QR Code" },
-  { key: "barcode", icon: "barcode-outline", label: "บาร์โค้ด" },
+const TAB_KEYS = [
+  { key: "info", icon: "person-circle-outline", tKey: "card.tabInfo" },
+  { key: "qr", icon: "qr-code-outline", tKey: "card.tabQr" },
+  { key: "barcode", icon: "barcode-outline", tKey: "card.tabBarcode" },
 ];
 // ─────────────────────────────────────────────────────────────────────────────
 
-export default function Cardpage() {
+export default function Cardpage({ navigation }) {
+  const { t } = useTranslation();
+  const { user, logout } = useCurrentUser(navigation);
   const [teacher, setTeacher] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -165,9 +167,9 @@ export default function Cardpage() {
     if (!teacher) return;
     try {
       await Share.share({
-        title: "Digital Staff Card – URUSmart",
+        title: `Digital Staff Card – URUSmart`,
         message: [
-          "บัตรประจำตัวอาจารย์",
+          t("card.shareMsg"),
           teacher.name,
           teacher.position,
           `${teacher.faculty} ${teacher.department}`,
@@ -179,53 +181,34 @@ export default function Cardpage() {
   };
 
   // ── Derived values ──
-  const t = teacher ?? EMPTY;
-  const ini = initial(t.name);
-  const affiliation = [t.faculty, t.department].filter(Boolean).join(" · ");
-  const qrValue = `URUSMART:${t.employeeId}:${t.email}`;
-  const expireYear = nextThaiYear();
+  const rawTeacher = teacher ?? EMPTY;
+  const tc = {
+    ...rawTeacher,
+    name: rawTeacher.name || user.name || t("card.defaultName"),
+    position: rawTeacher.position || "",
+    faculty: rawTeacher.faculty || user.faculty || "",
+    photoUrl: rawTeacher.photoUrl || user.photoUrl || "",
+  };
+  const ini = initial(tc.name);
+  const affiliation = [tc.faculty, tc.department].filter(Boolean).join(" · ");
+  const qrValue = `URUSMART:${tc.employeeId}:${tc.email}`;
 
   return (
-    <SafeAreaView style={s.screen}>
+    <View style={s.screen}>
+      <StatusBar barStyle="light-content" backgroundColor="#0a6644" />
       {/* ══ Header ══ */}
-      <View style={s.header}>
-        {/* decorative blobs */}
-        <View style={[s.blob, s.blobTR]} />
-        <View style={[s.blob, s.blobBL]} />
-
-        {/* avatar */}
-        <View style={s.hAvatar}>
-          <Text style={s.hAvatarText}>{ini}</Text>
-        </View>
-
-        {/* center logo */}
-        <View style={s.hCenter}>
-          <Image source={logo} style={s.hLogo} resizeMode="contain" />
-          <Text style={s.hTag}>Digital Staff Card</Text>
-        </View>
-
-        {/* actions */}
-        <View style={s.hActions}>
-          <TouchableOpacity
-            style={s.hBtn}
-            onPress={handleShare}
-            activeOpacity={0.75}
-          >
-            <Ionicons name="share-outline" size={20} color={C.g500} />
-          </TouchableOpacity>
-          <TouchableOpacity style={s.hBtn} activeOpacity={0.75}>
-            <Ionicons name="notifications-outline" size={20} color={C.g500} />
-          </TouchableOpacity>
-        </View>
-      </View>
+      <HeaderBar
+        name={tc.name || user.name}
+        photoUrl={tc.photoUrl || user.photoUrl}
+        onNotification={() => navigation.navigate("Notifications")}
+        onLogout={logout}
+      />
 
       {/* ── offline / error banner ── */}
       {error && (
         <View style={s.errorBanner}>
           <Ionicons name="wifi-outline" size={14} color={C.gold} />
-          <Text style={s.errorText}>
-            ไม่สามารถเชื่อมต่อ API – แสดงข้อมูลสำรอง
-          </Text>
+          <Text style={s.errorText}>{t("card.offline")}</Text>
         </View>
       )}
 
@@ -254,26 +237,28 @@ export default function Cardpage() {
                       size={11}
                       color={C.g500}
                     />
-                    <Text style={s.activeBadgeText}>ACTIVE STAFF</Text>
+                    <Text style={s.activeBadgeText}>{t("card.activeBadge")}</Text>
                   </View>
                 </View>
 
-                <Text style={s.bandTitle}>บัตรประจำตัวอาจารย์</Text>
+                <Text style={s.bandTitle}>{t("card.title")}</Text>
 
-                <View style={s.empIdRow}>
-                  <Ionicons
-                    name="id-card-outline"
-                    size={12}
-                    color="rgba(255,255,255,0.75)"
-                  />
-                  <Text style={s.empIdText}>{t.employeeId}</Text>
-                </View>
+                {!!tc.employeeId && (
+                  <View style={s.empIdRow}>
+                    <Ionicons
+                      name="id-card-outline"
+                      size={12}
+                      color="rgba(255,255,255,0.75)"
+                    />
+                    <Text style={s.empIdText}>{tc.employeeId}</Text>
+                  </View>
+                )}
               </View>
 
               {/* ── Photo bubble (sits on band seam) ── */}
               <View style={s.photoWrap}>
-                {t.photoUrl ? (
-                  <Image source={{ uri: t.photoUrl }} style={s.photo} />
+                {tc.photoUrl ? (
+                  <Image source={{ uri: tc.photoUrl }} style={s.photo} />
                 ) : (
                   <View style={s.photoFallback}>
                     <Text style={s.photoInitial}>{ini}</Text>
@@ -285,26 +270,28 @@ export default function Cardpage() {
               {loading ? (
                 <View style={s.loadingBox}>
                   <ActivityIndicator color={C.g500} />
-                  <Text style={s.loadingText}>กำลังโหลดข้อมูลบัตร…</Text>
+                  <Text style={s.loadingText}>{t("card.loading")}</Text>
                 </View>
               ) : (
                 <>
                   {/* ── Name & position ── */}
                   <View style={s.nameBlock}>
-                    <Text style={s.teacherName}>{t.name}</Text>
-                    <View style={s.posPill}>
-                      <Ionicons
-                        name="ribbon-outline"
-                        size={13}
-                        color={C.g500}
-                      />
-                      <Text style={s.posText}>{t.position}</Text>
-                    </View>
+                    <Text style={s.teacherName}>{tc.name}</Text>
+                    {!!tc.position && (
+                      <View style={s.posPill}>
+                        <Ionicons
+                          name="ribbon-outline"
+                          size={13}
+                          color={C.g500}
+                        />
+                        <Text style={s.posText}>{tc.position}</Text>
+                      </View>
+                    )}
                   </View>
 
                   {/* ── Tab bar ── */}
                   <View style={s.tabBar}>
-                    {TABS.map((tab) => {
+                    {TAB_KEYS.map((tab) => {
                       const active = activeTab === tab.key;
                       return (
                         <TouchableOpacity
@@ -321,7 +308,7 @@ export default function Cardpage() {
                           <Text
                             style={[s.tabLabel, active && s.tabLabelActive]}
                           >
-                            {tab.label}
+                            {t(tab.tKey)}
                           </Text>
                         </TouchableOpacity>
                       );
@@ -334,26 +321,26 @@ export default function Cardpage() {
                       <View>
                         <InfoRow
                           icon="business-outline"
-                          label="สังกัด"
+                          label={t("card.affiliation")}
                           value={affiliation}
                         />
                         <Divider />
                         <InfoRow
                           icon="mail-outline"
-                          label="อีเมล"
-                          value={t.email}
+                          label={t("card.email")}
+                          value={tc.email}
                         />
                         <Divider />
                         <InfoRow
                           icon="call-outline"
-                          label="เบอร์โทรศัพท์"
-                          value={t.phone}
+                          label={t("card.phone")}
+                          value={tc.phone}
                         />
                         <Divider />
                         <InfoRow
                           icon="id-card-outline"
-                          label="รหัสพนักงาน"
-                          value={t.employeeId}
+                          label={t("card.employeeId")}
+                          value={tc.employeeId}
                         />
                       </View>
                     )}
@@ -368,10 +355,8 @@ export default function Cardpage() {
                             backgroundColor={C.card}
                           />
                         </View>
-                        <Text style={s.codeLabel}>
-                          สแกนเพื่อดูข้อมูลอาจารย์
-                        </Text>
-                        <Text style={s.codeSub}>{t.employeeId}</Text>
+                        <Text style={s.codeLabel}>{t("card.scanQr")}</Text>
+                        <Text style={s.codeSub}>{tc.employeeId}</Text>
                       </View>
                     )}
 
@@ -392,25 +377,13 @@ export default function Cardpage() {
                             />
                           ))}
                         </View>
-                        <Text style={s.codeLabel}>{t.employeeId}</Text>
-                        <Text style={s.codeSub}>Employee Barcode</Text>
+                        <Text style={s.codeLabel}>{tc.employeeId}</Text>
+                        <Text style={s.codeSub}>{t("card.employeeBarcode")}</Text>
                       </View>
                     )}
                   </View>
                 </>
               )}
-
-              {/* ── Footer ── */}
-              <View style={s.cardFooter}>
-                <View>
-                  <Text style={s.footerBrand}>URUSMART</Text>
-                  <Text style={s.footerSub}>STAFF ID CARD</Text>
-                </View>
-                <View style={s.expireRow}>
-                  <Ionicons name="time-outline" size={11} color={C.dim} />
-                  <Text style={s.expireText}>หมดอายุ {expireYear}</Text>
-                </View>
-              </View>
             </View>
           </View>
 
@@ -420,12 +393,12 @@ export default function Cardpage() {
             onPress={handleShare}
             activeOpacity={0.85}
           >
-            <Ionicons name="share-social-outline" size={19} color={C.card} />
-            <Text style={s.shareBtnText}>แชร์บัตรประจำตัว</Text>
+            <Ionicons name="share-social-outline" size={19} color={C.g700} />
+            <Text style={s.shareBtnText}>{t("card.share")}</Text>
           </TouchableOpacity>
         </Animated.View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -435,71 +408,6 @@ const s = StyleSheet.create({
 
   // blobs (reusable shape)
   blob: { borderRadius: 999, position: "absolute" },
-
-  // ── Header ──
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: C.g50,
-    borderBottomColor: C.line,
-    borderBottomWidth: 1,
-    minHeight: 72,
-    overflow: "hidden",
-    paddingHorizontal: 18,
-    paddingVertical: 12,
-  },
-  blobTR: {
-    width: 160,
-    height: 160,
-    backgroundColor: "rgba(15,122,85,0.10)",
-    right: -60,
-    top: -70,
-  },
-  blobBL: {
-    width: 100,
-    height: 100,
-    backgroundColor: "rgba(15,122,85,0.07)",
-    left: -30,
-    bottom: -40,
-  },
-  hAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: C.g500,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 2,
-    borderColor: C.card,
-    zIndex: 1,
-  },
-  hAvatarText: { color: C.card, fontSize: 20, fontWeight: "900" },
-  hCenter: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    alignItems: "center",
-    top: 10,
-  },
-  hLogo: { width: 110, height: 44 },
-  hTag: {
-    color: C.g700,
-    fontSize: 11,
-    fontWeight: "800",
-    letterSpacing: 0.4,
-    marginTop: -2,
-  },
-  hActions: { flexDirection: "row", gap: 8, marginLeft: "auto", zIndex: 1 },
-  hBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: C.card,
-    borderColor: C.line,
-    borderWidth: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
 
   // ── Error banner ──
   errorBanner: {
@@ -518,25 +426,25 @@ const s = StyleSheet.create({
   scroll: {
     flexGrow: 1,
     alignItems: "center",
-    justifyContent: "center",
+    justifyContent: "flex-start",
     paddingHorizontal: 16,
-    paddingTop: 22,
-    paddingBottom: 48,
+    paddingTop: 16,
+    paddingBottom: 32,
   },
 
   // ── Card shadow wrapper ──
   cardShadow: {
     width: "100%",
-    maxWidth: 390,
+    maxWidth: 420,
     shadowColor: C.g900,
-    shadowOffset: { width: 0, height: 18 },
-    shadowOpacity: 0.14,
-    shadowRadius: 28,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 18,
+    elevation: 5,
   },
   card: {
     backgroundColor: C.card,
-    borderRadius: 26,
+    borderRadius: 18,
     borderColor: C.line,
     borderWidth: 1,
     overflow: "hidden",
@@ -544,16 +452,16 @@ const s = StyleSheet.create({
 
   // ── Band ──
   band: {
-    backgroundColor: C.g500,
+    backgroundColor: C.g700,
     paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 72, // space for photo bubble overlap
+    paddingTop: 18,
+    paddingBottom: 58,
     overflow: "hidden",
   },
   bandBlobTR: {
     width: 160,
     height: 160,
-    backgroundColor: "rgba(255,255,255,0.09)",
+    backgroundColor: "rgba(255,255,255,0.08)",
     right: -48,
     top: -52,
   },
@@ -569,15 +477,15 @@ const s = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
   },
-  bandLogo: { width: 110, height: 50, tintColor: C.card },
+  bandLogo: { width: 104, height: 46, tintColor: C.card },
   activeBadge: {
     flexDirection: "row",
     alignItems: "center",
     gap: 5,
     backgroundColor: C.card,
     borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
   },
   activeBadgeText: {
     color: C.g500,
@@ -587,9 +495,9 @@ const s = StyleSheet.create({
   },
   bandTitle: {
     color: C.card,
-    fontSize: 21,
+    fontSize: 19,
     fontWeight: "900",
-    marginTop: 24,
+    marginTop: 18,
     letterSpacing: 0.2,
   },
   empIdRow: {
@@ -607,10 +515,10 @@ const s = StyleSheet.create({
   // ── Photo ──
   photoWrap: {
     alignSelf: "center",
-    width: 120,
-    height: 120,
-    borderRadius: 22,
-    marginTop: -60,
+    width: 108,
+    height: 108,
+    borderRadius: 54,
+    marginTop: -54,
     backgroundColor: C.card,
     borderWidth: 4,
     borderColor: C.card,
@@ -621,14 +529,14 @@ const s = StyleSheet.create({
     elevation: 5,
     overflow: "hidden",
   },
-  photo: { width: "100%", height: "100%", borderRadius: 18 },
+  photo: { width: "100%", height: "100%", borderRadius: 50 },
   photoFallback: {
     flex: 1,
     backgroundColor: C.g100,
     alignItems: "center",
     justifyContent: "center",
   },
-  photoInitial: { color: C.g500, fontSize: 58, fontWeight: "900" },
+  photoInitial: { color: C.g500, fontSize: 50, fontWeight: "900" },
 
   // ── Loading ──
   loadingBox: {
@@ -644,11 +552,11 @@ const s = StyleSheet.create({
   nameBlock: {
     alignItems: "center",
     paddingHorizontal: 20,
-    paddingTop: 16,
+    paddingTop: 14,
   },
   teacherName: {
     color: C.ink,
-    fontSize: 20,
+    fontSize: 19,
     fontWeight: "900",
     textAlign: "center",
     lineHeight: 28,
@@ -663,7 +571,7 @@ const s = StyleSheet.create({
     borderWidth: 1,
     paddingHorizontal: 12,
     paddingVertical: 5,
-    marginTop: 9,
+    marginTop: 8,
   },
   posText: { color: C.g700, fontSize: 12, fontWeight: "900" },
 
@@ -671,7 +579,7 @@ const s = StyleSheet.create({
   tabBar: {
     flexDirection: "row",
     marginHorizontal: 16,
-    marginTop: 18,
+    marginTop: 16,
     backgroundColor: C.g20,
     borderRadius: 14,
     borderColor: C.line,
@@ -703,7 +611,7 @@ const s = StyleSheet.create({
   tabContent: {
     paddingHorizontal: 20,
     paddingTop: 16,
-    paddingBottom: 24,
+    paddingBottom: 22,
   },
 
   // ── Info rows ──
@@ -764,32 +672,6 @@ const s = StyleSheet.create({
   },
   codeSub: { color: C.dim, fontSize: 11, fontWeight: "700", marginTop: 3 },
 
-  // ── Card footer ──
-  cardFooter: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: C.g20,
-    borderTopColor: C.line,
-    borderTopWidth: 1,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-  },
-  footerBrand: {
-    color: C.g500,
-    fontSize: 12,
-    fontWeight: "900",
-    letterSpacing: 1.2,
-  },
-  footerSub: {
-    color: C.dim,
-    fontSize: 10,
-    fontWeight: "800",
-    letterSpacing: 0.8,
-  },
-  expireRow: { flexDirection: "row", alignItems: "center", gap: 4 },
-  expireText: { color: C.dim, fontSize: 11, fontWeight: "700" },
-
   // ── Share button ──
   shareBtn: {
     flexDirection: "row",
@@ -798,15 +680,17 @@ const s = StyleSheet.create({
     gap: 9,
     marginTop: 16,
     width: "100%",
-    maxWidth: 390,
-    backgroundColor: C.g500,
+    maxWidth: 420,
+    backgroundColor: C.card,
+    borderWidth: 1,
+    borderColor: C.g100,
     borderRadius: 16,
     paddingVertical: 15,
-    shadowColor: C.g500,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.25,
-    shadowRadius: 12,
-    elevation: 4,
+    shadowColor: C.g900,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 2,
   },
-  shareBtnText: { color: C.card, fontSize: 15, fontWeight: "900" },
+  shareBtnText: { color: C.g700, fontSize: 15, fontWeight: "900" },
 });

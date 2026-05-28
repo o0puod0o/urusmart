@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "uru-next-app",
-    "slug": "uru-next-app",
+    "name": "URU Smart",
+    "slug": "uru-smart",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -13,17 +13,36 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSUserNotificationsUsageDescription": "URU Smart ต้องการส่งการแจ้งเตือนข่าวสารและประกาศจากมหาวิทยาลัย"
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "softwareKeyboardLayoutMode": "pan",
+      "permissions": [
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.VIBRATE",
+        "android.permission.POST_NOTIFICATIONS"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#0f7a55",
+          "defaultChannel": "default"
+        }
+      ]
+    ]
   }
 }

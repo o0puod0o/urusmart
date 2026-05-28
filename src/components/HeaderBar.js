@@ -1,26 +1,17 @@
 import React from "react";
-import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import {
+  Image,
+  Platform,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
-const HeaderBar = ({ name, faculty, date, onNotification, onLogout }) => {
-  const today = date || new Date();
-  const day = today.getDate();
-  const monthNames = [
-    "ม.ค.",
-    "ก.พ.",
-    "มี.ค.",
-    "เม.ย.",
-    "พ.ค.",
-    "มิ.ย.",
-    "ก.ค.",
-    "ส.ค.",
-    "ก.ย.",
-    "ต.ค.",
-    "พ.ย.",
-    "ธ.ค.",
-  ];
-  const month = monthNames[today.getMonth()];
-  const year = (today.getFullYear() + 543).toString().slice(-2);
+const logo = require("../assets/urusmartlogo.png");
+
+const HeaderBar = ({ name, photoUrl, onNotification, onLogout }) => {
   const initials = name
     ? name
         .split(" ")
@@ -32,106 +23,87 @@ const HeaderBar = ({ name, faculty, date, onNotification, onLogout }) => {
 
   return (
     <View style={styles.header}>
-      <View style={styles.top}>
-        <View style={styles.avatar}>
+      <View style={styles.avatar}>
+        {photoUrl ? (
+          <Image source={{ uri: photoUrl }} style={styles.avatarImage} />
+        ) : (
           <Text style={styles.avatarText}>{initials}</Text>
-        </View>
-        <View style={styles.logoWrap}>
-          <Text style={styles.logoText}>URUSmart</Text>
-          <Text style={styles.logoSub}>ระบบบุคลากร</Text>
-        </View>
-        <View style={styles.actions}>
-          <TouchableOpacity style={styles.iconBtn} onPress={onNotification}>
-            <Ionicons name="notifications-outline" size={18} color="#fff" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.iconBtn} onPress={onLogout}>
-            <Ionicons name="log-out-outline" size={18} color="#fff" />
-          </TouchableOpacity>
-        </View>
+        )}
       </View>
 
-      <View style={styles.greetCard}>
-        <View>
-          <Text style={styles.greetName}>{name || "บุคลากร URU"}</Text>
-          <Text style={styles.greetFaculty}>
-            {faculty || "มหาวิทยาลัยราชภัฏอุตรดิตถ์"}
-          </Text>
-        </View>
-        <View style={styles.dateBox}>
-          <Text style={styles.dateDay}>{day}</Text>
-          <Text style={styles.dateMonth}>
-            {month} {year}
-          </Text>
-        </View>
+      <View style={styles.logoWrap}>
+        <Image source={logo} style={styles.logo} resizeMode="contain" />
+      </View>
+
+      <View style={styles.actions}>
+        <TouchableOpacity
+          style={styles.iconBtn}
+          onPress={onLogout}
+          activeOpacity={0.75}
+        >
+          <Ionicons name="log-out-outline" size={32} color="#fff" />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.iconBtn}
+          onPress={onNotification}
+          activeOpacity={0.75}
+        >
+          <Ionicons name="notifications-outline" size={32} color="#fff" />
+        </TouchableOpacity>
       </View>
     </View>
   );
 };
 
-// styles เหมือนเดิมทุกอย่าง ลบแค่ iconText ออกได้เลย
 const styles = StyleSheet.create({
   header: {
-    backgroundColor: "#1a6b3c",
-    paddingHorizontal: 16,
-    paddingTop: 44,
-    paddingBottom: 20,
-    borderBottomLeftRadius: 26,
-    borderBottomRightRadius: 26,
-  },
-  top: {
+    minHeight: 132,
+    backgroundColor: "#0f7a55",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 18,
+    paddingHorizontal: 28,
+    paddingTop: Platform.OS === "ios" ? 46 : 30,
+    paddingBottom: 22,
   },
   avatar: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: "#ffffff22",
-    borderWidth: 1.5,
-    borderColor: "#ffffff55",
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: "#ffffff24",
+    borderWidth: 2,
+    borderColor: "#ffffff",
     alignItems: "center",
     justifyContent: "center",
+    overflow: "hidden",
+    zIndex: 1,
   },
-  avatarText: { color: "#fff", fontSize: 14, fontWeight: "600" },
-  logoWrap: { alignItems: "center" },
-  logoText: {
-    color: "#fff",
-    fontSize: 17,
-    fontWeight: "700",
-    letterSpacing: 1,
-  },
-  logoSub: { color: "#ffffffaa", fontSize: 10, marginTop: 2 },
-  actions: { flexDirection: "row", gap: 8 },
-  iconBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: "#ffffff22",
+  avatarImage: { width: "100%", height: "100%" },
+  avatarText: { color: "#fff", fontSize: 18, fontWeight: "800" },
+  logoWrap: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 26,
     alignItems: "center",
-    justifyContent: "center",
   },
-  greetCard: {
-    backgroundColor: "#ffffff1f",
-    borderRadius: 18,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+  logo: {
+    width: 150,
+    height: 70,
+    tintColor: "#fff",
+  },
+  actions: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
+    gap: 22,
+    zIndex: 1,
   },
-  greetName: { color: "#fff", fontSize: 15, fontWeight: "700" },
-  greetFaculty: { color: "#ffffffcc", fontSize: 11, marginTop: 4 },
-  dateBox: {
-    backgroundColor: "#ffffff26",
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+  iconBtn: {
+    width: 38,
+    height: 38,
     alignItems: "center",
+    justifyContent: "center",
   },
-  dateDay: { color: "#fff", fontSize: 22, fontWeight: "700", lineHeight: 24 },
-  dateMonth: { color: "#ffffffaa", fontSize: 10, marginTop: 2 },
 });
 
 export default HeaderBar;

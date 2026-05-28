@@ -1,36 +1,44 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import {
   View,
   Text,
   TextInput,
   TouchableOpacity,
-  KeyboardAvoidingView,
   Platform,
-  ScrollView,
   ActivityIndicator,
   StyleSheet,
   Image,
+  StatusBar,
+  KeyboardAvoidingView,
+  ScrollView,
+  Alert,
+  Keyboard,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { onLoginSuccess } from "../services/notificationService";
 
-const API_URL = "http://localhost:8001/api";
+const API_URL = "http://10.6.131.15:8001/api";
 
 const Login = ({ navigation }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [focusField, setFocusField] = useState(null);
+  const passwordRef = useRef(null);
 
   const handleLogin = async () => {
-    if (!email || !password) {
-      alert("กรุณากรอก email และรหัสผ่าน");
+    Keyboard.dismiss();
+    const trimmedEmail = email.trim();
+    const trimmedPassword = password.trim();
+
+    if (!trimmedEmail || !trimmedPassword) {
+      Alert.alert("แจ้งเตือน", "กรุณากรอก email และรหัสผ่าน");
       return;
     }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      alert("รูปแบบ email ไม่ถูกต้อง");
+    if (!emailRegex.test(trimmedEmail)) {
+      Alert.alert("แจ้งเตือน", "รูปแบบ email ไม่ถูกต้อง");
       return;
     }
     setLoading(true);
@@ -41,147 +49,138 @@ const Login = ({ navigation }) => {
           "Content-Type": "application/json",
           Accept: "application/json",
         },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email: trimmedEmail, password: trimmedPassword }),
       });
-
       const data = await response.json();
-
       if (response.ok) {
-        await AsyncStorage.setItem("token", data.token);
-        await AsyncStorage.setItem("token_type", data.token_type);
-        await AsyncStorage.setItem("user", JSON.stringify(data.user));
-        navigation.navigate("MainTabs");
+        await AsyncStorage.multiSet([
+          ["token", String(data.token || "")],
+          ["token_type", String(data.token_type || "")],
+          ["user", JSON.stringify(data.user || {})],
+        ]);
+        onLoginSuccess().catch(() => {});
+        navigation.reset({ index: 0, routes: [{ name: "MainTabs" }] });
       } else {
-        alert(data.message || "username หรือรหัสผ่านไม่ถูกต้อง");
+        Alert.alert("เข้าสู่ระบบไม่สำเร็จ", data.message || "username หรือรหัสผ่านไม่ถูกต้อง");
       }
     } catch (error) {
-      if (error.response) {
-        switch (error.response.status) {
-          case 401:
-            alert("Email หรือ Password ไม่ถูกต้อง");
-            break;
-          case 422:
-            alert("กรุณากรอกข้อมูลให้ครบ");
-            break;
-          case 500:
-            alert("Server error");
-            break;
-        }
-      }
+      console.error("Login error:", error);
+      Alert.alert("เกิดข้อผิดพลาด", "ไม่สามารถเข้าสู่ระบบได้ กรุณาตรวจสอบ API Server และเครือข่าย");
     } finally {
       setLoading(false);
     }
   };
 
   return (
+    // ① KeyboardAvoidingView ครอบนอกสุด
+    // behavior="padding" บน iOS ดีที่สุด
+    // behavior="height"  บน Android
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      behavior="padding"
+      keyboardVerticalOffset={Platform.OS === "android" ? StatusBar.currentHeight ?? 0 : 0}
     >
-      {/* Decorative background blobs */}
+      <StatusBar barStyle="dark-content" backgroundColor="#eaf5ef" />
+
+      {/* Blobs */}
       <View style={styles.blobTop} />
       <View style={styles.blobBottom} />
 
+      {/* ② ScrollView ให้เลื่อนได้เมื่อแป้นพิมพ์ขึ้น */}
       <ScrollView
-        contentContainerStyle={{ flexGrow: 1 }}
-        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={styles.inner}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        bounces={false}
+        automaticallyAdjustKeyboardInsets
       >
-        <View style={styles.inner}>
-          {/* Logo */}
-          <View style={styles.logoWrapper}>
-            <View style={styles.logoRing}>
-              <View style={styles.logoInner}>
-                <Image
-                  source={require("../assets/urusmartlogo.png")}
-                  style={styles.logo}
-                  resizeMode="contain"
-                />
-              </View>
+        {/* Logo */}
+        <View style={styles.logoWrapper}>
+          <View style={styles.logoRing}>
+            <View style={styles.logoInner}>
+              <Image
+                source={require("../assets/urusmartlogo.png")}
+                style={styles.logo}
+                resizeMode="contain"
+              />
             </View>
           </View>
+        </View>
 
-          {/* Title */}
-          <Text style={styles.title}>Welcome to URUSmart</Text>
-          <Text style={styles.subtitle}>Log in to your account</Text>
+        <Text style={styles.title}>Welcome to URUSmart</Text>
+        <Text style={styles.subtitle}>Log in to your account</Text>
 
-          {/* Card */}
-          <View style={styles.card}>
-            {/* Username */}
-            <View
-              style={[
-                styles.inputBox,
-                focusField === "email" && styles.inputBoxFocused,
-              ]}
-            >
-              <View style={styles.iconWrap}>
-                <Ionicons name="person-outline" size={18} color="#0f7a55" />
-              </View>
-              <TextInput
-                style={styles.input}
-                placeholder="Enter your username"
-                placeholderTextColor="#9ca3af"
-                value={email}
-                onChangeText={setEmail}
-                autoCapitalize="none"
-                autoCorrect={false}
-                onFocus={() => setFocusField("email")}
-                onBlur={() => setFocusField(null)}
-              />
+        {/* Card */}
+        <View style={styles.card}>
+          {/* Email */}
+          <Text style={styles.label}>Username / Email</Text>
+          <View style={styles.inputBox}>
+            <View style={styles.iconWrap}>
+              <Ionicons name="person-outline" size={18} color="#0f7a55" />
             </View>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter your username"
+              placeholderTextColor="#9ca3af"
+              value={email}
+              onChangeText={setEmail}
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="email-address"
+              returnKeyType="next"
+              onSubmitEditing={() => passwordRef.current?.focus()}
+              blurOnSubmit={false}
+              underlineColorAndroid="transparent"
+              autoComplete="off"
+            />
+          </View>
 
-            {/* Password */}
-            <View
-              style={[
-                styles.inputBox,
-                focusField === "password" && styles.inputBoxFocused,
-              ]}
-            >
-              <View style={styles.iconWrap}>
-                <Ionicons
-                  name="lock-closed-outline"
-                  size={18}
-                  color="#0f7a55"
-                />
-              </View>
-              <TextInput
-                style={styles.input}
-                placeholder="Enter your password"
-                placeholderTextColor="#9ca3af"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry={!showPassword}
-                autoCapitalize="none"
-                onFocus={() => setFocusField("password")}
-                onBlur={() => setFocusField(null)}
-              />
-              <TouchableOpacity
-                onPress={() => setShowPassword(!showPassword)}
-                style={styles.eyeBtn}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              >
-                <Ionicons
-                  name={showPassword ? "eye-outline" : "eye-off-outline"}
-                  size={20}
-                  color="#6b7a82"
-                />
-              </TouchableOpacity>
+          {/* Password */}
+          <Text style={styles.label}>Password</Text>
+          <View style={styles.inputBox}>
+            <View style={styles.iconWrap}>
+              <Ionicons name="lock-closed-outline" size={18} color="#0f7a55" />
             </View>
-
-            {/* Sign In Button */}
+            <TextInput
+              ref={passwordRef}
+              style={styles.input}
+              placeholder="Enter your password"
+              placeholderTextColor="#9ca3af"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!showPassword}
+              autoCapitalize="none"
+              returnKeyType="done"
+              onSubmitEditing={handleLogin}
+              underlineColorAndroid="transparent"
+              autoComplete="off"
+            />
             <TouchableOpacity
-              style={[styles.button, loading && { opacity: 0.75 }]}
-              onPress={handleLogin}
-              disabled={loading}
-              activeOpacity={0.9}
+              onPress={() => setShowPassword(!showPassword)}
+              style={styles.eyeBtn}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             >
-              {loading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.buttonText}>Sign in</Text>
-              )}
+              <Ionicons
+                name={showPassword ? "eye-outline" : "eye-off-outline"}
+                size={20}
+                color="#6b7a82"
+              />
             </TouchableOpacity>
           </View>
+
+          {/* Button */}
+          <TouchableOpacity
+            style={[styles.button, loading && { opacity: 0.75 }]}
+            onPress={handleLogin}
+            disabled={loading}
+            activeOpacity={0.9}
+          >
+            {loading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.buttonText}>Sign in</Text>
+            )}
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -192,7 +191,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#eaf5ef",
-    overflow: "hidden",
   },
   blobTop: {
     position: "absolute",
@@ -214,70 +212,73 @@ const styles = StyleSheet.create({
     backgroundColor: "#0f7a55",
     opacity: 0.12,
   },
+
+  // ③ inner เปลี่ยนจาก flex:1 / justifyContent:center
+  //    เป็น paddingVertical เพื่อให้ ScrollView ทำงานถูกต้อง
   inner: {
-    flex: 1,
+    flexGrow: 1, // ← สำคัญ: ให้ ScrollView ขยายได้
     alignItems: "center",
-    justifyContent: "center",
+    justifyContent: "center", // จัดกลางเมื่อ content ไม่เต็มหน้าจอ
     paddingHorizontal: 24,
-    paddingVertical: 48,
+    paddingTop: Platform.OS === "ios" ? 60 : (StatusBar.currentHeight ?? 24) + 20,
+    paddingBottom: Platform.OS === "ios" ? 48 : 32,
   },
-  logoWrapper: {
-    alignItems: "center",
-    marginBottom: 18,
-  },
+
+  // Logo
+  logoWrapper: { alignItems: "center", marginBottom: 16 },
   logoRing: {
-    width: 168,
-    height: 168,
-    borderRadius: 84,
-    backgroundColor: "rgba(255,255,255,0.55)",
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: "rgba(255,255,255,0.6)",
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#0f7a55",
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.18,
-    shadowRadius: 24,
-    elevation: 8,
+    elevation: 6,
   },
   logoInner: {
-    width: 148,
-    height: 148,
-    borderRadius: 74,
+    width: 122,
+    height: 122,
+    borderRadius: 61,
+    overflow: "hidden",
     backgroundColor: "#ffffff",
     alignItems: "center",
     justifyContent: "center",
   },
-  logo: {
-    width: 118,
-    height: 118,
-  },
+  logo: { width: 100, height: 100 },
+
   title: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: "900",
     color: "#064e35",
     textAlign: "center",
     letterSpacing: 0.4,
-    marginBottom: 6,
+    marginBottom: 4,
   },
   subtitle: {
-    fontSize: 14,
+    fontSize: 13,
     color: "#56706a",
     textAlign: "center",
     fontWeight: "600",
-    marginBottom: 28,
-    letterSpacing: 0.3,
+    marginBottom: 24,
   },
+
+  // Card
   card: {
     width: "100%",
     backgroundColor: "#ffffff",
     borderRadius: 24,
-    padding: 22,
-    shadowColor: "#0f7a55",
-    shadowOffset: { width: 0, height: 14 },
-    shadowOpacity: 0.12,
-    shadowRadius: 28,
-    elevation: 8,
+    padding: 20,
+    elevation: 6,
     borderWidth: 1,
-    borderColor: "rgba(15,122,85,0.06)",
+    borderColor: "rgba(15,122,85,0.08)",
+  },
+
+  label: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#374151",
+    marginBottom: 6,
+    marginLeft: 4,
   },
   inputBox: {
     flexDirection: "row",
@@ -285,24 +286,15 @@ const styles = StyleSheet.create({
     backgroundColor: "#f5faf7",
     borderWidth: 1.5,
     borderColor: "#e3efe8",
-    borderRadius: 16,
+    borderRadius: 14,
     paddingHorizontal: 12,
-    marginBottom: 14,
-    height: 58,
-  },
-  inputBoxFocused: {
-    borderColor: "#0f7a55",
-    backgroundColor: "#ffffff",
-    shadowColor: "#0f7a55",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 10,
-    elevation: 3,
+    marginBottom: 16,
+    height: 54,
   },
   iconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
+    width: 34,
+    height: 34,
+    borderRadius: 10,
     backgroundColor: "#e6f2ec",
     alignItems: "center",
     justifyContent: "center",
@@ -313,28 +305,27 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: "#1f2937",
     fontWeight: "500",
+    includeFontPadding: false,
+    textAlignVertical: "center",
+    height: 54,
+    paddingVertical: 0,
   },
-  eyeBtn: {
-    padding: 6,
-  },
+  eyeBtn: { padding: 6 },
+
   button: {
     backgroundColor: "#0f7a55",
-    borderRadius: 16,
-    height: 58,
+    borderRadius: 14,
+    height: 54,
     alignItems: "center",
     justifyContent: "center",
-    marginTop: 8,
-    shadowColor: "#0f7a55",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.4,
-    shadowRadius: 16,
-    elevation: 8,
+    marginTop: 4,
+    elevation: 4,
   },
   buttonText: {
     color: "#ffffff",
     fontSize: 16,
     fontWeight: "800",
-    letterSpacing: 1,
+    letterSpacing: 0.8,
   },
 });
 
