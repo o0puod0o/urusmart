@@ -1,23 +1,9 @@
 import React, { useState, useMemo } from "react";
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  ScrollView,
-  TextInput,
-} from "react-native";
+import { View, Text, TouchableOpacity, ScrollView, TextInput } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 
-const InlineDropdown = ({
-  label,
-  value,
-  options,
-  onSelect,
-  required,
-  searchable = false,
-}) => {
+const InlineDropdown = ({ label, value, options, onSelect, required, searchable = false }) => {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -34,40 +20,38 @@ const InlineDropdown = ({
   }, [options, search, searchable]);
 
   return (
-    <View style={styles.wrap}>
-      <Text style={styles.label}>
+    <View className="px-4 py-3">
+      <Text className="text-[12px] text-[#888] font-medium mb-[6px]">
         {label}
-        {required && <Text style={styles.required}> *</Text>}
+        {required && <Text className="text-[#e74c3c]"> *</Text>}
       </Text>
 
       <TouchableOpacity
-        style={[styles.dropdown, open && styles.dropdownOpen]}
-        onPress={() => {
-          setOpen(!open);
-          setSearch("");
-        }}
+        className={`flex-row items-center px-3 py-[11px] border rounded-[10px] ${
+          open
+            ? "bg-[#f0faf4] border-brand rounded-bl-none rounded-br-none"
+            : "bg-[#f8fafb] border-[#e8ecf0]"
+        }`}
+        onPress={() => { setOpen(!open); setSearch(""); }}
         activeOpacity={0.8}
       >
         <Text
-          style={[styles.dropdownText, !selected?.id && { color: "#bbb" }]}
+          className="flex-1 text-[14px] text-[#1a1a2e]"
+          style={!selected?.id ? { color: "#bbb" } : {}}
           numberOfLines={1}
         >
           {selected?.id ? selected.label : options[0]?.label}
         </Text>
-        <Ionicons
-          name={open ? "chevron-up" : "chevron-down"}
-          size={16}
-          color="#888"
-        />
+        <Ionicons name={open ? "chevron-up" : "chevron-down"} size={16} color="#888" />
       </TouchableOpacity>
 
       {open && (
-        <View style={styles.list}>
+        <View className="border border-t-0 border-brand rounded-bl-[10px] rounded-br-[10px] overflow-hidden bg-white">
           {searchable && (
-            <View style={styles.searchBox}>
+            <View className="flex-row items-center px-3 py-[10px] border-b border-[#f0f4f7] bg-[#fafafa]">
               <Ionicons name="search" size={16} color="#888" />
               <TextInput
-                style={styles.searchInput}
+                className="flex-1 ml-2 text-[14px] text-[#1a1a2e] py-0"
                 placeholder={t("research.common.search")}
                 placeholderTextColor="#999"
                 value={search}
@@ -77,42 +61,27 @@ const InlineDropdown = ({
               />
             </View>
           )}
-          <ScrollView
-            nestedScrollEnabled
-            bounces={false}
-            style={{ maxHeight: 260 }}
-          >
+          <ScrollView nestedScrollEnabled bounces={false} style={{ maxHeight: 260 }}>
             {filteredOptions.length > 0 ? (
               filteredOptions.map((opt) => (
                 <TouchableOpacity
                   key={opt.id}
-                  style={[styles.item, opt.id === value && styles.itemActive]}
-                  onPress={() => {
-                    onSelect(opt.id);
-                    setOpen(false);
-                    setSearch("");
-                  }}
+                  className={`px-3 py-3 border-b border-[#f0f4f7] ${opt.id === value ? "bg-[#f0faf4]" : ""}`}
+                  onPress={() => { onSelect(opt.id); setOpen(false); setSearch(""); }}
                 >
-                  <View style={styles.itemRow}>
-                    <View style={styles.checkBox}>
-                      {opt.id === value && (
-                        <Ionicons name="checkmark" size={13} color="#1a6b3c" />
-                      )}
+                  <View className="flex-row items-center">
+                    <View className="w-5 items-center mr-[6px]">
+                      {opt.id === value && <Ionicons name="checkmark" size={13} color="#1a6b3c" />}
                     </View>
-                    <Text
-                      style={[
-                        styles.itemText,
-                        opt.id === value && styles.itemTextActive,
-                      ]}
-                    >
+                    <Text className={`text-[13px] flex-1 ${opt.id === value ? "text-brand font-semibold" : "text-[#444]"}`}>
                       {opt.label}
                     </Text>
                   </View>
                 </TouchableOpacity>
               ))
             ) : (
-              <View style={styles.emptyState}>
-                <Text style={styles.emptyText}>{t("research.common.notFound")}</Text>
+              <View className="py-4 items-center">
+                <Text className="text-[13px] text-[#aaa]">{t("research.common.notFound")}</Text>
               </View>
             )}
           </ScrollView>
@@ -121,64 +90,5 @@ const InlineDropdown = ({
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  wrap: { paddingHorizontal: 16, paddingVertical: 12 },
-  label: { fontSize: 12, color: "#888", fontWeight: "500", marginBottom: 6 },
-  required: { color: "#e74c3c" },
-  dropdown: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#f8fafb",
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 11,
-    borderWidth: 1,
-    borderColor: "#e8ecf0",
-  },
-  dropdownOpen: {
-    borderColor: "#1a6b3c",
-    backgroundColor: "#f0faf4",
-    borderBottomLeftRadius: 0,
-    borderBottomRightRadius: 0,
-  },
-  dropdownText: { fontSize: 14, color: "#1a1a2e", flex: 1 },
-  list: {
-    borderWidth: 1,
-    borderTopWidth: 0,
-    borderColor: "#1a6b3c",
-    borderBottomLeftRadius: 10,
-    borderBottomRightRadius: 10,
-    overflow: "hidden",
-    backgroundColor: "#fff",
-  },
-  searchBox: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: "#f0f4f7",
-    backgroundColor: "#fafafa",
-  },
-  searchInput: {
-    flex: 1,
-    marginLeft: 8,
-    fontSize: 14,
-    color: "#1a1a2e",
-    paddingVertical: 0,
-  },
-  item: {
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#f0f4f7",
-  },
-  itemActive: { backgroundColor: "#f0faf4" },
-  itemRow: { flexDirection: "row", alignItems: "center" },
-  checkBox: { width: 20, alignItems: "center", marginRight: 6 },
-  itemText: { fontSize: 13, color: "#444", flex: 1 },
-  itemTextActive: { color: "#1a6b3c", fontWeight: "600" },
-});
 
 export default InlineDropdown;

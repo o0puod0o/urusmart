@@ -1,171 +1,108 @@
-//จัดการข้อมูลความเชี่ยวชาญ
-import React, { useState } from "react";
-import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  StyleSheet,
-  Alert,
-} from "react-native";
+import React, { useEffect, useState } from "react";
+import { View, Text, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import AppHeader from "../../../components/AppHeader";
 import InlineDropdown from "../../../components/expert/InlineDropdown";
-
-const EXPERTISE_GROUPS = [
-  { id: "", label: "กรุณาเลือกกลุ่มความเชี่ยวชาญ" },
-  { id: "1", label: "กลุ่มครุศาสตร์ ศึกษาศาสตร์พลศึกษา และพลศึกษา" },
-  {
-    id: "2",
-    label:
-      "กลุ่มบริหาร พาณิชย์ศาสตร์ การบัญชี การท่องเที่ยวและโรงแรม เศรษฐศาสตร์",
-  },
-  { id: "3", label: "กลุ่มมนุษยศาสตร์และสังคมศาสตร์" },
-  { id: "4", label: "กลุ่มวิชาวิทยาศาสตร์กายภาพและชีวภาพ" },
-  { id: "5", label: "กลุ่มวิทยาศาสตร์สุขภาพ" },
-  { id: "6", label: "กลุ่มวิศวกรรมศาสตร์" },
-  { id: "7", label: "กลุ่มศิลปกรรมศาสตร์" },
-  { id: "8", label: "กลุ่มสถาปัตยกรรมศาสตร์" },
-  { id: "9", label: "กลุ่มเกษตรศาสตร์" },
-];
-
-const INITIAL_ITEMS = [
-  {
-    id: "exp1",
-    group_id: "6",
-    group_label: "กลุ่มวิศวกรรมศาสตร์",
-    status: "เผยแพร่แล้ว",
-  },
-];
+import useResource from "../../../hook/useResource";
+import api from "../../../services/api";
 
 const ExpertiseForm = ({ navigation, route }) => {
   const item = route?.params?.item || null;
-  const [items, setItems] = useState(INITIAL_ITEMS);
+  const { items, loading: loadingItems, create, update, remove } = useResource("/expertises");
+  const [groups, setGroups] = useState([]);
+  const [loadingGroups, setLoadingGroups] = useState(true);
   const [editingItem, setEditingItem] = useState(item);
-  const [form, setForm] = useState({
-    group_id: item?.group_id || "",
-  });
+  const [form, setForm] = useState({ group_id: item?.group_id || "" });
 
-  const openNew = () => {
-    setEditingItem(null);
-    setForm({ group_id: "" });
+  useEffect(() => {
+    api.get("/ref/expertise-groups")
+      .then((r) => {
+        const rows = r.data?.data ?? r.data ?? [];
+        setGroups([{ id: "", label: "กรุณาเลือกกลุ่มความเชี่ยวชาญ" }, ...rows.map((g) => ({ id: String(g.id), label: g.name ?? g.label ?? "" }))]);
+      })
+      .catch(() => setGroups([{ id: "", label: "กรุณาเลือกกลุ่มความเชี่ยวชาญ" }]))
+      .finally(() => setLoadingGroups(false));
+  }, []);
+
+  const openNew = () => { setEditingItem(null); setForm({ group_id: "" }); };
+  const openEdit = (e) => { setEditingItem(e); setForm({ group_id: String(e.group_id) }); };
+
+  const handleSave = async () => {
+    if (!form.group_id) { Alert.alert("กรุณาเลือกกลุ่มความเชี่ยวชาญ"); return; }
+    try {
+      editingItem ? await update(editingItem.id, form) : await create(form);
+      Alert.alert(editingItem ? "แก้ไขสำเร็จ" : "เพิ่มสำเร็จ");
+      openNew();
+    } catch (err) { Alert.alert("เกิดข้อผิดพลาด", err.message); }
   };
 
-  const openEdit = (itemToEdit) => {
-    setEditingItem(itemToEdit);
-    setForm({ group_id: itemToEdit.group_id });
-  };
-
-  const handleSave = () => {
-    if (!form.group_id) {
-      Alert.alert("กรุณาเลือกกลุ่มความเชี่ยวชาญ");
-      return;
-    }
-
-    const selectedGroup = EXPERTISE_GROUPS.find((g) => g.id === form.group_id);
-    const savedItem = {
-      id: editingItem?.id || String(Date.now()),
-      group_id: form.group_id,
-      group_label: selectedGroup?.label || "",
-      status: "เผยแพร่แล้ว",
-    };
-
-    if (editingItem) {
-      setItems((prev) =>
-        prev.map((entry) => (entry.id === editingItem.id ? savedItem : entry)),
-      );
-      Alert.alert("แก้ไขสำเร็จ", "ข้อมูลความเชี่ยวชาญถูกบันทึกแล้ว");
-    } else {
-      setItems((prev) => [savedItem, ...prev]);
-      Alert.alert("เพิ่มสำเร็จ", "เพิ่มข้อมูลความเชี่ยวชาญเรียบร้อยแล้ว");
-    }
-    openNew();
-  };
-
-  const handleDelete = (itemToDelete) => {
+  const handleDelete = (entry) => {
     Alert.alert("ลบข้อมูล", "ต้องการลบรายการนี้ใช่ไหม?", [
       { text: "ยกเลิก", style: "cancel" },
-      {
-        text: "ลบ",
-        style: "destructive",
-        onPress: () =>
-          setItems((prev) =>
-            prev.filter((entry) => entry.id !== itemToDelete.id),
-          ),
-      },
+      { text: "ลบ", style: "destructive", onPress: async () => { try { await remove(entry.id); } catch (err) { Alert.alert("เกิดข้อผิดพลาด", err.message); } } },
     ]);
   };
 
-  const handleReset = () => {
-    if (editingItem) {
-      openEdit(editingItem);
-    } else {
-      openNew();
-    }
-  };
+  const getGroupLabel = (groupId) => groups.find((g) => g.id === String(groupId))?.label ?? groupId;
 
   return (
-    <View style={styles.container}>
+    <View className="flex-1 bg-[#eef2f7]">
       <AppHeader title="ความเชี่ยวชาญ" onBack={() => navigation.goBack()} />
-      <ScrollView
-        contentContainerStyle={styles.body}
-        showsVerticalScrollIndicator={false}
-      >
+      <ScrollView contentContainerStyle={{ padding: 14, paddingBottom: 40, gap: 14 }} showsVerticalScrollIndicator={false}>
+
         {/* รายการที่มีอยู่ */}
-        {items.length > 0 && (
-          <View style={styles.card}>
+        {loadingItems ? (
+          <View className="items-center py-5">
+            <ActivityIndicator size="small" color="#14532d" />
+          </View>
+        ) : items.length > 0 ? (
+          <View className="bg-white rounded-2xl border border-[#e8ecf0] p-4">
             {items.map((entry) => (
-              <View key={entry.id} style={styles.listItem}>
-                <View style={styles.listText}>
-                  <Text style={styles.itemTitle}>{entry.group_label}</Text>
-                  <View style={styles.metaRow}>
-                    <View style={styles.statusPill}>
-                      <Text style={styles.statusText}>{entry.status}</Text>
+              <View key={entry.id} className="bg-[#f8fafb] rounded-[14px] p-[14px] mb-[10px] flex-row justify-between items-center">
+                <View className="flex-1 pr-3">
+                  <Text className="text-[14px] font-semibold text-[#1a1a2e] mb-[6px]">
+                    {entry.group_label ?? getGroupLabel(entry.group_id)}
+                  </Text>
+                  {!!entry.status && (
+                    <View className="flex-row items-center gap-[10px]">
+                      <View className="bg-[#d1fae5] rounded-full px-[10px] py-1">
+                        <Text className="text-[#065f46] text-[11px] font-bold">{entry.status}</Text>
+                      </View>
                     </View>
-                  </View>
+                  )}
                 </View>
-                <View style={styles.actionGroup}>
-                  <TouchableOpacity
-                    style={styles.editButton}
-                    onPress={() => openEdit(entry)}
-                  >
-                    <Text style={styles.editText}>แก้ไข</Text>
+                <View className="flex-row gap-2">
+                  <TouchableOpacity className="bg-[#dbeafe] rounded-[10px] py-[9px] px-[14px]" onPress={() => openEdit(entry)}>
+                    <Text className="text-[#1e40af] text-[12px] font-bold">แก้ไข</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.deleteButton}
-                    onPress={() => handleDelete(entry)}
-                  >
-                    <Text style={styles.deleteText}>ลบ</Text>
+                  <TouchableOpacity className="bg-[#fde2e6] rounded-[10px] py-[9px] px-[14px]" onPress={() => handleDelete(entry)}>
+                    <Text className="text-[#c0392b] text-[12px] font-bold">ลบ</Text>
                   </TouchableOpacity>
                 </View>
               </View>
             ))}
           </View>
-        )}
+        ) : null}
 
         {/* ฟอร์ม */}
-        <View style={styles.formCard}>
-          <Text style={styles.sectionTitle}>
-            {editingItem
-              ? "แก้ไขข้อมูลความเชี่ยวชาญ"
-              : "เพิ่มข้อมูลความเชี่ยวชาญ"}
+        <View className="bg-white rounded-2xl border border-[#e8ecf0] p-4">
+          <Text className="text-[16px] font-bold text-[#1a1a2e] mb-4">
+            {editingItem ? "แก้ไขข้อมูลความเชี่ยวชาญ" : "เพิ่มข้อมูลความเชี่ยวชาญ"}
           </Text>
-
           <InlineDropdown
             label="กลุ่มความเชี่ยวชาญ"
             value={form.group_id}
-            options={EXPERTISE_GROUPS}
+            options={loadingGroups ? [{ id: "", label: "กำลังโหลด..." }] : groups}
             onSelect={(v) => setForm((p) => ({ ...p, group_id: v }))}
             required
           />
-
-          <View style={styles.buttonRow}>
-            <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-              <Text style={styles.saveButtonText}>
-                {editingItem ? "บันทึกการแก้ไข" : "แก้ไขข้อมูลความเชี่ยวชาญ"}
-              </Text>
+          <View className="flex-row gap-3 mt-5">
+            <TouchableOpacity className="flex-1 bg-[#14532d] rounded-xl py-[14px] items-center" onPress={handleSave}>
+              <Text className="text-white text-[14px] font-semibold">{editingItem ? "บันทึกการแก้ไข" : "เพิ่มข้อมูล"}</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.resetButton} onPress={handleReset}>
-              <Text style={styles.resetButtonText}>รีเซ็ท</Text>
+            <TouchableOpacity className="bg-[#fef2f2] border border-[#dc2626] rounded-xl py-[14px] px-5 flex-row items-center gap-[6px] justify-center" onPress={() => editingItem ? openEdit(editingItem) : openNew()}>
+              <Ionicons name="refresh" size={16} color="#dc2626" />
+              <Text className="text-[#dc2626] text-[14px] font-semibold">รีเซ็ท</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -173,92 +110,5 @@ const ExpertiseForm = ({ navigation, route }) => {
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#eef2f7" },
-  body: { padding: 14, paddingBottom: 40, gap: 14 },
-  card: {
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#e8ecf0",
-    padding: 16,
-  },
-  listItem: {
-    backgroundColor: "#f8fafb",
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 10,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  listText: { flex: 1, paddingRight: 12 },
-  itemTitle: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#1a1a2e",
-    marginBottom: 6,
-  },
-  metaRow: { flexDirection: "row", alignItems: "center", gap: 10 },
-  statusPill: {
-    backgroundColor: "#d1fae5",
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  statusText: { color: "#065f46", fontSize: 11, fontWeight: "700" },
-  actionGroup: { flexDirection: "row", gap: 8 },
-  editButton: {
-    backgroundColor: "#dbeafe",
-    borderRadius: 10,
-    paddingVertical: 9,
-    paddingHorizontal: 14,
-  },
-  editText: { color: "#1e40af", fontSize: 12, fontWeight: "700" },
-  deleteButton: {
-    backgroundColor: "#fde2e6",
-    borderRadius: 10,
-    paddingVertical: 9,
-    paddingHorizontal: 14,
-  },
-  deleteText: { color: "#c0392b", fontSize: 12, fontWeight: "700" },
-  formCard: {
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#e8ecf0",
-    padding: 16,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#1a1a2e",
-    marginBottom: 16,
-  },
-  buttonRow: {
-    flexDirection: "row",
-    gap: 12,
-    marginTop: 20,
-  },
-  saveButton: {
-    flex: 1,
-    backgroundColor: "#14532d",
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: "center",
-  },
-  saveButtonText: { color: "#fff", fontSize: 14, fontWeight: "600" },
-  resetButton: {
-    backgroundColor: "#fff",
-    borderWidth: 1,
-    borderColor: "#9ca3af",
-    borderRadius: 12,
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    alignItems: "center",
-  },
-  resetButtonText: { color: "#1f2937", fontSize: 14, fontWeight: "600" },
-});
 
 export default ExpertiseForm;

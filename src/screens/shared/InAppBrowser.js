@@ -1,13 +1,5 @@
 import React, { useState, useRef } from "react";
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  ActivityIndicator,
-  StyleSheet,
-  StatusBar,
-  Platform,
-} from "react-native";
+import { View, Text, TouchableOpacity, ActivityIndicator, StatusBar, Platform } from "react-native";
 import { WebView } from "react-native-webview";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -19,44 +11,41 @@ export default function InAppBrowser({ route, navigation }) {
   const webViewRef = useRef(null);
   const insets = useSafeAreaInsets();
 
+  const pt = insets.top || (Platform.OS === "ios" ? 50 : (StatusBar.currentHeight ?? 0) + 8);
+
   return (
-    <View style={styles.container}>
+    <View className="flex-1 bg-primary">
       <StatusBar barStyle="light-content" backgroundColor="#0f7a55" />
 
-      {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top || (Platform.OS === "ios" ? 50 : (StatusBar.currentHeight ?? 0) + 8) }]}>
+      <View
+        className="flex-row items-center bg-primary px-2 pb-3"
+        style={{ paddingTop: pt }}
+      >
         <TouchableOpacity
-          onPress={() => {
-            if (canGoBack) {
-              webViewRef.current?.goBack();
-            } else {
-              navigation.goBack();
-            }
-          }}
-          style={styles.backBtn}
+          className="w-9 h-9 items-center justify-center"
+          onPress={() => canGoBack ? webViewRef.current?.goBack() : navigation.goBack()}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
           <Ionicons name="chevron-back" size={22} color="#fff" />
         </TouchableOpacity>
 
-        <Text style={styles.title} numberOfLines={1}>
+        <Text className="flex-1 text-white text-[16px] font-bold text-center mx-1" numberOfLines={1}>
           {title}
         </Text>
 
         <TouchableOpacity
+          className="w-9 h-9 items-center justify-center"
           onPress={() => navigation.goBack()}
-          style={styles.closeBtn}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
           <Ionicons name="close" size={22} color="#fff" />
         </TouchableOpacity>
       </View>
 
-      {/* WebView */}
       <WebView
         ref={webViewRef}
         source={{ uri: url }}
-        style={styles.webview}
+        className="flex-1 bg-white"
         onLoadStart={() => setLoading(true)}
         onLoadEnd={() => setLoading(false)}
         onNavigationStateChange={(navState) => setCanGoBack(navState.canGoBack)}
@@ -67,48 +56,10 @@ export default function InAppBrowser({ route, navigation }) {
       />
 
       {loading && (
-        <View style={styles.loadingOverlay}>
+        <View className="absolute inset-0 bg-white/85 items-center justify-center">
           <ActivityIndicator size="large" color="#0f7a55" />
         </View>
       )}
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#0f7a55" },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#0f7a55",
-    paddingHorizontal: 8,
-    paddingBottom: 12,
-  },
-  backBtn: {
-    width: 36,
-    height: 36,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  title: {
-    flex: 1,
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "700",
-    textAlign: "center",
-    marginHorizontal: 4,
-  },
-  closeBtn: {
-    width: 36,
-    height: 36,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  webview: { flex: 1, backgroundColor: "#fff" },
-  loadingOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(255,255,255,0.85)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-});

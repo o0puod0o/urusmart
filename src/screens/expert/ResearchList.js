@@ -1,95 +1,29 @@
 import React from "react";
-import {
-  SafeAreaView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { SafeAreaView, Text, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
-
-const C = {
-  bg: "#f0f6f2",
-  card: "#ffffff",
-  g500: "#0f7a55",
-  ink: "#111c18",
-  sub: "#4a5e56",
-  line: "#dce8e2",
-};
 
 export default function ResearchList({ navigation, route }) {
   const { t } = useTranslation();
   const { title, icon = "document-text-outline" } = route?.params || {};
 
   return (
-    <SafeAreaView style={styles.screen}>
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-          activeOpacity={0.75}
-        >
-          <Ionicons name="chevron-back" size={24} color={C.g500} />
+    <SafeAreaView className="flex-1 bg-[#f0f6f2]">
+      <View className="flex-row items-center justify-between px-4 py-[14px] bg-white border-b border-[#dce8e2]">
+        <TouchableOpacity className="w-8 h-8 items-center justify-center" onPress={() => navigation.goBack()} activeOpacity={0.75}>
+          <Ionicons name="chevron-back" size={24} color="#0f7a55" />
         </TouchableOpacity>
-        <Text style={styles.title}>{title ?? t("research.list.title")}</Text>
-        <View style={styles.headerSpacer} />
+        <Text className="flex-1 text-center text-[17px] font-extrabold text-[#111c18]">{title ?? t("research.list.title")}</Text>
+        <View className="w-8" />
       </View>
 
-      <View style={styles.body}>
-        <View style={styles.emptyCard}>
-          <Ionicons name={icon} size={34} color={C.g500} />
-          <Text style={styles.emptyTitle}>{t("research.list.noData")}</Text>
-          <Text style={styles.emptyText}>{t("research.list.desc")}</Text>
+      <View className="flex-1 p-4">
+        <View className="items-center justify-center bg-white rounded-2xl border border-[#dce8e2] p-6 min-h-[180px]">
+          <Ionicons name={icon} size={34} color="#0f7a55" />
+          <Text className="mt-3 text-[16px] font-extrabold text-[#111c18]">{t("research.list.noData")}</Text>
+          <Text className="mt-[6px] text-center text-[13px] font-semibold text-[#4a5e56] leading-5">{t("research.list.desc")}</Text>
         </View>
       </View>
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: C.bg },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    backgroundColor: C.card,
-    borderBottomWidth: 1,
-    borderBottomColor: C.line,
-  },
-  backButton: {
-    width: 32,
-    height: 32,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  title: { flex: 1, textAlign: "center", fontSize: 17, fontWeight: "800", color: C.ink },
-  headerSpacer: { width: 32 },
-  body: { flex: 1, padding: 16 },
-  emptyCard: {
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: C.card,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: C.line,
-    padding: 24,
-    minHeight: 180,
-  },
-  emptyTitle: {
-    marginTop: 12,
-    fontSize: 16,
-    fontWeight: "800",
-    color: C.ink,
-  },
-  emptyText: {
-    marginTop: 6,
-    textAlign: "center",
-    fontSize: 13,
-    fontWeight: "600",
-    color: C.sub,
-    lineHeight: 20,
-  },
-});

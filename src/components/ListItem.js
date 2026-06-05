@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import { View, Text, TouchableOpacity } from "react-native";
 
 const STATUS_COLOR = {
   เผยแพร่แล้ว: { bg: "#e8f5ee", text: "#1a6b3c" },
@@ -12,18 +12,18 @@ const ListItem = ({ item, onEdit, onDelete }) => {
   const statusStyle = STATUS_COLOR[item.status] || STATUS_COLOR["-"];
 
   return (
-    <View style={styles.row}>
-      <View style={styles.content}>
-        <Text style={styles.title} numberOfLines={2}>
+    <View className="flex-row items-center p-[14px] gap-[10px]">
+      <View className="flex-1 gap-[6px]">
+        <Text className="text-[13px] font-medium text-[#1a1a2e] leading-[18px]" numberOfLines={2}>
           {item.title}
         </Text>
-        <View style={styles.meta}>
+        <View className="flex-row items-center gap-[8px]">
           {item.year && item.year !== "-" && (
-            <Text style={styles.year}>ปี {item.year}</Text>
+            <Text className="text-[11px] text-[#888]">ปี {item.year}</Text>
           )}
           {item.status && item.status !== "-" && (
-            <View style={[styles.pill, { backgroundColor: statusStyle.bg }]}>
-              <Text style={[styles.pillText, { color: statusStyle.text }]}>
+            <View className="rounded-[20px] px-[8px] py-[2px]" style={{ backgroundColor: statusStyle.bg }}>
+              <Text className="text-[10px] font-medium" style={{ color: statusStyle.text }}>
                 {item.status}
               </Text>
             </View>
@@ -31,89 +31,24 @@ const ListItem = ({ item, onEdit, onDelete }) => {
         </View>
       </View>
 
-      <View style={styles.actions}>
+      <View className="flex-col gap-[6px]">
         <TouchableOpacity
-          style={styles.editBtn}
+          className="bg-[#e8f5ee] rounded-lg px-[12px] py-[5px] items-center"
           onPress={() => onEdit(item)}
           activeOpacity={0.75}
         >
-          <Text style={styles.editText}>แก้ไข</Text>
+          <Text className="text-[11px] text-brand font-medium">แก้ไข</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={styles.deleteBtn}
+          className="bg-[#fce4ec] rounded-lg px-[12px] py-[5px] items-center"
           onPress={() => onDelete(item.id)}
           activeOpacity={0.75}
         >
-          <Text style={styles.deleteText}>ลบ</Text>
+          <Text className="text-[11px] text-[#c0392b] font-medium">ลบ</Text>
         </TouchableOpacity>
       </View>
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 14,
-    gap: 10,
-  },
-  content: {
-    flex: 1,
-    gap: 6,
-  },
-  title: {
-    fontSize: 13,
-    fontWeight: "500",
-    color: "#1a1a2e",
-    lineHeight: 18,
-  },
-  meta: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  year: {
-    fontSize: 11,
-    color: "#888",
-  },
-  pill: {
-    borderRadius: 20,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-  },
-  pillText: {
-    fontSize: 10,
-    fontWeight: "500",
-  },
-  actions: {
-    flexDirection: "column",
-    gap: 6,
-  },
-  editBtn: {
-    backgroundColor: "#e8f5ee",
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    alignItems: "center",
-  },
-  editText: {
-    fontSize: 11,
-    color: "#1a6b3c",
-    fontWeight: "500",
-  },
-  deleteBtn: {
-    backgroundColor: "#fce4ec",
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    alignItems: "center",
-  },
-  deleteText: {
-    fontSize: 11,
-    color: "#c0392b",
-    fontWeight: "500",
-  },
-});
 
 export default ListItem;

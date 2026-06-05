@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
+import { Animated, View } from "react-native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
@@ -42,6 +43,81 @@ const RootStack = createNativeStackNavigator();
 const SettingStackNav = createNativeStackNavigator();
 const Tabs = createBottomTabNavigator();
 
+function AnimatedTabIcon({ name, focused, color }) {
+  const scale = useRef(new Animated.Value(1)).current;
+  const translateY = useRef(new Animated.Value(0)).current;
+  const dotOpacity = useRef(new Animated.Value(0)).current;
+  const dotScale = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (focused) {
+      Animated.parallel([
+        Animated.spring(scale, {
+          toValue: 1.22,
+          useNativeDriver: true,
+          tension: 180,
+          friction: 8,
+        }),
+        Animated.spring(translateY, {
+          toValue: -4,
+          useNativeDriver: true,
+          tension: 180,
+          friction: 8,
+        }),
+        Animated.spring(dotScale, {
+          toValue: 1,
+          useNativeDriver: true,
+          tension: 200,
+          friction: 7,
+        }),
+        Animated.timing(dotOpacity, {
+          toValue: 1,
+          duration: 150,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    } else {
+      Animated.parallel([
+        Animated.spring(scale, {
+          toValue: 1,
+          useNativeDriver: true,
+          tension: 180,
+          friction: 8,
+        }),
+        Animated.spring(translateY, {
+          toValue: 0,
+          useNativeDriver: true,
+          tension: 180,
+          friction: 8,
+        }),
+        Animated.spring(dotScale, {
+          toValue: 0,
+          useNativeDriver: true,
+          tension: 200,
+          friction: 7,
+        }),
+        Animated.timing(dotOpacity, {
+          toValue: 0,
+          duration: 100,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [focused]);
+
+  return (
+    <View className="items-center justify-center w-11 h-[38px]">
+      <Animated.View style={{ transform: [{ scale }, { translateY }] }}>
+        <Ionicons name={name} size={23} color={color} />
+      </Animated.View>
+      <Animated.View
+        className="w-[5px] h-[5px] rounded-[3px] bg-primary mt-[3px]"
+        style={{ opacity: dotOpacity, transform: [{ scale: dotScale }] }}
+      />
+    </View>
+  );
+}
+
 function SettingStack() {
   return (
     <SettingStackNav.Navigator screenOptions={{ headerShown: false }}>
@@ -84,7 +160,7 @@ function MainTabs() {
           letterSpacing: -0.2,
           marginTop: 2,
         },
-        tabBarIcon: ({ focused, color, size }) => {
+        tabBarIcon: ({ focused, color }) => {
           const icons = {
             HomeTab: focused ? "home" : "home-outline",
             CardTab: focused ? "card" : "card-outline",
@@ -93,7 +169,13 @@ function MainTabs() {
               : "chatbubble-ellipses-outline",
             SettingTab: focused ? "settings" : "settings-outline",
           };
-          return <Ionicons name={icons[route.name]} size={22} color={color} />;
+          return (
+            <AnimatedTabIcon
+              name={icons[route.name]}
+              focused={focused}
+              color={color}
+            />
+          );
         },
       })}
     >
@@ -153,7 +235,6 @@ export default function AppNavigator() {
         component={HumanSubjectsForm}
       />
       <RootStack.Screen name="InAppBrowser" component={InAppBrowser} />
-      <RootStack.Screen name="EResearch" component={EResearch} />
     </RootStack.Navigator>
   );
 }

@@ -1,373 +1,118 @@
-// จัดการข้อมูลผลงานวิจัย
-import React, { useState, useEffect, useMemo } from "react";
-import {
-  View,
-  Text,
-  TextInput,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Alert,
-  ActivityIndicator,
-} from "react-native";
+import React, { useState, useMemo } from "react";
+import { View, Text, TextInput, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import AppHeader from "../../../components/AppHeader";
 import InlineDropdown from "../../../components/expert/InlineDropdown";
-
-const BASE_URL = "https://your-api.example.com";
+import useResource from "../../../hook/useResource";
+import useRefs from "../../../hook/useRefs";
 
 const BASE_YEAR_LIST = Array.from({ length: 2569 - 2533 + 1 }, (_, i) => {
   const y = 2569 - i;
   return { id: String(y), label: String(y) };
 });
 
-// Mock data — ลบออกเมื่อมี API
-const INITIAL_ITEMS = [
-  {
-    id: "1",
-    year: "2562",
-    title:
-      "การจัดการศูนย์ข้อมูลเพื่อการพัฒนาเชิงพื้นที่สำหรับเครือข่ายมหาวิทยาลัยราชภัฏอุตรดิตถ์",
-    type: "กองทุนวิจัยใน",
-    pmu: "",
-    level: "",
-  },
-  {
-    id: "2",
-    year: "2561",
-    title: "การถ่ายทอดเทคโนโลยีระบบสารสนเทศทวนสอบคุณภาพสินค้าสับปะรด",
-    type: "PMU",
-    pmu: "",
-    level: "",
-  },
-];
+const COL = { no: 28, year: 40, type: 76, pmu: 36, level: 40, edit: 44, del: 32 };
 
 const ResearchForm = ({ navigation }) => {
   const { t } = useTranslation();
-  const YEAR_OPTIONS = useMemo(
-    () => [
-      { id: "", label: t("research.common.selectYear") },
-      ...BASE_YEAR_LIST,
-    ],
-    [t],
-  );
-  const [items, setItems] = useState(INITIAL_ITEMS);
+  const YEAR_OPTIONS = useMemo(() => [{ id: "", label: t("research.common.selectYear") }, ...BASE_YEAR_LIST], [t]);
+  const { items, saving, create, update, remove } = useResource("/researches");
+  const { researchTypes, loading: loadingTypes } = useRefs();
   const [editingItem, setEditingItem] = useState(null);
-  const [form, setForm] = useState({
-    year: "",
-    title: "",
-    type: "",
-    pmu: "",
-    level: "",
-  });
-  const [typeOptions, setTypeOptions] = useState([]);
-  const [loadingTypes, setLoadingTypes] = useState(false);
+  const [form, setForm] = useState({ year: "", title: "", type: "", pmu: "", level: "" });
 
-  useEffect(() => {
-    (async () => {
-      try {
-        setLoadingTypes(true);
-        const res = await fetch(`${BASE_URL}/api/research-types`);
-        if (!res.ok) throw new Error();
-        const data = await res.json();
-        setTypeOptions([
-          { id: "", label: t("research.researchForm.typePlaceholder") },
-          ...data.map((d) => ({ id: String(d.id), label: d.name })),
-        ]);
-      } catch {
-        console.log("API not ready");
-      } finally {
-        setLoadingTypes(false);
-      }
-    })();
-  }, []);
+  const typeOptions = [
+    { id: "", label: t("research.researchForm.typePlaceholder") },
+    ...researchTypes.map((d) => ({ id: String(d.id), label: d.name ?? d.label ?? "" })),
+  ];
 
   const setField = (key, val) => setForm((p) => ({ ...p, [key]: val }));
+  const openEdit = (entry) => { setEditingItem(entry); setForm({ year: entry.year, title: entry.title, type: entry.type, pmu: entry.pmu, level: entry.level }); };
+  const openNew = () => { setEditingItem(null); setForm({ year: "", title: "", type: "", pmu: "", level: "" }); };
 
-  const openEdit = (entry) => {
-    setEditingItem(entry);
-    setForm({
-      year: entry.year,
-      title: entry.title,
-      type: entry.type,
-      pmu: entry.pmu,
-      level: entry.level,
-    });
-  };
-
-  const openNew = () => {
-    setEditingItem(null);
-    setForm({ year: "", title: "", type: "", pmu: "", level: "" });
-  };
-
-  const handleSave = () => {
-    if (!form.year || !form.title.trim()) {
-      Alert.alert(
-        t("research.common.warning"),
-        t("research.researchForm.validation"),
-      );
-      return;
-    }
-    const saved = {
-      id: editingItem?.id || String(Date.now()),
-      year: form.year,
-      title: form.title,
-      type: form.type,
-      pmu: form.pmu,
-      level: form.level,
-    };
-    if (editingItem) {
-      setItems((prev) =>
-        prev.map((i) => (i.id === editingItem.id ? saved : i)),
-      );
-      Alert.alert(
-        t("research.common.editSuccess"),
-        t("research.common.savedMsg"),
-      );
-    } else {
-      setItems((prev) => [saved, ...prev]);
-      Alert.alert(
-        t("research.common.addSuccess"),
-        t("research.common.addSuccessMsg"),
-      );
-    }
-    openNew();
-    // TODO: POST/PUT /api/research
+  const handleSave = async () => {
+    if (!form.year || !form.title.trim()) { Alert.alert(t("research.common.warning"), t("research.researchForm.validation")); return; }
+    try {
+      editingItem ? await update(editingItem.id, form) : await create(form);
+      Alert.alert(editingItem ? t("research.common.editSuccess") : t("research.common.addSuccess"), t("research.common.savedMsg"));
+      openNew();
+    } catch { Alert.alert(t("research.common.saveFail"), t("research.common.apiError")); }
   };
 
   const handleDelete = (entry) => {
-    Alert.alert(
-      t("research.common.deleteTitle"),
-      t("research.common.deleteConfirm"),
-      [
-        { text: t("research.common.cancel"), style: "cancel" },
-        {
-          text: t("research.common.deleteBtn"),
-          style: "destructive",
-          onPress: () => {
-            setItems((prev) => prev.filter((i) => i.id !== entry.id));
-            // TODO: DELETE /api/research/:id
-          },
-        },
-      ],
-    );
-  };
-
-  // ── column widths ──────────────────────────────────────────
-  const COL = {
-    no: 28,
-    year: 40,
-    type: 76,
-    pmu: 36,
-    level: 40,
-    edit: 44,
-    del: 32,
+    Alert.alert(t("research.common.deleteTitle"), t("research.common.deleteConfirm"), [
+      { text: t("research.common.cancel"), style: "cancel" },
+      { text: t("research.common.deleteBtn"), style: "destructive", onPress: async () => { try { await remove(entry.id); } catch { Alert.alert(t("research.common.deleteFail")); } } },
+    ]);
   };
 
   return (
-    <View style={s.container}>
-      <AppHeader
-        title={t("research.researchForm.title")}
-        onBack={() => navigation.goBack()}
-      />
+    <View className="flex-1 bg-[#eef2f7]">
+      <AppHeader title={t("research.researchForm.title")} onBack={() => navigation.goBack()} />
+      <ScrollView contentContainerStyle={{ padding: 14, paddingBottom: 40, gap: 14 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
 
-      <ScrollView
-        contentContainerStyle={s.body}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
-        {/* ── ตารางรายการ ── */}
-        <View style={s.card}>
-          <View style={s.cardHeader}>
-            <Text style={s.cardHeaderText}>
-              {t("research.researchForm.editForm")}
-            </Text>
+        {/* Table */}
+        <View className="bg-white rounded-2xl border border-[#e8ecf0] overflow-hidden">
+          <View className="bg-[#f8fafb] border-b border-[#e8ecf0] px-4 py-3">
+            <Text className="text-[14px] font-bold text-primary">{t("research.researchForm.editForm")}</Text>
           </View>
-
-          {/* horizontal scroll เฉพาะตาราง */}
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             <View>
-              {/* head */}
-              <View style={s.tableHead}>
-                <Text style={[s.th, { width: COL.no }]}>
-                  {t("research.common.no")}
-                </Text>
-                <Text style={[s.th, { width: COL.year }]}>
-                  {t("research.common.year")}
-                </Text>
-                <Text style={[s.th, { flex: 1, minWidth: 160 }]}>
-                  {t("research.researchForm.colTitle")}
-                </Text>
-                <Text style={[s.th, { width: COL.type }]}>
-                  {t("research.researchForm.colType")}
-                </Text>
-                <Text style={[s.th, { width: COL.pmu }]}>
-                  {t("research.researchForm.colPmu")}
-                </Text>
-                <Text style={[s.th, { width: COL.level }]}>
-                  {t("research.researchForm.colLevel")}
-                </Text>
-                <Text style={[s.th, { width: COL.edit }]}>
-                  {t("research.common.editBtn")}
-                </Text>
-                <Text style={[s.th, { width: COL.del }]}>
-                  {t("research.common.deleteBtn")}
-                </Text>
+              <View className="flex-row items-center bg-[#f0faf4] px-[10px] py-[10px] border-b border-[#e8ecf0] gap-1">
+                {[{ w: COL.no, label: t("research.common.no") }, { w: COL.year, label: t("research.common.year") }, { flex: 1, minW: 160, label: t("research.researchForm.colTitle") }, { w: COL.type, label: t("research.researchForm.colType") }, { w: COL.pmu, label: t("research.researchForm.colPmu") }, { w: COL.level, label: t("research.researchForm.colLevel") }, { w: COL.edit, label: t("research.common.editBtn") }, { w: COL.del, label: t("research.common.deleteBtn") }].map((col, i) => (
+                  <Text key={i} className="text-[11px] font-bold text-primary text-center" style={col.flex ? { flex: 1, minWidth: col.minW } : { width: col.w }}>{col.label}</Text>
+                ))}
               </View>
-
-              {/* rows */}
               {items.length === 0 ? (
-                <Text style={s.emptyText}>
-                  {t("research.researchForm.noData")}
-                </Text>
-              ) : (
-                items.map((entry, index) => (
-                  <View
-                    key={entry.id}
-                    style={[
-                      s.tableRow,
-                      index % 2 === 0 && { backgroundColor: "#f8fafb" },
-                    ]}
-                  >
-                    <Text
-                      style={[s.td, { width: COL.no, textAlign: "center" }]}
-                    >
-                      {index + 1}
-                    </Text>
-                    <Text
-                      style={[s.td, { width: COL.year, textAlign: "center" }]}
-                    >
-                      {entry.year}
-                    </Text>
-                    <Text
-                      style={[s.td, { flex: 1, minWidth: 160 }]}
-                      numberOfLines={3}
-                    >
-                      {entry.title}
-                    </Text>
-                    <Text
-                      style={[
-                        s.td,
-                        {
-                          width: COL.type,
-                          color: "#0f7a55",
-                          textAlign: "center",
-                        },
-                      ]}
-                    >
-                      {entry.type}
-                    </Text>
-                    <Text
-                      style={[s.td, { width: COL.pmu, textAlign: "center" }]}
-                    >
-                      {entry.pmu}
-                    </Text>
-                    <Text
-                      style={[s.td, { width: COL.level, textAlign: "center" }]}
-                    >
-                      {entry.level}
-                    </Text>
-                    <TouchableOpacity
-                      style={[s.actionBtn, s.editBtn, { width: COL.edit }]}
-                      onPress={() => openEdit(entry)}
-                    >
-                      <Text style={s.editBtnText}>
-                        {t("research.common.editBtn")}
-                      </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[s.actionBtn, s.delBtn, { width: COL.del }]}
-                      onPress={() => handleDelete(entry)}
-                    >
-                      <Text style={s.delBtnText}>
-                        {t("research.common.deleteBtn")}
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                ))
-              )}
+                <Text className="text-center text-[#aaa] text-[13px] p-6">{t("research.researchForm.noData")}</Text>
+              ) : items.map((entry, index) => (
+                <View key={entry.id} className="flex-row items-center px-[10px] py-[10px] border-b border-[#f0f4f7] gap-1" style={index % 2 === 0 ? { backgroundColor: "#f8fafb" } : {}}>
+                  <Text className="text-[11px] text-[#1a1a2e] text-center" style={{ width: COL.no }}>{index + 1}</Text>
+                  <Text className="text-[11px] text-[#1a1a2e] text-center" style={{ width: COL.year }}>{entry.year}</Text>
+                  <Text className="text-[11px] text-[#1a1a2e]" style={{ flex: 1, minWidth: 160 }} numberOfLines={3}>{entry.title}</Text>
+                  <Text className="text-[11px] text-primary text-center" style={{ width: COL.type }}>{entry.type}</Text>
+                  <Text className="text-[11px] text-[#1a1a2e] text-center" style={{ width: COL.pmu }}>{entry.pmu}</Text>
+                  <Text className="text-[11px] text-[#1a1a2e] text-center" style={{ width: COL.level }}>{entry.level}</Text>
+                  <TouchableOpacity className="rounded-[6px] py-[5px] items-center justify-center bg-[#fff3cd]" style={{ width: COL.edit }} onPress={() => openEdit(entry)}>
+                    <Text className="text-[10px] font-bold text-[#856404]">{t("research.common.editBtn")}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity className="rounded-[6px] py-[5px] items-center justify-center bg-[#fde2e6]" style={{ width: COL.del }} onPress={() => handleDelete(entry)}>
+                    <Text className="text-[10px] font-bold text-[#c0392b]">{t("research.common.deleteBtn")}</Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
             </View>
           </ScrollView>
         </View>
 
-        {/* ── ฟอร์มเพิ่ม/แก้ไข ── */}
-        <View style={s.formCard}>
-          <Text style={s.formTitle}>
-            {editingItem
-              ? t("research.researchForm.editForm")
-              : t("research.researchForm.addForm")}
+        {/* Form */}
+        <View className="bg-white rounded-2xl border border-[#e8ecf0] overflow-hidden">
+          <Text className="text-[15px] font-bold text-[#1a1a2e] text-center p-4 border-b border-[#f0f4f7]">
+            {editingItem ? t("research.researchForm.editForm") : t("research.researchForm.addForm")}
           </Text>
-
-          {/* ปี */}
-          <InlineDropdown
-            label={t("research.common.year") + ":"}
-            value={form.year}
-            options={YEAR_OPTIONS}
-            onSelect={(v) => setField("year", v)}
-            required
-          />
-
-          <View style={s.divider} />
-
-          {/* ชื่องานวิจัย */}
-          <View style={s.fieldWrap}>
-            <Text style={s.fieldLabel}>
-              {t("research.researchForm.fieldTitle")}{" "}
-              <Text style={s.required}>*</Text>
-            </Text>
-            <TextInput
-              style={s.textarea}
-              placeholder={t("research.researchForm.placeholderTitle")}
-              placeholderTextColor="#bbb"
-              value={form.title}
-              onChangeText={(v) => setField("title", v)}
-              multiline
-              numberOfLines={3}
-              textAlignVertical="top"
-            />
+          <InlineDropdown label={`${t("research.common.year")}:`} value={form.year} options={YEAR_OPTIONS} onSelect={(v) => setField("year", v)} required />
+          <View className="h-px bg-[#f0f4f7]" />
+          <View className="px-4 py-3">
+            <Text className="text-[13px] font-semibold text-brand mb-[6px]">{t("research.researchForm.fieldTitle")} <Text className="text-[#e74c3c]">*</Text></Text>
+            <TextInput className="bg-[#f8fafb] border border-[#e8ecf0] rounded-[10px] px-3 py-[10px] text-[13px] text-[#1a1a2e]" style={{ minHeight: 110, textAlignVertical: "top", paddingTop: 10 }} placeholder={t("research.researchForm.placeholderTitle")} placeholderTextColor="#bbb" value={form.title} onChangeText={(v) => setField("title", v)} multiline numberOfLines={3} textAlignVertical="top" />
           </View>
-
-          <View style={s.divider} />
-
-          {/* ประเภท */}
+          <View className="h-px bg-[#f0f4f7]" />
           {loadingTypes ? (
-            <View style={s.loadingWrap}>
+            <View className="flex-row items-center gap-[10px] px-4 py-[14px]">
               <ActivityIndicator size="small" color="#0f7a55" />
-              <Text style={s.loadingText}>
-                {t("research.researchForm.loadingTypes")}
-              </Text>
+              <Text className="text-[13px] text-[#888]">{t("research.researchForm.loadingTypes")}</Text>
             </View>
           ) : (
-            <InlineDropdown
-              label={t("research.researchForm.fieldType")}
-              value={form.type}
-              options={[
-                { id: "", label: t("research.researchForm.typePlaceholder") },
-                ...typeOptions.filter((o) => o.id !== ""),
-              ]}
-              onSelect={(v) => setField("type", v)}
-            />
+            <InlineDropdown label={t("research.researchForm.fieldType")} value={form.type} options={typeOptions} onSelect={(v) => setField("type", v)} />
           )}
-
-          {/* ปุ่ม */}
-          <View style={s.btnRow}>
-            <TouchableOpacity
-              style={s.saveBtn}
-              onPress={handleSave}
-              activeOpacity={0.85}
-            >
-              <Text style={s.saveBtnText}>
-                {editingItem
-                  ? t("research.common.saveEdit")
-                  : t("research.researchForm.addForm")}
-              </Text>
+          <View className="flex-row gap-[10px] p-4">
+            <TouchableOpacity className="flex-1 bg-brand rounded-[10px] py-[14px] items-center justify-center" style={{ elevation: 3 }} onPress={handleSave} activeOpacity={0.85}>
+              <Text className="text-white text-[13px] font-bold">{editingItem ? t("research.common.saveEdit") : t("research.researchForm.addForm")}</Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              style={s.resetBtn}
-              onPress={openNew}
-              activeOpacity={0.8}
-            >
-              <Text style={s.resetBtnText}>{t("research.common.reset")}</Text>
+            <TouchableOpacity className="bg-[#fef2f2] border border-[#dc2626] rounded-[10px] px-5 py-[14px] flex-row items-center gap-[6px]" onPress={openNew} activeOpacity={0.8}>
+              <Ionicons name="refresh" size={16} color="#dc2626" />
+              <Text className="text-[#dc2626] text-[13px] font-bold">{t("research.common.reset")}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -375,140 +120,5 @@ const ResearchForm = ({ navigation }) => {
     </View>
   );
 };
-
-const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#eef2f7" },
-  body: { padding: 14, paddingBottom: 40, rowGap: 14 },
-
-  // ── ตาราง ──
-  card: {
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#e8ecf0",
-    overflow: "hidden",
-  },
-  cardHeader: {
-    backgroundColor: "#f8fafb",
-    borderBottomWidth: 1,
-    borderBottomColor: "#e8ecf0",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  cardHeaderText: { fontSize: 14, fontWeight: "700", color: "#0f7a55" },
-  tableHead: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#f0faf4",
-    paddingHorizontal: 10,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: "#e8ecf0",
-    gap: 4,
-  },
-  th: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: "#0f7a55",
-    textAlign: "center",
-  },
-  tableRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 10,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: "#f0f4f7",
-    gap: 4,
-  },
-  td: { fontSize: 11, color: "#1a1a2e" },
-  emptyText: { textAlign: "center", color: "#aaa", fontSize: 13, padding: 24 },
-  actionBtn: {
-    borderRadius: 6,
-    paddingVertical: 5,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  editBtn: { backgroundColor: "#fff3cd" },
-  editBtnText: { fontSize: 10, fontWeight: "700", color: "#856404" },
-  delBtn: { backgroundColor: "#fde2e6" },
-  delBtnText: { fontSize: 10, fontWeight: "700", color: "#c0392b" },
-
-  formCard: {
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#e8ecf0",
-    overflow: "hidden",
-  },
-  formTitle: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#1a1a2e",
-    textAlign: "center",
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#f0f4f7",
-  },
-  divider: { height: 1, backgroundColor: "#f0f4f7" },
-  fieldWrap: { paddingHorizontal: 16, paddingVertical: 12 },
-  fieldLabel: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#1a6b3c",
-    marginBottom: 6,
-  },
-  required: { color: "#e74c3c" },
-
-  textarea: {
-    backgroundColor: "#f8fafb",
-    borderColor: "#e8ecf0",
-    borderRadius: 10,
-    borderWidth: 1,
-    color: "#1a1a2e",
-    fontSize: 13,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    paddingTop: 10,
-    minHeight: 110,
-    textAlignVertical: "top",
-  },
-
-  loadingWrap: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-  },
-  loadingText: { fontSize: 13, color: "#888" },
-
-  btnRow: { flexDirection: "row", gap: 10, padding: 16 },
-  saveBtn: {
-    flex: 1,
-    backgroundColor: "#1a6b3c",
-    borderRadius: 10,
-    paddingVertical: 14,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#1a6b3c",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
-    elevation: 3,
-  },
-  saveBtnText: { color: "#fff", fontSize: 13, fontWeight: "700" },
-  resetBtn: {
-    backgroundColor: "#e8f5ee",
-    borderRadius: 10,
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "#1a6b3c",
-  },
-  resetBtnText: { color: "#1a6b3c", fontSize: 13, fontWeight: "700" },
-});
 
 export default ResearchForm;

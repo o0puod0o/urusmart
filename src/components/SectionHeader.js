@@ -1,41 +1,20 @@
 import React from "react";
-import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import { View, Text, TouchableOpacity } from "react-native";
 
 const SectionHeader = ({ title, linkText, onPress }) => {
   return (
-    <View style={styles.row}>
-      <Text style={styles.title}>{title}</Text>
+    <View className="flex-row justify-between items-center mb-[10px]">
+      <Text className="text-[13px] font-semibold text-[#1a1a2e]">{title}</Text>
       {linkText && (
-        <TouchableOpacity onPress={onPress} style={styles.pill}>
-          <Text style={styles.link}>{linkText}</Text>
+        <TouchableOpacity
+          onPress={onPress}
+          className="bg-[#e8f5ee] rounded-[20px] px-[10px] py-[3px]"
+        >
+          <Text className="text-[11px] text-brand">{linkText}</Text>
         </TouchableOpacity>
       )}
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  row: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 10,
-  },
-  title: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#1a1a2e",
-  },
-  pill: {
-    backgroundColor: "#e8f5ee",
-    borderRadius: 20,
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-  },
-  link: {
-    fontSize: 11,
-    color: "#1a6b3c",
-  },
-});
 
 export default SectionHeader;

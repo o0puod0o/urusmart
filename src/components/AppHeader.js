@@ -1,64 +1,36 @@
 import React from "react";
-import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import { View, Text, TouchableOpacity, Platform, StatusBar } from "react-native";
+
+const PT = Platform.OS === "ios" ? "pt-[52px]" : `pt-[${(StatusBar.currentHeight ?? 24) + 8}px]`;
 
 const AppHeader = ({ title, onBack, rightIcon, onRightPress }) => {
   return (
-    <View style={styles.header}>
-      <TouchableOpacity onPress={onBack} style={styles.btn}>
-        <Text style={styles.backIcon}>‹</Text>
+    <View className={`bg-brand flex-row items-center justify-between px-4 pb-4 ${PT}`}>
+      <TouchableOpacity
+        onPress={onBack}
+        className="w-9 h-9 rounded-full bg-white/10 items-center justify-center"
+      >
+        <Text className="text-white text-2xl font-light" style={{ marginTop: -2 }}>
+          ‹
+        </Text>
       </TouchableOpacity>
 
-      <Text style={styles.title} numberOfLines={1}>
+      <Text className="text-white text-base font-semibold flex-1 text-center mx-2" numberOfLines={1}>
         {title}
       </Text>
 
       {rightIcon ? (
-        <TouchableOpacity onPress={onRightPress} style={styles.btn}>
-          <Text style={styles.rightIcon}>{rightIcon}</Text>
+        <TouchableOpacity
+          onPress={onRightPress}
+          className="w-9 h-9 rounded-full bg-white/10 items-center justify-center"
+        >
+          <Text className="text-white text-[22px]">{rightIcon}</Text>
         </TouchableOpacity>
       ) : (
-        <View style={{ width: 36 }} />
+        <View className="w-9" />
       )}
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  header: {
-    backgroundColor: "#1a6b3c",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingTop: 52,
-    paddingBottom: 16,
-  },
-  btn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "#ffffff22",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  backIcon: {
-    color: "#fff",
-    fontSize: 24,
-    fontWeight: "300",
-    marginTop: -2,
-  },
-  rightIcon: {
-    color: "#fff",
-    fontSize: 22,
-  },
-  title: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
-    flex: 1,
-    textAlign: "center",
-    marginHorizontal: 8,
-  },
-});
 
 export default AppHeader;

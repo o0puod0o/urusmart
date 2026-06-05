@@ -1,66 +1,25 @@
 import React from "react";
-import {
-  TouchableOpacity,
-  View,
-  Text,
-  StyleSheet,
-  Linking,
-} from "react-native";
+import { TouchableOpacity, View, Text, Linking } from "react-native";
 
-const ServiceIconItem = ({
-  icon,
-  label,
-  url,
-  onPress,
-  bgColor = "#e8f5ee",
-}) => {
+const ServiceIconItem = ({ icon, label, url, onPress, bgColor = "#e8f5ee" }) => {
   const handlePress = () => {
-    if (onPress) {
-      onPress();
-    } else if (url) {
-      Linking.openURL(url);
-    }
+    if (onPress) onPress();
+    else if (url) Linking.openURL(url);
   };
 
   return (
-    <TouchableOpacity
-      style={styles.wrapper}
-      onPress={handlePress}
-      activeOpacity={0.75}
-    >
-      <View style={[styles.box, { backgroundColor: bgColor }]}>
-        <Text style={styles.icon}>{icon}</Text>
+    <TouchableOpacity className="items-center gap-[5px]" onPress={handlePress} activeOpacity={0.75}>
+      <View
+        className="w-[52px] h-[52px] rounded-[14px] items-center justify-center border border-[#00000008]"
+        style={{ backgroundColor: bgColor }}
+      >
+        <Text className="text-[22px]">{icon}</Text>
       </View>
-      <Text style={styles.label} numberOfLines={2}>
+      <Text className="text-[9px] text-[#555] text-center leading-[13px]" numberOfLines={2}>
         {label}
       </Text>
     </TouchableOpacity>
   );
 };
-
-const styles = StyleSheet.create({
-  wrapper: {
-    alignItems: "center",
-    gap: 5,
-  },
-  box: {
-    width: 52,
-    height: 52,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "#00000008",
-  },
-  icon: {
-    fontSize: 22,
-  },
-  label: {
-    fontSize: 9,
-    color: "#555",
-    textAlign: "center",
-    lineHeight: 13,
-  },
-});
 
 export default ServiceIconItem;

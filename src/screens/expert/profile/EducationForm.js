@@ -1,221 +1,107 @@
-//ประวัติการศึกษา
-import React, { useState } from "react";
-import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
-  Alert,
-} from "react-native";
+import React, { useMemo, useState } from "react";
+import { View, Text, ScrollView, TouchableOpacity, Alert } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import AppHeader from "../../../components/AppHeader";
 import FormField from "../../../components/expert/FormField";
 import InlineDropdown from "../../../components/expert/InlineDropdown";
-
-const DEGREE_OPTIONS = [
-  { id: "", label: "กรุณาเลือกระดับการศึกษา" },
-  { id: "phd", label: "ปริญญาเอก" },
-  { id: "master", label: "ปริญญาโท" },
-  { id: "bachelor", label: "ปริญญาตรี" },
-  { id: "below_bachelor", label: "ต่ำกว่าปริญญาตรี" },
-];
+import useResource from "../../../hook/useResource";
+import useRefs from "../../../hook/useRefs";
 
 const currentYear = new Date().getFullYear() + 543;
 const YEAR_OPTIONS = [
   { id: "", label: "กรุณาเลือกปี" },
-  ...Array.from({ length: currentYear - 2499 }, (_, index) => {
-    const year = currentYear - index;
-    return { id: String(year), label: String(year) };
+  ...Array.from({ length: currentYear - 2499 }, (_, i) => {
+    const y = currentYear - i;
+    return { id: String(y), label: String(y) };
   }),
 ];
 
-const INITIAL_EDUCATION_ITEMS = [
-  {
-    id: "edu1",
-    degree: "bachelor",
-    title: "ปริญญาตรี วิทยาการคอมพิวเตอร์",
-    year: "2560",
-    major: "วิทยาการคอมพิวเตอร์",
-    institution: "มหาวิทยาลัยราชภัฏอุตรดิตถ์",
-    status: "เผยแพร่แล้ว",
-  },
-  {
-    id: "edu2",
-    degree: "master",
-    title: "ปริญญาโท การบริหารการศึกษา",
-    year: "2563",
-    major: "การบริหารการศึกษา",
-    institution: "มหาวิทยาลัยราชภัฏอุตรดิตถ์",
-    status: "เผยแพร่แล้ว",
-  },
-];
-
 const EducationForm = ({ navigation }) => {
-  const [items, setItems] = useState(INITIAL_EDUCATION_ITEMS);
+  const { items, create, update, remove } = useResource("/educations");
+  const { degrees } = useRefs();
+
+  const DEGREE_OPTIONS = useMemo(() => [
+    { id: "", label: "กรุณาเลือกระดับการศึกษา" },
+    ...degrees.map((d) => ({ id: String(d.id), label: d.name ?? d.label ?? "" })),
+  ], [degrees]);
+
   const [editingItem, setEditingItem] = useState(null);
-  const [form, setForm] = useState({
-    year: "",
-    degree: "",
-    major: "",
-    institution: "",
-  });
+  const [form, setForm] = useState({ year: "", degree: "", major: "", institution: "" });
 
-  const setField = (key, value) => {
-    setForm((prev) => ({ ...prev, [key]: value }));
-  };
+  const setField = (key, val) => setForm((p) => ({ ...p, [key]: val }));
+  const openNewForm = () => { setEditingItem(null); setForm({ year: "", degree: "", major: "", institution: "" }); };
+  const openEditForm = (item) => { setEditingItem(item); setForm({ year: item.year, degree: item.degree, major: item.major, institution: item.institution }); };
 
-  const openNewForm = () => {
-    setEditingItem(null);
-    setForm({ year: "", degree: "", major: "", institution: "" });
-  };
-
-  const openEditForm = (item) => {
-    setEditingItem(item);
-    setForm({
-      year: item.year,
-      degree: item.degree,
-      major: item.major,
-      institution: item.institution,
-    });
-  };
-
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.year || !form.degree || !form.major || !form.institution) {
-      Alert.alert("กรุณากรอกข้อมูลให้ครบทุกช่อง");
-      return;
+      Alert.alert("กรุณากรอกข้อมูลให้ครบทุกช่อง"); return;
     }
-
-    const savedItem = {
-      id: editingItem?.id || String(Date.now()),
-      degree: form.degree,
-      title: `${DEGREE_OPTIONS.find((opt) => opt.id === form.degree)?.label || ""} ${form.major}`,
-      year: form.year,
-      major: form.major,
-      institution: form.institution,
-      status: "เผยแพร่แล้ว",
-    };
-
-    if (editingItem) {
-      setItems((prev) =>
-        prev.map((entry) => (entry.id === editingItem.id ? savedItem : entry)),
-      );
-      Alert.alert("แก้ไขสำเร็จ", "ข้อมูลประวัติการศึกษาถูกแก้ไขแล้ว");
-    } else {
-      setItems((prev) => [savedItem, ...prev]);
-      Alert.alert("บันทึกสำเร็จ", "เพิ่มข้อมูลประวัติการศึกษาเรียบร้อยแล้ว");
-    }
-
-    openNewForm();
+    try {
+      editingItem
+        ? await update(editingItem.id, { degree: form.degree, year: form.year, major: form.major, institution: form.institution })
+        : await create({ degree: form.degree, year: form.year, major: form.major, institution: form.institution });
+      Alert.alert(editingItem ? "แก้ไขสำเร็จ" : "บันทึกสำเร็จ");
+      openNewForm();
+    } catch { Alert.alert("บันทึกไม่สำเร็จ", "กรุณาลองใหม่อีกครั้ง"); }
   };
 
   const handleDelete = (item) => {
     Alert.alert("ลบข้อมูล", "ต้องการลบรายการนี้ใช่หรือไม่?", [
       { text: "ยกเลิก", style: "cancel" },
-      {
-        text: "ลบ",
-        style: "destructive",
-        onPress: () => {
-          setItems((prev) => prev.filter((entry) => entry.id !== item.id));
-          if (editingItem?.id === item.id) {
-            openNewForm();
-          }
-        },
-      },
+      { text: "ลบ", style: "destructive", onPress: async () => {
+        try { await remove(item.id); if (editingItem?.id === item.id) openNewForm(); }
+        catch { Alert.alert("ลบไม่สำเร็จ", "กรุณาลองใหม่อีกครั้ง"); }
+      }},
     ]);
   };
 
-  const handleReset = () => {
-    if (editingItem) {
-      openEditForm(editingItem);
-    } else {
-      openNewForm();
-    }
-  };
-
   return (
-    <View style={styles.container}>
+    <View className="flex-1 bg-white">
       <AppHeader title="ประวัติการศึกษา" onBack={() => navigation.goBack()} />
-      <ScrollView
-        contentContainerStyle={styles.body}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>ประวัติการศึกษา</Text>
+      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 48, gap: 16 }} showsVerticalScrollIndicator={false}>
+
+        {/* List */}
+        <View className="bg-white rounded-[20px] border border-[#dcebe1] p-[18px]" style={{ elevation: 2, shadowColor: "#0b3b22", shadowOpacity: 0.06, shadowRadius: 12, shadowOffset: { width: 0, height: 6 } }}>
+          <Text className="text-[18px] font-bold text-[#155f2c] mb-[14px]">ประวัติการศึกษา</Text>
           {items.map((item) => (
-            <View key={item.id} style={styles.listItem}>
-              <View style={styles.listText}>
-                <Text style={styles.itemTitle}>{item.title}</Text>
-                <Text style={styles.itemMeta}>ปี {item.year}</Text>
-                <View style={styles.badge}>
-                  <Text style={styles.badgeText}>{item.status}</Text>
+            <View key={item.id} className="flex-row justify-between items-start py-[14px] border-t border-[#eef4f0] gap-3">
+              <View className="flex-1 pr-2">
+                <Text className="text-[15px] font-bold text-[#1a2e22] mb-1">{item.title}</Text>
+                <Text className="text-[13px] text-[#5b6f64] mb-2">ปี {item.year}</Text>
+                <View className="self-start bg-[#e6f4ea] rounded-full px-[10px] py-1">
+                  <Text className="text-[12px] font-semibold text-[#155f2c]">{item.status}</Text>
                 </View>
               </View>
-              <View style={styles.actionGroup}>
-                <TouchableOpacity
-                  style={styles.editButton}
-                  onPress={() => openEditForm(item)}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.editText}>แก้ไข</Text>
+              <View className="flex-row gap-2">
+                <TouchableOpacity className="bg-[#1f7a3a] rounded-[10px] py-2 px-[14px]" onPress={() => openEditForm(item)} activeOpacity={0.8}>
+                  <Text className="text-white text-[13px] font-semibold">แก้ไข</Text>
                 </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.deleteButton}
-                  onPress={() => handleDelete(item)}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.deleteText}>ลบ</Text>
+                <TouchableOpacity className="bg-[#fde8e8] rounded-[10px] py-2 px-[14px]" onPress={() => handleDelete(item)} activeOpacity={0.8}>
+                  <Text className="text-[#dc2626] text-[13px] font-semibold">ลบ</Text>
                 </TouchableOpacity>
               </View>
             </View>
           ))}
         </View>
 
-        <View style={styles.formCard}>
-          <Text style={styles.sectionTitle}>
-            {editingItem
-              ? "แก้ไขข้อมูลประวัติการศึกษา"
-              : "เพิ่มข้อมูลประวัติการศึกษา"}
-          </Text>
+        {/* Form */}
+        <View className="bg-white rounded-[20px] border border-[#dcebe1] p-[18px]" style={{ elevation: 2, shadowColor: "#0b3b22", shadowOpacity: 0.06, shadowRadius: 12, shadowOffset: { width: 0, height: 6 } }}>
+          <Text className="text-[16px] font-bold text-[#155f2c] mb-3">{editingItem ? "แก้ไขข้อมูลประวัติการศึกษา" : "เพิ่มข้อมูลประวัติการศึกษา"}</Text>
+          <InlineDropdown label="ปีที่จบ (พ.ศ.)" value={form.year} options={YEAR_OPTIONS} onSelect={(v) => setField("year", v)} searchable />
+          <View className="h-px bg-[#eef4f0] my-2" />
+          <InlineDropdown label="ระดับการศึกษา" value={form.degree} options={DEGREE_OPTIONS} onSelect={(v) => setField("degree", v)} />
+          <View className="h-px bg-[#eef4f0] my-2" />
+          <FormField label="วุฒิการศึกษา (สาขาวิชา)" value={form.major} onChangeText={(v) => setField("major", v)} />
+          <View className="h-px bg-[#eef4f0] my-2" />
+          <FormField label="ชื่อสถาบัน" value={form.institution} onChangeText={(v) => setField("institution", v)} />
 
-          <InlineDropdown
-            label="ปีที่จบ (พ.ศ.)"
-            value={form.year}
-            options={YEAR_OPTIONS}
-            onSelect={(value) => setField("year", value)}
-            searchable
-          />
-          <View style={styles.divider} />
-
-          <InlineDropdown
-            label="ระดับการศึกษา"
-            value={form.degree}
-            options={DEGREE_OPTIONS}
-            onSelect={(value) => setField("degree", value)}
-          />
-          <View style={styles.divider} />
-
-          <FormField
-            label="วุฒิการศึกษา (สาขาวิชา)"
-            value={form.major}
-            onChangeText={(value) => setField("major", value)}
-          />
-          <View style={styles.divider} />
-
-          <FormField
-            label="ชื่อสถานบัน"
-            value={form.institution}
-            onChangeText={(value) => setField("institution", value)}
-          />
-          <View style={styles.buttonRow}>
-            <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-              <Text style={styles.saveButtonText}>
-                {editingItem ? "บันทึกการแก้ไข" : "เพิ่มข้อมูลประวัติการศึกษา"}
-              </Text>
+          <View className="flex-row gap-3 mt-[22px] flex-wrap">
+            <TouchableOpacity className="flex-1 bg-[#1f7a3a] rounded-xl py-4 items-center min-w-[200px]" style={{ elevation: 2 }} onPress={handleSave}>
+              <Text className="text-white text-[14px] font-bold">{editingItem ? "บันทึกการแก้ไข" : "เพิ่มข้อมูลประวัติการศึกษา"}</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.resetButton} onPress={handleReset}>
-              <Text style={styles.resetButtonText}>รีเซ็ท</Text>
+            <TouchableOpacity className="bg-[#fef2f2] border border-[#dc2626] rounded-xl py-[14px] px-[22px] flex-row items-center gap-[6px] justify-center min-w-[90px]" onPress={() => editingItem ? openEditForm(editingItem) : openNewForm()}>
+              <Ionicons name="refresh" size={16} color="#dc2626" />
+              <Text className="text-[#dc2626] text-[14px] font-bold">รีเซ็ท</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -223,149 +109,5 @@ const EducationForm = ({ navigation }) => {
     </View>
   );
 };
-const COLORS = {
-  primary: "#1f7a3a", // เขียวเข้มหลัก (header, ปุ่มหลัก)
-  primaryDark: "#155f2c", // เขียวเข้มกว่า (hover/เงา/หัวข้อ)
-  primarySoft: "#e6f4ea", // เขียวพาสเทลอ่อนมาก (badge)
-  bg: "#f5faf6", // พื้นหลังหน้า ขาวอมเขียวบางๆ
-  surface: "#ffffff",
-  border: "#dcebe1",
-  divider: "#eef4f0",
-  text: "#1a2e22",
-  textMuted: "#5b6f64",
-  accent: "#2bb8c4", // ฟ้าเทอร์ควอยซ์ (ปุ่มรีเซ็ต)
-  accentDark: "#1f97a1",
-  danger: "#dc2626",
-  dangerSoft: "#fde8e8",
-};
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#ffffff" },
-
-  body: { padding: 16, paddingBottom: 48, gap: 16 },
-
-  // ===== Card รายการประวัติ =====
-  card: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    padding: 18,
-    shadowColor: "#0b3b22",
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 2,
-  },
-  cardTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: COLORS.primaryDark,
-    marginBottom: 14,
-  },
-
-  listItem: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    paddingVertical: 14,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.divider,
-    gap: 12,
-  },
-  listText: { flex: 1, paddingRight: 8 },
-  itemTitle: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: COLORS.text,
-    marginBottom: 4,
-  },
-  itemMeta: { fontSize: 13, color: COLORS.textMuted, marginBottom: 8 },
-
-  badge: {
-    alignSelf: "flex-start",
-    backgroundColor: COLORS.primarySoft,
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  badgeText: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: COLORS.primaryDark,
-  },
-
-  actionGroup: { flexDirection: "row", gap: 8 },
-  editButton: {
-    backgroundColor: COLORS.primary,
-    borderRadius: 10,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-  },
-  editText: { color: "#fff", fontSize: 13, fontWeight: "600" },
-  deleteButton: {
-    backgroundColor: COLORS.dangerSoft,
-    borderRadius: 10,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-  },
-  deleteText: { color: COLORS.danger, fontSize: 13, fontWeight: "600" },
-
-  // ===== Card ฟอร์ม =====
-  formCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    padding: 18,
-    shadowColor: "#0b3b22",
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 2,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: COLORS.primaryDark,
-    marginBottom: 12,
-  },
-  divider: { height: 1, backgroundColor: COLORS.divider, marginVertical: 8 },
-
-  buttonRow: {
-    flexDirection: "row",
-    gap: 12,
-    marginTop: 22,
-    flexWrap: "wrap",
-  },
-  saveButton: {
-    flex: 1,
-    backgroundColor: COLORS.primary,
-    borderRadius: 12,
-    paddingVertical: 16,
-    alignItems: "center",
-    minWidth: 200,
-    shadowColor: COLORS.primaryDark,
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 2,
-  },
-
-  saveButtonText: { color: "#fff", fontSize: 14, fontWeight: "700" },
-
-  resetButton: {
-    backgroundColor: COLORS.accent,
-    borderRadius: 12,
-    paddingVertical: 14,
-    paddingHorizontal: 22,
-    alignItems: "center",
-    minWidth: 90,
-  },
-  resetButtonText: {
-    color: "#fff",
-    fontSize: 14,
-    fontWeight: "700",
-  },
-});
 export default EducationForm;

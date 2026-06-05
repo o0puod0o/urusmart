@@ -1,23 +1,16 @@
 import React from "react";
-import { View, Text, TextInput, StyleSheet } from "react-native";
+import { View, Text, TextInput } from "react-native";
 
-const FormField = ({
-  label,
-  value,
-  onChangeText,
-  required,
-  multiline,
-  keyboardType,
-  placeholder,
-}) => {
+const FormField = ({ label, value, onChangeText, required, multiline, keyboardType, placeholder }) => {
   return (
-    <View style={styles.wrap}>
-      <Text style={styles.label}>
+    <View className="p-[14px]">
+      <Text className="text-[12px] text-[#888] font-medium mb-[6px]">
         {label}
-        {required && <Text style={styles.required}> *</Text>}
+        {required && <Text className="text-[#e74c3c]"> *</Text>}
       </Text>
       <TextInput
-        style={[styles.input, multiline && styles.inputMulti]}
+        className="text-[14px] text-[#1a1a2e] border border-[#e8ecf0] rounded-[10px] px-[12px] py-[10px] bg-[#f8fafb]"
+        style={multiline ? { minHeight: 80, paddingTop: 10 } : {}}
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder || `กรอก${label}`}
@@ -31,34 +24,5 @@ const FormField = ({
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  wrap: {
-    padding: 14,
-  },
-  label: {
-    fontSize: 12,
-    color: "#888",
-    fontWeight: "500",
-    marginBottom: 6,
-  },
-  required: {
-    color: "#e74c3c",
-  },
-  input: {
-    fontSize: 14,
-    color: "#1a1a2e",
-    borderWidth: 1,
-    borderColor: "#e8ecf0",
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    backgroundColor: "#f8fafb",
-  },
-  inputMulti: {
-    minHeight: 80,
-    paddingTop: 10,
-  },
-});
 
 export default FormField;

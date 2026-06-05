@@ -1,33 +1,14 @@
 import React, { useState } from "react";
-import {
-  Platform,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Platform, ScrollView, StatusBar, Text, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { changeLanguage } from "../../i18n/i18n";
 
-const COLORS = {
-  primary: "#1a6b3c",
-  primaryDark: "#14532d",
-  primarySoft: "#e8f5ee",
-  bg: "#f0f4f1",
-  card: "#ffffff",
-  ink: "#1a1a2e",
-  sub: "#5a6a60",
-  dim: "#8a9a90",
-  line: "#e0ebe4",
-};
-
+const PT = Platform.OS === "ios" ? "pt-[54px]" : `pt-[${(StatusBar.currentHeight ?? 24) + 10}px]`;
 const LANGUAGES = [
-  { code: "th", label: "ภาษาไทย", nativeLabel: "Thai", flag: "🇹🇭" },
-  { code: "en", label: "English", nativeLabel: "อังกฤษ", flag: "🇬🇧" },
+  { code: "th", label: "ภาษาไทย",  nativeLabel: "Thai",    flag: "🇹🇭" },
+  { code: "en", label: "English",   nativeLabel: "อังกฤษ", flag: "🇬🇧" },
 ];
 
 export default function LanguagePage() {
@@ -41,134 +22,49 @@ export default function LanguagePage() {
   };
 
   return (
-    <View style={s.screen}>
-      <StatusBar barStyle="light-content" backgroundColor={COLORS.primaryDark} />
-      <View style={s.header}>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={s.backBtn}
-          activeOpacity={0.7}
-        >
+    <View className="flex-1 bg-[#f0f4f1]">
+      <StatusBar barStyle="light-content" backgroundColor="#14532d" />
+
+      <View className={`bg-brand flex-row items-center justify-between px-4 pb-[14px] ${PT}`}>
+        <TouchableOpacity className="w-9 h-9 rounded-full bg-white/20 items-center justify-center" onPress={() => navigation.goBack()} activeOpacity={0.7}>
           <Ionicons name="chevron-back" size={22} color="#fff" />
         </TouchableOpacity>
-        <Text style={s.headerTitle}>{t("language.title")}</Text>
-        <View style={{ width: 36 }} />
+        <Text className="text-[17px] font-extrabold text-white">{t("language.title")}</Text>
+        <View className="w-9" />
       </View>
 
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={s.body}
-      >
-        <Text style={s.sectionLabel}>{t("language.select")}</Text>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+        <Text className="text-[12px] font-bold text-[#8a9a90] px-5 pt-5 pb-2 uppercase tracking-[0.8px]">{t("language.select")}</Text>
 
-        <View style={s.card}>
+        <View className="bg-white rounded-2xl mx-4 overflow-hidden border border-[#e0ebe4]">
           {LANGUAGES.map((lang, i) => {
             const active = selected === lang.code;
             return (
               <TouchableOpacity
                 key={lang.code}
-                style={[
-                  s.row,
-                  i < LANGUAGES.length - 1 && s.rowBorder,
-                  active && s.rowActive,
-                ]}
+                className={`flex-row items-center gap-[14px] px-4 py-4 ${i < LANGUAGES.length - 1 ? "border-b border-[#e0ebe4]" : ""} ${active ? "bg-[#e8f5ee]" : ""}`}
                 onPress={() => handleSelect(lang.code)}
                 activeOpacity={0.7}
               >
-                <Text style={s.flag}>{lang.flag}</Text>
-                <View style={s.textWrap}>
-                  <Text style={[s.rowTitle, active && { color: COLORS.primary }]}>
-                    {lang.label}
-                  </Text>
-                  <Text style={s.rowSub}>{lang.nativeLabel}</Text>
+                <Text className="text-[32px]">{lang.flag}</Text>
+                <View className="flex-1">
+                  <Text className={`text-[16px] font-bold ${active ? "text-brand" : "text-[#1a1a2e]"}`}>{lang.label}</Text>
+                  <Text className="text-[12px] text-[#5a6a60] mt-[2px]">{lang.nativeLabel}</Text>
                 </View>
-                {active ? (
-                  <Ionicons name="checkmark-circle" size={24} color={COLORS.primary} />
-                ) : (
-                  <View style={{ width: 24 }} />
-                )}
+                {active
+                  ? <Ionicons name="checkmark-circle" size={24} color="#1a6b3c" />
+                  : <View className="w-6" />
+                }
               </TouchableOpacity>
             );
           })}
         </View>
 
-        <View style={s.noteCard}>
-          <Ionicons name="information-circle-outline" size={16} color={COLORS.primary} />
-          <Text style={s.noteText}>{t("language.note")}</Text>
+        <View className="flex-row items-start gap-2 bg-[#e8f5ee] rounded-[14px] mx-4 mt-4 p-[14px] border border-[#e0ebe4]">
+          <Ionicons name="information-circle-outline" size={16} color="#1a6b3c" />
+          <Text className="flex-1 text-[12px] text-[#5a6a60] leading-[18px]">{t("language.note")}</Text>
         </View>
       </ScrollView>
     </View>
   );
 }
-
-const s = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: COLORS.bg },
-
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingTop: Platform.OS === "ios" ? 54 : (StatusBar.currentHeight ?? 24) + 10,
-    paddingBottom: 14,
-    backgroundColor: COLORS.primary,
-  },
-  backBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "rgba(255,255,255,0.2)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  headerTitle: { fontSize: 17, fontWeight: "800", color: "#fff" },
-
-  body: { paddingBottom: 40 },
-
-  sectionLabel: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: COLORS.dim,
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 8,
-    textTransform: "uppercase",
-    letterSpacing: 0.8,
-  },
-
-  card: {
-    backgroundColor: COLORS.card,
-    borderRadius: 16,
-    marginHorizontal: 16,
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: COLORS.line,
-  },
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 14,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-  },
-  rowBorder: { borderBottomWidth: 1, borderBottomColor: COLORS.line },
-  rowActive: { backgroundColor: COLORS.primarySoft },
-  flag: { fontSize: 32 },
-  textWrap: { flex: 1 },
-  rowTitle: { fontSize: 16, fontWeight: "700", color: COLORS.ink },
-  rowSub: { fontSize: 12, color: COLORS.sub, marginTop: 2 },
-
-  noteCard: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 8,
-    backgroundColor: COLORS.primarySoft,
-    borderRadius: 14,
-    marginHorizontal: 16,
-    marginTop: 16,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: COLORS.line,
-  },
-  noteText: { flex: 1, fontSize: 12, color: COLORS.sub, lineHeight: 18 },
-});

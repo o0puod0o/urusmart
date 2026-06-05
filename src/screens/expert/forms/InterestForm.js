@@ -1,377 +1,117 @@
-// จัดการข้อมูลความสนใจ
-import React, { useState, useEffect } from "react";
-import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  StyleSheet,
-  Alert,
-  ActivityIndicator,
-  TextInput,
-} from "react-native";
+import React, { useState } from "react";
+import { View, Text, ScrollView, TouchableOpacity, Alert, ActivityIndicator, TextInput } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import AppHeader from "../../../components/AppHeader";
 import InlineDropdown from "../../../components/expert/InlineDropdown";
-
-const BASE_URL = "https://your-api.example.com";
+import useResource from "../../../hook/useResource";
 
 const InterestForm = ({ navigation }) => {
   const { t } = useTranslation();
-  const [items, setItems] = useState([
-    { id: "1", title: "Big Data" },
-    {
-      id: "2",
-      title: "การพัฒนาระบบสารสนเทศ MIS และ Android Mobile Application",
-    },
-    { id: "3", title: "โปรแกรมเมอร์/วิทยาศาสตร์คอมพิวเตอร์/เทคโนโลยีสารสนเทศ" },
-  ]);
-
-  const [interestOptions, setInterestOptions] = useState([]);
-  const [loadingOptions, setLoadingOptions] = useState(false);
+  const { items, loading: loadingOptions, create, remove } = useResource("/interests");
   const [selectedInterest, setSelectedInterest] = useState("");
   const [customInterest, setCustomInterest] = useState("");
 
-  useEffect(() => {
-    const load = async () => {
-      try {
-        setLoadingOptions(true);
-        const res = await fetch(`${BASE_URL}/api/interests`);
-        if (!res.ok) throw new Error();
-        const data = await res.json();
-        setInterestOptions([
-          { id: "", label: t("research.interest.selectPlaceholder") },
-          ...data.map((d) => ({ id: d.id, label: d.title })),
-        ]);
-      } catch {
-        console.log("API not ready, interests dropdown empty");
-      } finally {
-        setLoadingOptions(false);
-      }
-    };
-    load();
-  }, []);
+  const interestOptions = items.map((d) => ({ id: String(d.id), label: d.title ?? d.name ?? "" }));
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     const title = selectedInterest
       ? interestOptions.find((o) => o.id === selectedInterest)?.label
       : customInterest.trim();
-
-    if (!title) {
-      Alert.alert(t("research.interest.validation"));
-      return;
+    if (!title) { Alert.alert(t("research.interest.validation")); return; }
+    if (items.some((item) => (item.title ?? item.name ?? "").toLowerCase() === title.toLowerCase())) {
+      Alert.alert(t("research.interest.duplicate")); return;
     }
-    const alreadyExists = items.some(
-      (item) => item.title.toLowerCase() === title.toLowerCase(),
-    );
-    if (alreadyExists) {
-      Alert.alert(t("research.interest.duplicate"));
-      return;
-    }
-    setItems((prev) => [...prev, { id: String(Date.now()), title }]);
-    setSelectedInterest("");
-    setCustomInterest("");
-    // TODO: POST /api/interests { title }
+    try { await create({ title }); } catch { Alert.alert(t("research.common.saveFail"), t("research.common.apiError")); }
+    setSelectedInterest(""); setCustomInterest("");
   };
 
-  const handleDelete = (itemToDelete) => {
-    Alert.alert(
-      t("research.common.deleteTitle"),
-      t("research.common.deleteConfirm"),
-      [
-        { text: t("research.common.cancel"), style: "cancel" },
-        {
-          text: t("research.common.deleteBtn"),
-          style: "destructive",
-          onPress: () => {
-            setItems((prev) => prev.filter((i) => i.id !== itemToDelete.id));
-            // TODO: DELETE /api/interests/:id
-          },
-        },
-      ],
-    );
-  };
-
-  const handleReset = () => {
-    setSelectedInterest("");
-    setCustomInterest("");
+  const handleDelete = (entry) => {
+    Alert.alert(t("research.common.deleteTitle"), t("research.common.deleteConfirm"), [
+      { text: t("research.common.cancel"), style: "cancel" },
+      { text: t("research.common.deleteBtn"), style: "destructive", onPress: async () => { try { await remove(entry.id); } catch { Alert.alert(t("research.common.deleteFail")); } } },
+    ]);
   };
 
   return (
-    <View style={styles.container}>
-      <AppHeader
-        title={t("research.interest.title")}
-        onBack={() => navigation.goBack()}
-      />
-      <ScrollView
-        contentContainerStyle={styles.body}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
-        {/* ── ตารางรายการ ── */}
-        <View style={styles.card}>
-          <View style={styles.cardHeader}>
+    <View className="flex-1 bg-[#eef2f7]">
+      <AppHeader title={t("research.interest.title")} onBack={() => navigation.goBack()} />
+      <ScrollView contentContainerStyle={{ padding: 14, paddingBottom: 40, gap: 14 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+
+        {/* List */}
+        <View className="bg-white rounded-2xl border border-[#e8ecf0] overflow-hidden">
+          <View className="flex-row items-center px-4 py-3 bg-[#f8fafb] border-b border-[#e8ecf0]">
             <Ionicons name="star-outline" size={16} color="#1a6b3c" />
-            <Text style={styles.cardHeaderText}>
-              {" "}
-              {t("research.interest.listHeader")}
-            </Text>
+            <Text className="text-[13px] font-semibold text-brand ml-1">{t("research.interest.listHeader")}</Text>
           </View>
-
-          <View style={styles.tableHead}>
-            <Text style={[styles.th, { width: 50 }]}>
-              {t("research.interest.colNo")}
-            </Text>
-            <Text style={[styles.th, { flex: 1 }]}>
-              {t("research.interest.colTitle")}
-            </Text>
-            <Text style={[styles.th, { width: 60, textAlign: "center" }]}>
-              {t("research.common.deleteBtn")}
-            </Text>
+          <View className="flex-row items-center px-4 py-[10px] bg-[#f0faf4] border-b border-[#e8ecf0]">
+            <Text className="text-[12px] font-bold text-brand" style={{ width: 50 }}>{t("research.interest.colNo")}</Text>
+            <Text className="text-[12px] font-bold text-brand flex-1">{t("research.interest.colTitle")}</Text>
+            <Text className="text-[12px] font-bold text-brand text-center" style={{ width: 60 }}>{t("research.common.deleteBtn")}</Text>
           </View>
-
           {items.length === 0 ? (
-            <View style={styles.emptyWrap}>
+            <View className="items-center p-8 gap-2">
               <Ionicons name="star-outline" size={36} color="#ccc" />
-              <Text style={styles.emptyText}>
-                {t("research.interest.noData")}
-              </Text>
+              <Text className="text-[13px] text-[#aaa]">{t("research.interest.noData")}</Text>
             </View>
-          ) : (
-            items.map((entry, index) => (
-              <View
-                key={entry.id}
-                style={[styles.tableRow, index % 2 === 1 && styles.tableRowAlt]}
-              >
-                <Text
-                  style={[
-                    styles.td,
-                    { width: 50, textAlign: "center", color: "#888" },
-                  ]}
-                >
-                  {index + 1}
-                </Text>
-                <Text style={[styles.td, { flex: 1 }]}>{entry.title}</Text>
-                <View style={[{ width: 60, alignItems: "center" }]}>
-                  <TouchableOpacity
-                    style={styles.deleteBtn}
-                    onPress={() => handleDelete(entry)}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={styles.btnText}>
-                      {t("research.common.deleteBtn")}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
+          ) : items.map((entry, index) => (
+            <View key={entry.id} className="flex-row items-center px-4 py-3 border-b border-[#f0f4f7]" style={index % 2 === 1 ? { backgroundColor: "#fafbfc" } : {}}>
+              <Text className="text-[13px] text-[#888] text-center leading-5" style={{ width: 50 }}>{index + 1}</Text>
+              <Text className="text-[13px] text-[#1a1a2e] leading-5 flex-1">{entry.title}</Text>
+              <View className="items-center" style={{ width: 60 }}>
+                <TouchableOpacity className="bg-[#e53935] rounded-lg px-[10px] py-[6px] min-w-12 items-center" onPress={() => handleDelete(entry)} activeOpacity={0.8}>
+                  <Text className="text-white text-[12px] font-bold">{t("research.common.deleteBtn")}</Text>
+                </TouchableOpacity>
               </View>
-            ))
-          )}
+            </View>
+          ))}
         </View>
 
-        {/* ── ฟอร์มเพิ่ม ── */}
-        <View style={styles.card}>
-          <View style={styles.cardHeader}>
+        {/* Form */}
+        <View className="bg-white rounded-2xl border border-[#e8ecf0] overflow-hidden">
+          <View className="flex-row items-center px-4 py-3 bg-[#f8fafb] border-b border-[#e8ecf0]">
             <Ionicons name="add-circle-outline" size={16} color="#1a6b3c" />
-            <Text style={styles.cardHeaderText}>
-              {" "}
-              {t("research.interest.addHeader")}
-            </Text>
+            <Text className="text-[13px] font-semibold text-brand ml-1">{t("research.interest.addHeader")}</Text>
           </View>
-
-          <View style={styles.formBody}>
-            {/* Dropdown */}
-            <InlineDropdown
-              label={t("research.interest.selectExisting")}
-              value={selectedInterest}
-              options={[
-                { id: "", label: t("research.interest.selectPlaceholder") },
-                ...interestOptions.filter((o) => o.id !== ""),
-              ]}
-              onSelect={(v) => {
-                setSelectedInterest(v);
-                setCustomInterest("");
-              }}
-              loading={loadingOptions}
+          <InlineDropdown
+            label={t("research.interest.selectExisting")}
+            value={selectedInterest}
+            options={[{ id: "", label: t("research.interest.selectPlaceholder") }, ...interestOptions.filter((o) => o.id !== "")]}
+            onSelect={(v) => { setSelectedInterest(v); setCustomInterest(""); }}
+            loading={loadingOptions}
+          />
+          <View className="h-px bg-[#f0f4f7]" />
+          <View className="flex-row items-center gap-2 px-4 py-3">
+            <View className="flex-1 h-px bg-[#e8ecf0]" />
+            <Text className="text-[12px] text-[#666] font-semibold">{t("research.interest.orManual")}</Text>
+            <View className="flex-1 h-px bg-[#e8ecf0]" />
+          </View>
+          <View className="h-px bg-[#f0f4f7]" />
+          <View className="px-4 py-3">
+            <Text className="text-[13px] font-semibold text-brand mb-[6px]">{t("research.interest.fieldLabel")}</Text>
+            <TextInput
+              className="bg-[#f8fafb] border border-[#e8ecf0] rounded-[10px] px-3 text-[13px] text-[#1a1a2e]"
+              style={{ minHeight: 110, textAlignVertical: "top", paddingTop: 10, paddingVertical: 10 }}
+              value={customInterest}
+              onChangeText={(v) => { setCustomInterest(v); setSelectedInterest(""); }}
+              placeholder={t("research.interest.placeholder")}
+              placeholderTextColor="#bbb"
+              multiline numberOfLines={5} textAlignVertical="top"
             />
-
-            {/* Divider */}
-            <View style={styles.divider} />
-
-            {/* หรือ */}
-            <View style={styles.orRow}>
-              <View style={styles.orLine} />
-              <Text style={styles.orText}>
-                {t("research.interest.orManual")}
-              </Text>
-              <View style={styles.orLine} />
-            </View>
-
-            <View style={styles.divider} />
-
-            {/* TextInput ── ใช้ style เดียวกับต้นแบบ JournalForm */}
-            <View style={styles.fieldWrap}>
-              <Text style={styles.fieldLabel}>
-                {t("research.interest.fieldLabel")}
-              </Text>
-              <TextInput
-                style={[styles.input, styles.inputMulti]}
-                value={customInterest}
-                onChangeText={(v) => {
-                  setCustomInterest(v);
-                  setSelectedInterest("");
-                }}
-                placeholder={t("research.interest.placeholder")}
-                placeholderTextColor="#bbb"
-                multiline
-                numberOfLines={5}
-                textAlignVertical="top"
-              />
-            </View>
-
-            <View style={styles.btnRow}>
-              <TouchableOpacity
-                style={styles.saveBtn}
-                onPress={handleAdd}
-                activeOpacity={0.85}
-              >
-                <Text style={styles.saveBtnText}>
-                  {t("research.interest.addForm")}
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.resetBtn}
-                onPress={handleReset}
-                activeOpacity={0.85}
-              >
-                <Text style={styles.resetBtnText}>
-                  {t("research.common.reset")}
-                </Text>
-              </TouchableOpacity>
-            </View>
+          </View>
+          <View className="flex-row gap-[10px] p-4">
+            <TouchableOpacity className="flex-1 bg-brand rounded-[10px] py-[14px] items-center justify-center" style={{ elevation: 3 }} onPress={handleAdd} activeOpacity={0.85}>
+              <Text className="text-white text-[13px] font-bold">{t("research.interest.addForm")}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity className="bg-[#fef2f2] border border-[#dc2626] rounded-[10px] px-5 py-[14px] flex-row items-center gap-[6px]" onPress={() => { setSelectedInterest(""); setCustomInterest(""); }} activeOpacity={0.85}>
+              <Ionicons name="refresh" size={16} color="#dc2626" />
+              <Text className="text-[#dc2626] text-[13px] font-bold">{t("research.common.reset")}</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </ScrollView>
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#eef2f7" },
-  body: { padding: 14, paddingBottom: 40, gap: 14 },
-
-  // Card
-  card: {
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#e8ecf0",
-    overflow: "hidden",
-  },
-  cardHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: "#f8fafb",
-    borderBottomWidth: 1,
-    borderBottomColor: "#e8ecf0",
-  },
-  cardHeaderText: { fontSize: 13, fontWeight: "600", color: "#1a6b3c" },
-
-  // Table
-  tableHead: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: "#e8ecf0",
-    backgroundColor: "#f0faf4",
-  },
-  th: { fontSize: 12, fontWeight: "700", color: "#1a6b3c" },
-  tableRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#f0f4f7",
-  },
-  tableRowAlt: { backgroundColor: "#fafbfc" },
-  td: { fontSize: 13, color: "#1a1a2e", lineHeight: 20 },
-  emptyWrap: { alignItems: "center", padding: 32, gap: 8 },
-  emptyText: { fontSize: 13, color: "#aaa" },
-  deleteBtn: {
-    backgroundColor: "#e53935",
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    minWidth: 48,
-    alignItems: "center",
-  },
-  btnText: { color: "#fff", fontSize: 12, fontWeight: "700" },
-
-  // Form ── ตรงกับต้นแบบ JournalForm
-  formBody: { paddingBottom: 4 },
-  divider: { height: 1, backgroundColor: "#f0f4f7" },
-  orRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  orLine: { flex: 1, height: 1, backgroundColor: "#e8ecf0" },
-  orText: { fontSize: 12, color: "#666", fontWeight: "600" },
-
-  // ── ตรงกับต้นแบบ JournalForm ──
-  fieldWrap: { paddingHorizontal: 16, paddingVertical: 12 },
-  fieldLabel: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#1a6b3c",
-    marginBottom: 6,
-  },
-  input: {
-    backgroundColor: "#f8fafb",
-    borderColor: "#e8ecf0",
-    borderRadius: 10,
-    borderWidth: 1,
-    color: "#1a1a2e",
-    fontSize: 13,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  inputMulti: { minHeight: 110, textAlignVertical: "top", paddingTop: 10 },
-
-  // Buttons ── ตรงกับต้นแบบ JournalForm
-  btnRow: { flexDirection: "row", gap: 10, padding: 16 },
-  saveBtn: {
-    flex: 1,
-    backgroundColor: "#1a6b3c",
-    borderRadius: 10,
-    paddingVertical: 14,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#1a6b3c",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
-    elevation: 3,
-  },
-  saveBtnText: { color: "#fff", fontSize: 13, fontWeight: "700" },
-  resetBtn: {
-    backgroundColor: "#e8f5ee",
-    borderRadius: 10,
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "#1a6b3c",
-  },
-  resetBtnText: { color: "#1a6b3c", fontSize: 13, fontWeight: "700" },
-});
 
 export default InterestForm;
