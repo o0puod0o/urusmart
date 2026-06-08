@@ -16,4 +16,5 @@ export const STORAGE_KEYS = {
 // ─── SecureStore Keys (sensitive data) ───────────────────────
 export const SECURE_KEYS = {
   BIOMETRIC_TOKEN: "biometric_token",
+  PIN: "app_pin",
 };

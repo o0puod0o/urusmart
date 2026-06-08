@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Alert, Linking, Platform, ScrollView, StatusBar, Switch, Text, TouchableOpacity, View } from "react-native";
+import { Alert, Platform, ScrollView, StatusBar, Switch, Text, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -12,8 +12,8 @@ import {
   saveBiometricToken,
   clearBiometricToken,
 } from "../../services/biometricService";
+import { hasPin } from "../../services/pinService";
 
-const SSO_URL = "https://sso.youruniversity.ac.th/change-password";
 const pt = Platform.OS === "ios" ? 54 : (StatusBar.currentHeight ?? 24) + 10;
 
 export default function SecurityPage() {
@@ -93,19 +93,21 @@ export default function SecurityPage() {
     }
   };
 
-  const handleChangePassword = () => {
+  const handleChangePIN = async () => {
+    const pinExists = await hasPin();
+    navigation.navigate("PinScreen", { mode: pinExists ? "change" : "set" });
+  };
+
+  const handleResetPIN = () => {
     Alert.alert(
-      "เปลี่ยนรหัสผ่าน",
-      "การเปลี่ยนรหัสผ่านทำผ่านระบบ SSO ของมหาวิทยาลัย\nต้องการไปที่เว็บไซต์หรือไม่?",
+      "รีเซ็ต PIN",
+      "PIN ปัจจุบันจะถูกลบและตั้งใหม่ ต้องการดำเนินการต่อไหม?",
       [
         { text: "ยกเลิก", style: "cancel" },
-        { text: "เปิดเว็บ", onPress: () => Linking.openURL(SSO_URL) },
+        { text: "รีเซ็ต", style: "destructive", onPress: () => navigation.navigate("PinScreen", { mode: "reset" }) },
       ],
     );
   };
-
-  const handlePIN = () =>
-    Alert.alert("ตั้งค่า PIN", "ฟีเจอร์นี้จะเปิดใช้งานเร็วๆ นี้");
 
   // ── label ไอคอน biometric ────────────────────────────────────
   const biometricLabel = biometricInfo?.hasFaceId ? "Face ID" : "ลายนิ้วมือ";
@@ -137,46 +139,46 @@ export default function SecurityPage() {
         </Text>
 
         <View className="bg-white rounded-2xl mx-4 overflow-hidden border border-[#e0ebe4]">
-          {/* เปลี่ยนรหัสผ่าน */}
+          {/* เปลี่ยน PIN */}
           <TouchableOpacity
             className="flex-row items-center gap-[14px] px-4 py-[14px] border-b border-[#e0ebe4]"
-            onPress={handleChangePassword}
+            onPress={handleChangePIN}
             activeOpacity={0.7}
           >
             <View className="w-10 h-10 rounded-xl bg-brand items-center justify-center">
-              <Ionicons name="lock-closed-outline" size={20} color="#fff" />
+              <Ionicons name="keypad-outline" size={20} color="#fff" />
             </View>
             <View className="flex-1">
-              <Text className="text-[15px] font-bold text-[#101b17]">เปลี่ยนรหัสผ่าน</Text>
-              <Text className="text-[12px] font-medium text-[#5a6a60] mt-[2px]">อัปเดตล่าสุด 3 เดือนที่แล้ว</Text>
+              <Text className="text-[15px] font-bold text-[#101b17]">เปลี่ยน PIN</Text>
+              <Text className="text-[12px] font-medium text-[#5a6a60] mt-[2px]">6 หลัก</Text>
             </View>
             <Ionicons name="chevron-forward" size={16} color="#8a9a90" />
           </TouchableOpacity>
 
-          {/* ตั้งค่า PIN */}
+          {/* รีเซ็ต PIN */}
           <TouchableOpacity
             className="flex-row items-center gap-[14px] px-4 py-[14px] border-b border-[#e0ebe4]"
-            onPress={handlePIN}
+            onPress={handleResetPIN}
             activeOpacity={0.7}
           >
-            <View className="w-10 h-10 rounded-xl bg-[#7c3aed] items-center justify-center">
-              <Ionicons name="keypad-outline" size={20} color="#fff" />
+            <View className="w-10 h-10 rounded-xl bg-[#e65100] items-center justify-center">
+              <Ionicons name="refresh-outline" size={20} color="#fff" />
             </View>
             <View className="flex-1">
-              <Text className="text-[15px] font-bold text-[#101b17]">ตั้งค่า PIN</Text>
-              <Text className="text-[12px] font-medium text-[#5a6a60] mt-[2px]">6 หลัก</Text>
+              <Text className="text-[15px] font-bold text-[#101b17]">รีเซ็ต PIN</Text>
+              <Text className="text-[12px] font-medium text-[#5a6a60] mt-[2px]">ล้างและตั้งค่า PIN ใหม่</Text>
             </View>
             <Ionicons name="chevron-forward" size={16} color="#8a9a90" />
           </TouchableOpacity>
 
           {/* Biometric */}
           <View className="flex-row items-center gap-[14px] px-4 py-[14px]">
-            <View className="w-10 h-10 rounded-xl bg-[#0891b2] items-center justify-center">
+            <View className="w-10 h-10 rounded-xl bg-brand items-center justify-center">
               <Ionicons name={biometricIcon} size={20} color="#fff" />
             </View>
             <View className="flex-1">
               <Text className="text-[15px] font-bold text-[#101b17]">
-                เข้าสู่ระบบด้วย {biometricLabel}
+                ลายนิ้วมือ/ Face ID
               </Text>
               {checking ? (
                 <Text className="text-[12px] text-[#aaa] mt-[2px]">กำลังตรวจสอบ...</Text>
@@ -190,7 +192,7 @@ export default function SecurityPage() {
                 </Text>
               ) : (
                 <Text className="text-[12px] font-medium text-[#5a6a60] mt-[2px]">
-                  {biometricLabel} / ลายนิ้วมือ
+                  ตรวจสอบข้อมูลด้วย ลายนิ้วมือ และ Face ID
                 </Text>
               )}
             </View>

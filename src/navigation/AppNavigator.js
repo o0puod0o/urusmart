@@ -16,6 +16,7 @@ import NotificationSettingPage from "../screens/Settings/NotificationSettingPage
 import LanguagePage from "../screens/Settings/LanguagePage";
 import SecurityPage from "../screens/Settings/SecurityPage";
 import ContactUsPage from "../screens/Settings/ContactUsPage";
+import PinScreen from "../screens/Settings/PinScreen";
 
 import Research from "../screens/expert/Research";
 import ResearchList from "../screens/expert/ResearchList";
@@ -130,6 +131,7 @@ function SettingStack() {
       <SettingStackNav.Screen name="Language" component={LanguagePage} />
       <SettingStackNav.Screen name="Security" component={SecurityPage} />
       <SettingStackNav.Screen name="ContactUs" component={ContactUsPage} />
+      <SettingStackNav.Screen name="PinScreen" component={PinScreen} />
     </SettingStackNav.Navigator>
   );
 }

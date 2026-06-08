@@ -60,7 +60,7 @@ const MenuRow = ({ item, isLast, onPress }) => {
 export default function SettingPage() {
   const { t } = useTranslation();
   const navigation = useNavigation();
-  const { user } = useCurrentUser(navigation);
+  const { user, logout } = useCurrentUser(navigation);
   const MENU = getMenu(t);
 
   const initials = user?.name
@@ -116,6 +116,19 @@ export default function SettingPage() {
             />
           ))}
         </View>
+
+        {/* Logout button */}
+        <TouchableOpacity
+          onPress={logout}
+          activeOpacity={0.8}
+          className="flex-row items-center justify-center gap-3 bg-white rounded-[20px] py-[16px] border border-[#fecaca]"
+          style={{ elevation: 2, shadowColor: "#dc2626", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.07, shadowRadius: 8 }}
+        >
+          <View className="w-9 h-9 rounded-full bg-[#fef2f2] items-center justify-center">
+            <Ionicons name="log-out-outline" size={20} color="#dc2626" />
+          </View>
+          <Text className="text-[15px] font-bold text-[#dc2626]">ออกจากระบบ</Text>
+        </TouchableOpacity>
 
         {/* App version */}
         <View className="items-center py-2">
