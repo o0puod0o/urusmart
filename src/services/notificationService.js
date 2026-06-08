@@ -32,15 +32,18 @@ export async function registerForPushNotificationsAsync() {
     });
   }
 
-  const { status: existing } = await Notifications.getPermissionsAsync();
-  let finalStatus = existing;
-  if (existing !== "granted") {
-    const { status } = await Notifications.requestPermissionsAsync();
-    finalStatus = status;
-  }
-  if (finalStatus !== "granted") return null;
-
   try {
+    const { status: existing } = await Notifications.getPermissionsAsync();
+    let finalStatus = existing;
+    if (existing !== "granted") {
+      const { status } = await Notifications.requestPermissionsAsync();
+      finalStatus = status;
+    }
+    if (finalStatus !== "granted") {
+      if (__DEV__) console.warn("[Notifications] ผู้ใช้ปฏิเสธ permission");
+      return null;
+    }
+
     const projectId =
       Constants.expoConfig?.extra?.eas?.projectId ??
       Constants.easConfig?.projectId;
@@ -49,6 +52,7 @@ export async function registerForPushNotificationsAsync() {
       projectId ? { projectId } : undefined,
     );
     const token = tokenData.data;
+    console.log("[Notifications] ดึง token สำเร็จ:", token?.substring(0, 20) + "...");
     await AsyncStorage.setItem(STORAGE_KEYS.PUSH_TOKEN, token);
     return token;
   } catch (e) {
@@ -79,8 +83,21 @@ export async function sendTokenToBackend(token) {
 
 // ── เรียกตอน login สำเร็จ ────────────────────────────────────
 export async function onLoginSuccess() {
-  const token = await registerForPushNotificationsAsync();
-  if (token) await sendTokenToBackend(token);
+  // ทำการ register push notification แบบ background (ไม่ block navigation)
+  // หากเกิด error ให้ log แล้ว continue
+  try {
+    const token = await registerForPushNotificationsAsync();
+    if (token) {
+      console.log("[Notifications] ส่ง push token ไป backend...");
+      // ส่ง token ในพื้นหลัง ไม่ต้อง await
+      sendTokenToBackend(token).catch((e) => {
+        console.warn("[Notifications] ไม่สามารถส่ง token ไป backend:", e?.message);
+      });
+    }
+  } catch (error) {
+    console.warn("[Notifications] onLoginSuccess error (ไม่ block navigation):", error?.message);
+    // ไม่ throw - ให้ login ดำเนินการต่อได้
+  }
 }
 
 // ── handle เมื่อผู้ใช้แตะ notification ──────────────────────

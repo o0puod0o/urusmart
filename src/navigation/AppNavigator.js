@@ -209,7 +209,7 @@ function MainTabs() {
 export default function AppNavigator() {
   return (
     <RootStack.Navigator
-      initialRouteName="MainTabs"
+      initialRouteName="Login"
       screenOptions={{ headerShown: false }}
     >
       <RootStack.Screen name="Login" component={LoginScreen} />

@@ -42,12 +42,60 @@ export const isBiometricEnabled = async () => {
   return raw ? JSON.parse(raw) : false;
 };
 
-// ── token เก็บใน SecureStore (encrypted) ─────────────────────
-export const saveBiometricToken = (token) =>
-  SecureStore.setItemAsync(SECURE_KEYS.BIOMETRIC_TOKEN, token);
+// ── token เก็บใน SecureStore (encrypted) + fallback ────────────
+export const saveBiometricToken = async (token) => {
+  try {
+    // พยายาม save ใน SecureStore ก่อน
+    await SecureStore.setItemAsync(SECURE_KEYS.BIOMETRIC_TOKEN, token);
+    console.log("[Biometric] บันทึก token ใน SecureStore สำเร็จ");
+  } catch (error) {
+    // ถ้า error ให้ fallback ไป AsyncStorage (less secure แต่ก็ได้)
+    console.warn("[Biometric] SecureStore error, fallback ไป AsyncStorage:", error?.message);
+    try {
+      await AsyncStorage.setItem(STORAGE_KEYS.PUSH_TOKEN + "_biometric", token);
+      console.log("[Biometric] บันทึก token ใน AsyncStorage สำเร็จ");
+    } catch (fallbackError) {
+      console.warn("[Biometric] fallback AsyncStorage error:", fallbackError?.message);
+      // ไม่ throw - ให้ login ดำเนินการต่อได้
+    }
+  }
+};
 
-export const getBiometricToken = () =>
-  SecureStore.getItemAsync(SECURE_KEYS.BIOMETRIC_TOKEN);
+export const getBiometricToken = async () => {
+  try {
+    // พยายามดึงจาก SecureStore ก่อน
+    const token = await SecureStore.getItemAsync(SECURE_KEYS.BIOMETRIC_TOKEN);
+    if (token) {
+      console.log("[Biometric] ดึง token จาก SecureStore สำเร็จ");
+      return token;
+    }
+  } catch (error) {
+    console.warn("[Biometric] SecureStore get error:", error?.message);
+  }
+  
+  try {
+    // fallback ไป AsyncStorage
+    const token = await AsyncStorage.getItem(STORAGE_KEYS.PUSH_TOKEN + "_biometric");
+    if (token) {
+      console.log("[Biometric] ดึง token จาก AsyncStorage สำเร็จ");
+      return token;
+    }
+  } catch (error) {
+    console.warn("[Biometric] AsyncStorage get error:", error?.message);
+  }
+  
+  return null;
+};
 
-export const clearBiometricToken = () =>
-  SecureStore.deleteItemAsync(SECURE_KEYS.BIOMETRIC_TOKEN);
+export const clearBiometricToken = async () => {
+  try {
+    await SecureStore.deleteItemAsync(SECURE_KEYS.BIOMETRIC_TOKEN);
+  } catch (error) {
+    console.warn("[Biometric] SecureStore delete error:", error?.message);
+  }
+  try {
+    await AsyncStorage.removeItem(STORAGE_KEYS.PUSH_TOKEN + "_biometric");
+  } catch (error) {
+    console.warn("[Biometric] AsyncStorage delete error:", error?.message);
+  }
+};

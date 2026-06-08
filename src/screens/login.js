@@ -156,6 +156,8 @@ const Login = ({ navigation }) => {
     }
     setLoading(true);
     try {
+      console.log("[Login] กำลังเข้าสู่ระบบด้วย email:", trimmedEmail);
+      
       const response = await fetch(`${API_URL}/auth/login`, {
         method: "POST",
         headers: {
@@ -168,22 +170,44 @@ const Login = ({ navigation }) => {
         }),
       });
       const data = await response.json();
+      console.log("[Login] ตอบสนองจาก API:", response.ok ? "สำเร็จ" : "ล้มเหลว", data);
+      
       if (response.ok) {
+        console.log("[Login] บันทึก token และ user ลง AsyncStorage...");
         await AsyncStorage.multiSet([
           [STORAGE_KEYS.TOKEN, String(data.token || "")],
           [STORAGE_KEYS.TOKEN_TYPE, String(data.token_type || "")],
           [STORAGE_KEYS.USER, JSON.stringify(data.user || {})],
         ]);
-        if (data.token) await saveBiometricToken(String(data.token));
-        onLoginSuccess().catch(() => {});
+        console.log("[Login] AsyncStorage บันทึกเสร็จ");
+        
+        if (data.token) {
+          console.log("[Login] บันทึก Biometric token...");
+          await saveBiometricToken(String(data.token));
+          console.log("[Login] Biometric token บันทึกเสร็จ");
+        }
+        
+        console.log("[Login] เรียก onLoginSuccess()...");
+        try {
+          await onLoginSuccess();
+          console.log("[Login] onLoginSuccess() เสร็จ");
+        } catch (notificationError) {
+          console.warn("[Login] onLoginSuccess() เกิด error (แต่จะวนต่อ):", notificationError);
+        }
+        
+        console.log("[Login] ทำการ navigate ไป MainTabs...");
+        setLoading(false);
         navigation.reset({ index: 0, routes: [{ name: "MainTabs" }] });
+        console.log("[Login] Navigate ส่งคำสั่งเสร็จ");
       } else {
+        console.log("[Login] เข้าสู่ระบบไม่สำเร็จ:", data.message);
         Alert.alert(
           "เข้าสู่ระบบไม่สำเร็จ",
           data.message || "username หรือรหัสผ่านไม่ถูกต้อง",
         );
       }
-    } catch {
+    } catch (error) {
+      console.error("[Login] Catch error:", error);
       Alert.alert(
         "เกิดข้อผิดพลาด",
         "ไม่สามารถเข้าสู่ระบบได้ กรุณาตรวจสอบ API Server และเครือข่าย",
@@ -194,16 +218,26 @@ const Login = ({ navigation }) => {
   };
 
   const triggerBiometric = async () => {
+    console.log("[Biometric] ทำการยืนยันตัวตน...");
     const result = await authenticate("ยืนยันตัวตนเพื่อเข้าสู่ระบบ URUSmart");
-    if (!result.success) return;
+    console.log("[Biometric] ผลการยืนยัน:", result.success ? "สำเร็จ" : "ล้มเหลว");
+    
+    if (!result.success) {
+      console.log("[Biometric] ผู้ใช้ยกเลิก");
+      return;
+    }
+    
     const token = await getBiometricToken();
     if (!token) {
+      console.log("[Biometric] ไม่พบ biometric token");
       Alert.alert(
         "ไม่พบข้อมูล",
         "กรุณาเข้าสู่ระบบด้วย email และรหัสผ่านก่อน 1 ครั้ง",
       );
       return;
     }
+    
+    console.log("[Biometric] Navigate ไป MainTabs...");
     navigation.reset({ index: 0, routes: [{ name: "MainTabs" }] });
   };
 

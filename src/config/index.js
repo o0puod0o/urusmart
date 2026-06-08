@@ -1,6 +1,6 @@
 // ─── API Base URL ─────────────────────────────────────────────
 // แก้แค่บรรทัดนี้บรรทัดเดียว ทุกไฟล์จะอัปเดตตาม
-export const API_BASE_URL = "http://10.1.72.38/api";
+export const API_BASE_URL = "http://10.1.72.38:8001/api";
 
 // ─── AsyncStorage Keys ────────────────────────────────────────
 // รวม key ทั้งหมดไว้ที่นี่ — ป้องกัน typo และ inconsistency
