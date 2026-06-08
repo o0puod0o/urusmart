@@ -190,9 +190,9 @@ export default function Cardpage({ navigation }) {
                 style={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 64, overflow: "hidden" }}
               >
                 {/* blobs */}
-                <View className="absolute w-[180px] h-[180px] rounded-full bg-white/[0.07]" style={{ right: -55, top: -60 }} />
-                <View className="absolute w-[120px] h-[120px] rounded-full bg-white/[0.05]" style={{ left: -35, bottom: -50 }} />
-                <View className="absolute w-[80px] h-[80px] rounded-full bg-white/[0.04]" style={{ right: 60, bottom: -20 }} />
+                <View className="absolute w-[180px] h-[180px] rounded-full" style={{ right: -55, top: -60, backgroundColor: "rgba(255,255,255,0.07)" }} />
+                <View className="absolute w-[120px] h-[120px] rounded-full" style={{ left: -35, bottom: -50, backgroundColor: "rgba(255,255,255,0.05)" }} />
+                <View className="absolute w-[80px] h-[80px] rounded-full" style={{ right: 60, bottom: -20, backgroundColor: "rgba(255,255,255,0.04)" }} />
 
                 {/* Top row */}
                 <View className="flex-row items-center justify-between">

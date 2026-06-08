@@ -53,7 +53,7 @@ const ProfileForm = ({ navigation, route }) => {
     if (!form.main_unit) return;
     api.get("/sub-units", { params: { main_unit_id: form.main_unit } })
       .then((r) => setOptions((p) => ({ ...p, subUnits: toOptions(t("research.profile.subUnitPlaceholder"), r.data?.data ?? r.data ?? []) })))
-      .catch((err) => console.error(err));
+      .catch((err) => { if (__DEV__) console.warn("[ProfileForm] sub-unit:", err.message); });
   }, [form.main_unit]);
 
   const set = (key, val) => setForm((p) => ({ ...p, [key]: val }));

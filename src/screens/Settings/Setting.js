@@ -1,8 +1,10 @@
 import React, { useRef } from "react";
 import { Animated, Platform, ScrollView, StatusBar, Text, TouchableOpacity, View } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
+import useCurrentUser from "../../hook/useCurrentUser";
 
 const PT = Platform.OS === "ios" ? 56 : (StatusBar.currentHeight ?? 24) + 16;
 
@@ -33,20 +35,22 @@ const MenuRow = ({ item, isLast, onPress }) => {
     <Animated.View style={[{ transform: [{ scale }] }, !isLast && { borderBottomWidth: 0.5, borderBottomColor: "#dce8e2" }]}>
       <Animated.View style={{ backgroundColor: bgColor }}>
         <TouchableOpacity
-          className="flex-row items-center px-4 py-[13px] gap-[14px]"
+          className="flex-row items-center px-4 py-[14px] gap-[14px]"
           onPress={onPress}
           onPressIn={onPressIn}
           onPressOut={onPressOut}
           activeOpacity={1}
         >
-          <View className="w-[42px] h-[42px] rounded-[13px] items-center justify-center" style={{ backgroundColor: item.colorBg }}>
-            <Ionicons name={item.icon} size={20} color={item.color} />
+          <View className="w-[44px] h-[44px] rounded-[14px] items-center justify-center" style={{ backgroundColor: item.colorBg }}>
+            <Ionicons name={item.icon} size={22} color={item.color} />
           </View>
-          <View className="flex-1 gap-[2px]">
-            <Text className="text-[15px] font-bold text-[#0d1f18] tracking-[-0.1px]">{item.label}</Text>
-            {!!item.sub && <Text className="text-[12px] font-medium text-[#8fa89f]">{item.sub}</Text>}
+          <View className="flex-1 gap-[3px]">
+            <Text className="text-[15px] font-bold text-[#0d1f18]">{item.label}</Text>
+            {!!item.sub && <Text className="text-[12px] text-[#8fa89f]">{item.sub}</Text>}
           </View>
-          <Ionicons name="chevron-forward" size={15} color="#8fa89f" />
+          <View className="w-8 h-8 rounded-full bg-[#f4f6f8] items-center justify-center">
+            <Ionicons name="chevron-forward" size={14} color="#bbb" />
+          </View>
         </TouchableOpacity>
       </Animated.View>
     </Animated.View>
@@ -56,32 +60,66 @@ const MenuRow = ({ item, isLast, onPress }) => {
 export default function SettingPage() {
   const { t } = useTranslation();
   const navigation = useNavigation();
+  const { user } = useCurrentUser(navigation);
   const MENU = getMenu(t);
 
+  const initials = user?.name
+    ? user.name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()
+    : "อ.";
+
   return (
-    <View className="flex-1 bg-[#f0f6f2]">
+    <View className="flex-1 bg-[#eaf5ef]">
       <StatusBar barStyle="light-content" backgroundColor="#0f7a55" />
 
-      <View className="bg-primary px-[22px] pb-[26px] overflow-hidden" style={{ paddingTop: PT }}>
-        <View className="flex-row items-center gap-[14px] z-10">
-          <View className="w-[52px] h-[52px] rounded-[17px] bg-white/14 border-[1.5px] border-white/20 items-center justify-center">
-            <Ionicons name="settings-sharp" size={24} color="rgba(255,255,255,0.95)" />
+      <LinearGradient
+        colors={["#064e35", "#0a6644", "#0f7a55"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={{ paddingHorizontal: 22, paddingBottom: 28, paddingTop: PT, overflow: "hidden" }}
+      >
+        {/* blobs */}
+        <View className="absolute w-[200px] h-[200px] rounded-full" style={{ right: -60, top: -60, backgroundColor: "rgba(255,255,255,0.05)" }} />
+        <View className="absolute w-[120px] h-[120px] rounded-full" style={{ left: -30, bottom: -40, backgroundColor: "rgba(255,255,255,0.04)" }} />
+
+        {/* Profile row */}
+        <View className="flex-row items-center gap-4">
+          <View className="w-[60px] h-[60px] rounded-[18px] bg-white/20 items-center justify-center border border-white/30">
+            <Text className="text-white text-[22px] font-black">{initials}</Text>
           </View>
-          <View>
-            <Text className="text-white text-[26px] font-black tracking-[-0.8px]">{t("settings.title")}</Text>
-            <Text className="text-white/50 text-[12px] font-semibold tracking-[1px] mt-[2px]">{t("settings.subtitle")}</Text>
+          <View className="flex-1">
+            <Text className="text-white text-[20px] font-black tracking-[-0.3px]">
+              {user?.name || t("settings.title")}
+            </Text>
+            <View className="flex-row items-center gap-[6px] mt-1">
+              <View className="w-2 h-2 rounded-full bg-[#4ade80]" />
+              <Text className="text-white/60 text-[12px] font-semibold">{t("settings.subtitle")}</Text>
+            </View>
+          </View>
+          <View className="w-10 h-10 rounded-full bg-white/15 border border-white/25 items-center justify-center">
+            <Ionicons name="settings-sharp" size={18} color="rgba(255,255,255,0.9)" />
           </View>
         </View>
-      </View>
+      </LinearGradient>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 20, paddingBottom: 40, gap: 12 }}>
+        {/* Menu card */}
         <View
           className="bg-white rounded-[20px] overflow-hidden border border-[#dce8e2]"
           style={{ elevation: 3, shadowColor: "#043d2a", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.07, shadowRadius: 16 }}
         >
           {MENU.map((item, i) => (
-            <MenuRow key={item.route} item={item} isLast={i === MENU.length - 1} onPress={() => navigation.navigate(item.route)} />
+            <MenuRow
+              key={item.route}
+              item={item}
+              isLast={i === MENU.length - 1}
+              onPress={() => navigation.navigate(item.route)}
+            />
           ))}
+        </View>
+
+        {/* App version */}
+        <View className="items-center py-2">
+          <Text className="text-[11px] text-[#bbb] font-semibold">URUSmart v1.0.0</Text>
         </View>
       </ScrollView>
     </View>

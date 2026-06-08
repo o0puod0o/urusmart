@@ -3,6 +3,7 @@ import {
   ActivityIndicator, FlatList, KeyboardAvoidingView,
   Platform, StatusBar, Text, TextInput, TouchableOpacity, View,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import HeaderBar from "../components/HeaderBar";
@@ -45,21 +46,29 @@ const ChatBubble = ({ item }) => {
   return (
     <View className={`flex-row items-end gap-2 ${isUser ? "justify-end" : ""}`}>
       {!isUser && (
-        <View className="w-[30px] h-[30px] rounded-[15px] bg-[#e6f5ef] border border-[#dce8e2] items-center justify-center">
-          <Ionicons name="sparkles" size={16} color="#0f7a55" />
+        <LinearGradient
+          colors={["#0a6644", "#0f7a55"]}
+          style={{ width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center" }}
+        >
+          <Ionicons name="sparkles" size={15} color="rgba(255,255,255,0.95)" />
+        </LinearGradient>
+      )}
+      {isUser ? (
+        <LinearGradient
+          colors={["#0f7a55", "#1a9068"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={{ maxWidth: "78%", borderRadius: 18, borderBottomRightRadius: 6, paddingHorizontal: 14, paddingVertical: 11 }}
+        >
+          <Text className="text-white text-[14px] leading-[21px] font-medium">{item.text}</Text>
+        </LinearGradient>
+      ) : (
+        <View className="max-w-[78%] bg-white rounded-[18px] rounded-bl-[6px] px-[14px] py-[11px] border border-[#e8ede9]"
+          style={{ shadowColor: "#064e35", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 1 }}
+        >
+          <Text className="text-[#102019] text-[14px] leading-[21px] font-medium">{item.text}</Text>
         </View>
       )}
-      <View
-        className={`max-w-[78%] rounded-[18px] px-[14px] py-[10px] border ${
-          isUser
-            ? "bg-primary border-primary rounded-br-[6px]"
-            : "bg-white border-[#dce8e2] rounded-bl-[6px]"
-        }`}
-      >
-        <Text className={`text-[14px] leading-[21px] font-medium ${isUser ? "text-white" : "text-[#102019]"}`}>
-          {item.text}
-        </Text>
-      </View>
     </View>
   );
 };

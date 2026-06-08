@@ -26,8 +26,8 @@ export default function AnnouncementCarousel({ items = [], onViewAll, onPressIte
 
   return (
     <LinearGradient colors={["#043d2a", "#065f46"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ width: "100%", paddingTop: 16, paddingBottom: 20, overflow: "hidden" }}>
-      <View className="absolute w-[220px] h-[220px] rounded-full bg-white/[0.04]" style={{ top: -80, right: -60 }} />
-      <View className="absolute w-[150px] h-[150px] rounded-full bg-white/[0.03]" style={{ bottom: -50, left: -40 }} />
+      <View className="absolute w-[220px] h-[220px] rounded-full" style={{ top: -80, right: -60, backgroundColor: "rgba(255,255,255,0.04)" }} />
+      <View className="absolute w-[150px] h-[150px] rounded-full" style={{ bottom: -50, left: -40, backgroundColor: "rgba(255,255,255,0.03)" }} />
 
       {/* Header */}
       <View className="flex-row items-center justify-between px-[18px] mb-[14px]">
@@ -36,7 +36,8 @@ export default function AnnouncementCarousel({ items = [], onViewAll, onPressIte
           <Text className="text-white text-[16px] font-extrabold tracking-[-0.3px]">ข่าวสารและประกาศ</Text>
         </View>
         <TouchableOpacity
-          className="flex-row items-center gap-[3px] bg-white/[0.12] rounded-full px-3 py-[5px] border border-white/[0.18]"
+          className="flex-row items-center gap-[3px] rounded-full px-3 py-[5px]"
+          style={{ backgroundColor: "rgba(255,255,255,0.12)", borderWidth: 1, borderColor: "rgba(255,255,255,0.18)" }}
           activeOpacity={0.75}
           onPress={onViewAll}
           hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
@@ -71,8 +72,8 @@ export default function AnnouncementCarousel({ items = [], onViewAll, onPressIte
                   end={{ x: 1, y: 1 }}
                   style={{ height: 158, borderRadius: 18, padding: 16, overflow: "hidden", justifyContent: "space-between", borderWidth: 1, borderColor: "rgba(255,255,255,0.1)" }}
                 >
-                  <View className="absolute w-[110px] h-[110px] rounded-full bg-white/[0.08]" style={{ top: -30, right: -20 }} />
-                  <View className="absolute w-[70px] h-[70px] rounded-full bg-white/[0.05]" style={{ bottom: -20, left: -10 }} />
+                  <View className="absolute w-[110px] h-[110px] rounded-full" style={{ top: -30, right: -20, backgroundColor: "rgba(255,255,255,0.08)" }} />
+                  <View className="absolute w-[70px] h-[70px] rounded-full" style={{ bottom: -20, left: -10, backgroundColor: "rgba(255,255,255,0.05)" }} />
 
                   <View className="flex-row items-center justify-between">
                     <View className="bg-white/20 rounded-full px-[10px] py-1 border border-white/[0.28]">

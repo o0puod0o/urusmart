@@ -56,7 +56,7 @@ export default function InAppBrowser({ route, navigation }) {
       />
 
       {loading && (
-        <View className="absolute inset-0 bg-white/85 items-center justify-center">
+        <View className="absolute items-center justify-center" style={{ top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(255,255,255,0.85)" }}>
           <ActivityIndicator size="large" color="#0f7a55" />
         </View>
       )}

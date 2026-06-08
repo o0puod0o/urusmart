@@ -1,5 +1,6 @@
 import React from "react";
 import { View, ScrollView, StatusBar, Platform, Text, TouchableOpacity } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import HeaderBar from "../components/HeaderBar";
@@ -11,17 +12,33 @@ import useFetch from "../hook/useFetch";
 import useExpertStats from "../hook/useExpertStats";
 
 const STAT_CONFIG = [
-  { key: "researches", icon: "bar-chart-outline", label: "งานวิจัย",  color: "#0f7a55", bg: "#d6f0e3" },
-  { key: "journals",   icon: "newspaper-outline", label: "บทความ",    color: "#185fa5", bg: "#e8f0fb" },
-  { key: "patents",    icon: "ribbon-outline",    label: "สิทธิบัตร", color: "#7b1fa2", bg: "#f3e5f5" },
-  { key: "awards",     icon: "trophy-outline",    label: "รางวัล",    color: "#e65100", bg: "#fff3e0" },
+  { key: "researches", icon: "bar-chart-outline", label: "งานวิจัย",  color: "#0f7a55", bg: "#d6f0e3", grad: ["#0f7a55","#1a9068"] },
+  { key: "journals",   icon: "newspaper-outline", label: "บทความ",    color: "#185fa5", bg: "#e8f0fb", grad: ["#185fa5","#2979c8"] },
+  { key: "patents",    icon: "ribbon-outline",    label: "สิทธิบัตร", color: "#7b1fa2", bg: "#f3e5f5", grad: ["#7b1fa2","#9c27b0"] },
+  { key: "awards",     icon: "trophy-outline",    label: "รางวัล",    color: "#e65100", bg: "#fff3e0", grad: ["#e65100","#f57c00"] },
 ];
 
 const cardShadow = Platform.select({
-  ios: { shadowColor: "#064e35", shadowOpacity: 0.12, shadowRadius: 20, shadowOffset: { width: 0, height: 10 } },
-  android: { elevation: 6 },
-  web: { boxShadow: "0 10px 20px rgba(6,78,53,0.12)" },
+  ios: { shadowColor: "#064e35", shadowOpacity: 0.1, shadowRadius: 16, shadowOffset: { width: 0, height: 8 } },
+  android: { elevation: 5 },
 });
+
+const StatItem = ({ item, value, loading }) => (
+  <TouchableOpacity activeOpacity={0.85} className="flex-1 items-center">
+    <LinearGradient
+      colors={item.grad}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={{ width: 52, height: 52, borderRadius: 16, alignItems: "center", justifyContent: "center", marginBottom: 8 }}
+    >
+      <Ionicons name={item.icon} size={22} color="rgba(255,255,255,0.95)" />
+    </LinearGradient>
+    <Text className="text-[22px] font-black" style={{ color: item.color }}>
+      {loading ? "—" : (value ?? 0)}
+    </Text>
+    <Text className="text-[10px] text-gray-400 font-semibold text-center mt-[2px]">{item.label}</Text>
+  </TouchableOpacity>
+);
 
 const Homepage = ({ navigation }) => {
   const { t } = useTranslation();
@@ -34,7 +51,7 @@ const Homepage = ({ navigation }) => {
   });
 
   return (
-    <View className="flex-1 bg-[#f0f6f2]">
+    <View className="flex-1 bg-[#eaf5ef]">
       <StatusBar barStyle="light-content" backgroundColor="#064e35" />
 
       <HeaderBar
@@ -46,7 +63,7 @@ const Homepage = ({ navigation }) => {
 
       <ScrollView
         className="flex-1"
-        contentContainerStyle={{ paddingBottom: 50, rowGap: 16 }}
+        contentContainerStyle={{ paddingBottom: 56, gap: 14 }}
         showsVerticalScrollIndicator={false}
       >
         {/* Announcement Carousel */}
@@ -58,64 +75,79 @@ const Homepage = ({ navigation }) => {
           autoPlayMs={3500}
         />
 
-        {/* Services Card */}
-        <View
-          className="bg-white rounded-[18px] py-4 px-4 mx-4 border border-[rgba(6,78,53,0.08)] overflow-hidden"
-          style={cardShadow}
-        >
-          <View className="absolute left-0 top-4 bottom-4 w-1 rounded-tr rounded-br bg-primary" />
-          <SectionHeader title={t("home.services")} />
-          <View className="mt-3">
+        {/* ── Services Card ── */}
+        <View className="mx-4 bg-white rounded-[20px] overflow-hidden" style={cardShadow}>
+          {/* Card Header */}
+          <LinearGradient
+            colors={["#f6fcf9", "#eef8f3"]}
+            style={{ paddingHorizontal: 16, paddingTop: 14, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: "#e0eeea" }}
+          >
+            <View className="flex-row items-center gap-2">
+              <View className="w-7 h-7 rounded-[9px] bg-primary items-center justify-center">
+                <Ionicons name="grid-outline" size={15} color="#fff" />
+              </View>
+              <Text className="text-[15px] font-extrabold text-[#0a3d2a]">{t("home.services")}</Text>
+            </View>
+          </LinearGradient>
+          <View className="px-3 pt-3 pb-4">
             <ServiceIconGrid navigation={navigation} />
           </View>
         </View>
 
-        {/* ผลงานของฉัน Card */}
-        <View
-          className="bg-white rounded-[18px] py-4 px-4 mx-4 border border-[rgba(6,78,53,0.08)] overflow-hidden"
-          style={cardShadow}
-        >
-          <View className="absolute left-0 top-4 bottom-4 w-1 rounded-tr rounded-br bg-[#7b1fa2]" />
-
-          {/* Header */}
-          <View className="flex-row items-center justify-between mb-[14px]">
-            <Text className="text-[15px] font-bold text-[#1a1a1a] pl-[10px]">ผลงานของฉัน</Text>
-            <TouchableOpacity
-              className="flex-row items-center gap-[2px]"
-              onPress={() => navigation.navigate("Research")}
-            >
-              <Text className="text-[13px] text-[#7b1fa2] font-semibold">จัดการ</Text>
-              <Ionicons name="chevron-forward" size={13} color="#7b1fa2" />
-            </TouchableOpacity>
-          </View>
+        {/* ── ผลงานของฉัน Card ── */}
+        <View className="mx-4 bg-white rounded-[20px] overflow-hidden" style={cardShadow}>
+          {/* Card Header */}
+          <LinearGradient
+            colors={["#f0fdfb", "#e6f7f5"]}
+            style={{ paddingHorizontal: 16, paddingTop: 14, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: "#b2dfdb" }}
+          >
+            <View className="flex-row items-center justify-between">
+              <View className="flex-row items-center gap-2">
+                <View className="w-7 h-7 rounded-[9px] bg-[#0d9488] items-center justify-center">
+                  <Ionicons name="trophy-outline" size={15} color="#fff" />
+                </View>
+                <Text className="text-[15px] font-extrabold text-[#00695c]">ผลงานของฉัน</Text>
+              </View>
+              <TouchableOpacity
+                className="flex-row items-center gap-1 bg-[#0d9488] rounded-full px-3 py-[5px]"
+                onPress={() => navigation.navigate("Research")}
+                activeOpacity={0.8}
+              >
+                <Text className="text-white text-[11px] font-bold">จัดการ</Text>
+                <Ionicons name="chevron-forward" size={11} color="#fff" />
+              </TouchableOpacity>
+            </View>
+          </LinearGradient>
 
           {/* Stats grid */}
-          <View className="flex-row justify-between mb-4">
-            {STAT_CONFIG.map((item) => (
-              <View key={item.key} className="flex-1 items-center gap-[6px]">
-                <View
-                  className="w-12 h-12 rounded-[14px] items-center justify-center"
-                  style={{ backgroundColor: item.bg }}
-                >
-                  <Ionicons name={item.icon} size={22} color={item.color} />
-                </View>
-                <Text className="text-[20px] font-extrabold" style={{ color: item.color }}>
-                  {statsLoading ? "—" : stats[item.key]}
-                </Text>
-                <Text className="text-[11px] text-gray-500 text-center">{item.label}</Text>
-              </View>
+          <View className="flex-row px-4 pt-5 pb-4">
+            {STAT_CONFIG.map((item, index) => (
+              <React.Fragment key={item.key}>
+                {index > 0 && (
+                  <View style={{ width: 1, backgroundColor: "#e0f2f1", marginVertical: 6 }} />
+                )}
+                <StatItem item={item} value={stats[item.key]} loading={statsLoading} />
+              </React.Fragment>
             ))}
           </View>
 
+          {/* Divider */}
+          <View className="h-px bg-[#e0f2f1] mx-4" />
+
           {/* Add button */}
-          <TouchableOpacity
-            className="flex-row items-center justify-center gap-[6px] bg-[#7b1fa2] rounded-xl py-3"
-            onPress={() => navigation.navigate("Research")}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="add-circle-outline" size={16} color="#fff" />
-            <Text className="text-white text-[14px] font-bold">เพิ่มผลงานใหม่</Text>
-          </TouchableOpacity>
+          <View className="px-4 py-4">
+            <TouchableOpacity
+              className="flex-row items-center justify-center gap-2 rounded-[14px] py-[13px]"
+              style={{ backgroundColor: "#0d9488" }}
+              onPress={() => navigation.navigate("Research")}
+              activeOpacity={0.82}
+            >
+              <View className="w-6 h-6 rounded-full bg-white/20 items-center justify-center">
+                <Ionicons name="add" size={16} color="#fff" />
+              </View>
+              <Text className="text-white text-[14px] font-bold tracking-[0.2px]">เพิ่มผลงานใหม่</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </ScrollView>
     </View>

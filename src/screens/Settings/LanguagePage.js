@@ -5,7 +5,7 @@ import { useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { changeLanguage } from "../../i18n/i18n";
 
-const PT = Platform.OS === "ios" ? "pt-[54px]" : `pt-[${(StatusBar.currentHeight ?? 24) + 10}px]`;
+const pt = Platform.OS === "ios" ? 54 : (StatusBar.currentHeight ?? 24) + 10;
 const LANGUAGES = [
   { code: "th", label: "ภาษาไทย",  nativeLabel: "Thai",    flag: "🇹🇭" },
   { code: "en", label: "English",   nativeLabel: "อังกฤษ", flag: "🇬🇧" },
@@ -25,7 +25,7 @@ export default function LanguagePage() {
     <View className="flex-1 bg-[#f0f4f1]">
       <StatusBar barStyle="light-content" backgroundColor="#14532d" />
 
-      <View className={`bg-brand flex-row items-center justify-between px-4 pb-[14px] ${PT}`}>
+      <View className="bg-brand flex-row items-center justify-between px-4 pb-[14px]" style={{ paddingTop: pt }}>
         <TouchableOpacity className="w-9 h-9 rounded-full bg-white/20 items-center justify-center" onPress={() => navigation.goBack()} activeOpacity={0.7}>
           <Ionicons name="chevron-back" size={22} color="#fff" />
         </TouchableOpacity>

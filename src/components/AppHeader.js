@@ -1,11 +1,11 @@
 import React from "react";
 import { View, Text, TouchableOpacity, Platform, StatusBar } from "react-native";
 
-const PT = Platform.OS === "ios" ? "pt-[52px]" : `pt-[${(StatusBar.currentHeight ?? 24) + 8}px]`;
+const pt = Platform.OS === "ios" ? 52 : (StatusBar.currentHeight ?? 24) + 8;
 
 const AppHeader = ({ title, onBack, rightIcon, onRightPress }) => {
   return (
-    <View className={`bg-brand flex-row items-center justify-between px-4 pb-4 ${PT}`}>
+    <View className="bg-brand flex-row items-center justify-between px-4 pb-4" style={{ paddingTop: pt }}>
       <TouchableOpacity
         onPress={onBack}
         className="w-9 h-9 rounded-full bg-white/10 items-center justify-center"

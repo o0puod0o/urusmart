@@ -15,7 +15,8 @@
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "NSUserNotificationsUsageDescription": "URU Smart ต้องการส่งการแจ้งเตือนข่าวสารและประกาศจากมหาวิทยาลัย"
+        "NSUserNotificationsUsageDescription": "URU Smart ต้องการส่งการแจ้งเตือนข่าวสารและประกาศจากมหาวิทยาลัย",
+        "NSFaceIDUsageDescription": "ใช้ Face ID เพื่อเข้าสู่ระบบ URUSmart อย่างรวดเร็วและปลอดภัย"
       }
     },
     "android": {
@@ -42,7 +43,9 @@
           "color": "#0f7a55",
           "defaultChannel": "default"
         }
-      ]
+      ],
+      "expo-local-authentication",
+      "expo-secure-store"
     ]
   }
 }

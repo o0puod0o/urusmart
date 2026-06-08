@@ -45,35 +45,28 @@ const Tabs = createBottomTabNavigator();
 
 function AnimatedTabIcon({ name, focused, color }) {
   const scale = useRef(new Animated.Value(1)).current;
-  const translateY = useRef(new Animated.Value(0)).current;
-  const dotOpacity = useRef(new Animated.Value(0)).current;
-  const dotScale = useRef(new Animated.Value(0)).current;
+  const pillOpacity = useRef(new Animated.Value(focused ? 1 : 0)).current;
+  const pillScale = useRef(new Animated.Value(focused ? 1 : 0.7)).current;
 
   useEffect(() => {
     if (focused) {
       Animated.parallel([
         Animated.spring(scale, {
-          toValue: 1.22,
+          toValue: 1.15,
           useNativeDriver: true,
           tension: 180,
           friction: 8,
         }),
-        Animated.spring(translateY, {
-          toValue: -4,
+        Animated.timing(pillOpacity, {
+          toValue: 1,
+          duration: 200,
           useNativeDriver: true,
-          tension: 180,
-          friction: 8,
         }),
-        Animated.spring(dotScale, {
+        Animated.spring(pillScale, {
           toValue: 1,
           useNativeDriver: true,
           tension: 200,
           friction: 7,
-        }),
-        Animated.timing(dotOpacity, {
-          toValue: 1,
-          duration: 150,
-          useNativeDriver: true,
         }),
       ]).start();
     } else {
@@ -84,36 +77,44 @@ function AnimatedTabIcon({ name, focused, color }) {
           tension: 180,
           friction: 8,
         }),
-        Animated.spring(translateY, {
+        Animated.timing(pillOpacity, {
           toValue: 0,
+          duration: 150,
           useNativeDriver: true,
-          tension: 180,
-          friction: 8,
         }),
-        Animated.spring(dotScale, {
-          toValue: 0,
+        Animated.spring(pillScale, {
+          toValue: 0.7,
           useNativeDriver: true,
           tension: 200,
           friction: 7,
-        }),
-        Animated.timing(dotOpacity, {
-          toValue: 0,
-          duration: 100,
-          useNativeDriver: true,
         }),
       ]).start();
     }
   }, [focused]);
 
   return (
-    <View className="items-center justify-center w-11 h-[38px]">
-      <Animated.View style={{ transform: [{ scale }, { translateY }] }}>
+    <View
+      style={{
+        alignItems: "center",
+        justifyContent: "center",
+        width: 56,
+        height: 38,
+      }}
+    >
+      <Animated.View
+        style={{
+          position: "absolute",
+          width: 54,
+          height: 34,
+          borderRadius: 17,
+          backgroundColor: "rgba(15, 122, 85, 0.12)",
+          opacity: pillOpacity,
+          transform: [{ scale: pillScale }],
+        }}
+      />
+      <Animated.View style={{ transform: [{ scale }] }}>
         <Ionicons name={name} size={23} color={color} />
       </Animated.View>
-      <Animated.View
-        className="w-[5px] h-[5px] rounded-[3px] bg-primary mt-[3px]"
-        style={{ opacity: dotOpacity, transform: [{ scale: dotScale }] }}
-      />
     </View>
   );
 }
@@ -206,7 +207,7 @@ function MainTabs() {
 export default function AppNavigator() {
   return (
     <RootStack.Navigator
-      initialRouteName="Login"
+      initialRouteName="MainTabs"
       screenOptions={{ headerShown: false }}
     >
       <RootStack.Screen name="Login" component={LoginScreen} />
@@ -235,6 +236,7 @@ export default function AppNavigator() {
         component={HumanSubjectsForm}
       />
       <RootStack.Screen name="InAppBrowser" component={InAppBrowser} />
+      <RootStack.Screen name="EResearch" component={EResearch} />
     </RootStack.Navigator>
   );
 }

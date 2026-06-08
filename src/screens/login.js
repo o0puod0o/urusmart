@@ -1,30 +1,151 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
-  View, Text, TextInput, TouchableOpacity, Platform,
-  ActivityIndicator, Image, StatusBar, KeyboardAvoidingView,
-  ScrollView, Alert, Keyboard,
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  Platform,
+  ActivityIndicator,
+  Image,
+  StatusBar,
+  KeyboardAvoidingView,
+  ScrollView,
+  Alert,
+  Keyboard,
 } from "react-native";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withTiming,
+  withDelay,
+  withSequence,
+} from "react-native-reanimated";
+import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { onLoginSuccess } from "../services/notificationService";
+import { API_BASE_URL, STORAGE_KEYS } from "../config";
+import {
+  checkSupport,
+  authenticate,
+  isBiometricEnabled,
+  getBiometricToken,
+  saveBiometricToken,
+} from "../services/biometricService";
 
-const API_URL = "http://10.6.132.101:8001/api";
-
+const API_URL = API_BASE_URL;
 const PT = Platform.OS === "ios" ? 60 : (StatusBar.currentHeight ?? 24) + 20;
 const PB = Platform.OS === "ios" ? 48 : 32;
+
+// ── Field ปกติ ไม่ใช้ Reanimated (ป้องกัน crash) ──────────────
+const Field = ({ label, icon, children, focused }) => (
+  <View className="mb-4">
+    <Text className="text-[12px] font-bold text-[#374151] mb-[6px] ml-1">
+      {label}
+    </Text>
+    <View
+      className="flex-row items-center bg-[#f5faf7] rounded-[14px] px-3 h-[54px]"
+      style={{
+        borderWidth: focused ? 2 : 1.5,
+        borderColor: focused ? "#0f7a55" : "#e3efe8",
+      }}
+    >
+      <View className="w-[34px] h-[34px] rounded-[10px] bg-[#e6f2ec] items-center justify-center mr-[10px]">
+        <Ionicons name={icon} size={18} color="#0f7a55" />
+      </View>
+      {children}
+    </View>
+  </View>
+);
 
 const Login = ({ navigation }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [emailFocused, setEmailFocused] = useState(false);
+  const [passFocused, setPassFocused] = useState(false);
+  const [biometricAvailable, setBiometricAvailable] = useState(false);
+  const [biometricLabel, setBiometricLabel] = useState("Biometric");
+  const [biometricIcon, setBiometricIcon] = useState("finger-print-outline");
+  const [biometricReady, setBiometricReady] = useState(false);
   const passwordRef = useRef(null);
+
+  // ── Entrance animations ──
+  const logoScale = useSharedValue(0.3);
+  const logoOpacity = useSharedValue(0);
+  const textY = useSharedValue(30);
+  const textOpacity = useSharedValue(0);
+  const cardY = useSharedValue(50);
+  const cardOpacity = useSharedValue(0);
+  const btnScale = useSharedValue(1);
+
+  useEffect(() => {
+    logoScale.value = withSpring(1, { damping: 12, stiffness: 120 });
+    logoOpacity.value = withTiming(1, { duration: 400 });
+    textY.value = withDelay(250, withSpring(0, { damping: 14 }));
+    textOpacity.value = withDelay(250, withTiming(1, { duration: 400 }));
+    cardY.value = withDelay(
+      400,
+      withSpring(0, { damping: 16, stiffness: 100 }),
+    );
+    cardOpacity.value = withDelay(400, withTiming(1, { duration: 400 }));
+  }, []);
+
+  // ── ตรวจ Biometric ──────────────────────────────────────────
+  useEffect(() => {
+    (async () => {
+      const [enabled, support] = await Promise.all([
+        isBiometricEnabled(),
+        checkSupport(),
+      ]);
+      if (enabled && support.supported) {
+        setBiometricAvailable(true);
+        setBiometricLabel(support.hasFaceId ? "Face ID" : "ลายนิ้วมือ");
+        setBiometricIcon(
+          support.hasFaceId ? "scan-outline" : "finger-print-outline",
+        );
+        setBiometricReady(true);
+      }
+    })();
+  }, []);
+
+  // ── Auto-trigger biometric ───────────────────────────────────
+  useEffect(() => {
+    if (!biometricReady) return;
+    const timer = setTimeout(() => triggerBiometric(), 700);
+    return () => clearTimeout(timer);
+  }, [biometricReady]);
+
+  const logoStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: logoScale.value }],
+    opacity: logoOpacity.value,
+  }));
+  const textStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: textY.value }],
+    opacity: textOpacity.value,
+  }));
+  const cardStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: cardY.value }],
+    opacity: cardOpacity.value,
+  }));
+  const btnStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: btnScale.value }],
+  }));
 
   const handleLogin = async () => {
     Keyboard.dismiss();
     const trimmedEmail = email.trim();
     const trimmedPassword = password.trim();
     if (!trimmedEmail || !trimmedPassword) {
+      cardY.value = withSequence(
+        withTiming(-6, { duration: 60 }),
+        withTiming(6, { duration: 60 }),
+        withTiming(-4, { duration: 60 }),
+        withTiming(4, { duration: 60 }),
+        withSpring(0),
+      );
       Alert.alert("แจ้งเตือน", "กรุณากรอก email และรหัสผ่าน");
       return;
     }
@@ -37,124 +158,294 @@ const Login = ({ navigation }) => {
     try {
       const response = await fetch(`${API_URL}/auth/login`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify({ email: trimmedEmail, password: trimmedPassword }),
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          email: trimmedEmail,
+          password: trimmedPassword,
+        }),
       });
       const data = await response.json();
       if (response.ok) {
         await AsyncStorage.multiSet([
-          ["token", String(data.token || "")],
-          ["token_type", String(data.token_type || "")],
-          ["user", JSON.stringify(data.user || {})],
+          [STORAGE_KEYS.TOKEN, String(data.token || "")],
+          [STORAGE_KEYS.TOKEN_TYPE, String(data.token_type || "")],
+          [STORAGE_KEYS.USER, JSON.stringify(data.user || {})],
         ]);
+        if (data.token) await saveBiometricToken(String(data.token));
         onLoginSuccess().catch(() => {});
         navigation.reset({ index: 0, routes: [{ name: "MainTabs" }] });
       } else {
-        Alert.alert("เข้าสู่ระบบไม่สำเร็จ", data.message || "username หรือรหัสผ่านไม่ถูกต้อง");
+        Alert.alert(
+          "เข้าสู่ระบบไม่สำเร็จ",
+          data.message || "username หรือรหัสผ่านไม่ถูกต้อง",
+        );
       }
-    } catch (error) {
-      Alert.alert("เกิดข้อผิดพลาด", "ไม่สามารถเข้าสู่ระบบได้ กรุณาตรวจสอบ API Server และเครือข่าย");
+    } catch {
+      Alert.alert(
+        "เกิดข้อผิดพลาด",
+        "ไม่สามารถเข้าสู่ระบบได้ กรุณาตรวจสอบ API Server และเครือข่าย",
+      );
     } finally {
       setLoading(false);
     }
   };
 
+  const triggerBiometric = async () => {
+    const result = await authenticate("ยืนยันตัวตนเพื่อเข้าสู่ระบบ URUSmart");
+    if (!result.success) return;
+    const token = await getBiometricToken();
+    if (!token) {
+      Alert.alert(
+        "ไม่พบข้อมูล",
+        "กรุณาเข้าสู่ระบบด้วย email และรหัสผ่านก่อน 1 ครั้ง",
+      );
+      return;
+    }
+    navigation.reset({ index: 0, routes: [{ name: "MainTabs" }] });
+  };
+
+  const onPressIn = () => {
+    btnScale.value = withSpring(0.96, { damping: 12 });
+  };
+  const onPressOut = () => {
+    btnScale.value = withSpring(1, { damping: 12 });
+  };
+
   return (
     <KeyboardAvoidingView
-      className="flex-1 bg-[#eaf5ef]"
+      className="flex-1"
       behavior={Platform.OS === "ios" ? "padding" : "height"}
-      keyboardVerticalOffset={Platform.OS === "ios" ? 0 : (StatusBar.currentHeight ?? 0)}
+      keyboardVerticalOffset={
+        Platform.OS === "ios" ? 0 : (StatusBar.currentHeight ?? 0)
+      }
     >
       <StatusBar barStyle="dark-content" backgroundColor="#eaf5ef" />
 
-      {/* Blobs */}
-      <View className="absolute w-[280px] h-[280px] rounded-[140px] bg-[#bfe3d0] opacity-55" style={{ top: -120, right: -80 }} />
-      <View className="absolute w-[320px] h-[320px] rounded-[160px] bg-primary opacity-[0.12]" style={{ bottom: -140, left: -100 }} />
+      {/* Background */}
+      <LinearGradient
+        colors={["#eaf5ef", "#d6eee3", "#eaf5ef"]}
+        style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
+      />
+      <View
+        className="absolute w-[300px] h-[300px] rounded-full"
+        style={{
+          top: -130,
+          right: -90,
+          backgroundColor: "rgba(191,227,208,0.6)",
+        }}
+      />
+      <View
+        className="absolute w-[260px] h-[260px] rounded-full"
+        style={{
+          bottom: -100,
+          left: -80,
+          backgroundColor: "rgba(15,122,85,0.08)",
+        }}
+      />
 
       <ScrollView
-        contentContainerStyle={{ flexGrow: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 24, paddingTop: PT, paddingBottom: PB }}
+        contentContainerStyle={{
+          flexGrow: 1,
+          alignItems: "center",
+          justifyContent: "center",
+          paddingHorizontal: 24,
+          paddingTop: PT,
+          paddingBottom: PB,
+        }}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         bounces={false}
       >
         {/* Logo */}
-        <View className="items-center mb-4">
-          <View className="w-[140px] h-[140px] rounded-[70px] bg-white/60 items-center justify-center" style={{ elevation: 6 }}>
-            <View className="w-[122px] h-[122px] rounded-[61px] overflow-hidden bg-white items-center justify-center">
-              <Image source={require("../assets/urusmartlogo.png")} className="w-[100px] h-[100px]" resizeMode="contain" />
-            </View>
+        <Animated.View className="items-center mb-5" style={logoStyle}>
+          <View
+            className="w-[148px] h-[148px] rounded-full items-center justify-center"
+            style={{
+              backgroundColor: "rgba(255,255,255,0.7)",
+              elevation: 8,
+              shadowColor: "#0f7a55",
+              shadowOpacity: 0.15,
+              shadowRadius: 20,
+              shadowOffset: { width: 0, height: 8 },
+            }}
+          >
+            <LinearGradient
+              colors={["#ffffff", "#f0faf5"]}
+              style={{
+                width: 128,
+                height: 128,
+                borderRadius: 64,
+                alignItems: "center",
+                justifyContent: "center",
+                overflow: "hidden",
+              }}
+            >
+              <Image
+                source={require("../assets/urusmartlogo.png")}
+                style={{ width: 104, height: 104 }}
+                resizeMode="contain"
+              />
+            </LinearGradient>
           </View>
-        </View>
+        </Animated.View>
 
-        <Text className="text-[22px] font-black text-[#064e35] text-center tracking-[0.4px] mb-1">Welcome to URUSmart</Text>
-        <Text className="text-[13px] text-[#56706a] text-center font-semibold mb-6">Log in to your account</Text>
+        {/* Title */}
+        <Animated.View className="items-center mb-7" style={textStyle}>
+          <Text className="text-[24px] font-black text-[#064e35] text-center tracking-[-0.3px]">
+            Welcome to URUSmart
+          </Text>
+          <Text className="text-[13px] text-[#56706a] text-center font-medium mt-[6px]">
+            ลงชื่อเข้าใช้บัญชีของคุณ
+          </Text>
+        </Animated.View>
 
         {/* Card */}
-        <View className="w-full bg-white rounded-[24px] p-5 border border-[rgba(15,122,85,0.08)]" style={{ elevation: 6 }}>
-          <Text className="text-[12px] font-bold text-[#374151] mb-[6px] ml-1">Username / Email</Text>
-          <View className="flex-row items-center bg-[#f5faf7] border-[1.5px] border-[#e3efe8] rounded-[14px] px-3 mb-4 h-[54px]">
-            <View className="w-[34px] h-[34px] rounded-[10px] bg-[#e6f2ec] items-center justify-center mr-[10px]">
-              <Ionicons name="person-outline" size={18} color="#0f7a55" />
-            </View>
-            <TextInput
-              className="flex-1 text-[15px] text-[#1f2937] font-medium"
-              style={{ height: 54, paddingVertical: 0 }}
-              placeholder="Enter your username"
-              placeholderTextColor="#9ca3af"
-              value={email}
-              onChangeText={setEmail}
-              autoCapitalize="none"
-              autoCorrect={false}
-              keyboardType="email-address"
-              returnKeyType="next"
-              onSubmitEditing={() => passwordRef.current?.focus()}
-              blurOnSubmit={false}
-              underlineColorAndroid="transparent"
-              autoComplete="off"
-            />
-          </View>
-
-          <Text className="text-[12px] font-bold text-[#374151] mb-[6px] ml-1">Password</Text>
-          <View className="flex-row items-center bg-[#f5faf7] border-[1.5px] border-[#e3efe8] rounded-[14px] px-3 mb-4 h-[54px]">
-            <View className="w-[34px] h-[34px] rounded-[10px] bg-[#e6f2ec] items-center justify-center mr-[10px]">
-              <Ionicons name="lock-closed-outline" size={18} color="#0f7a55" />
-            </View>
-            <TextInput
-              ref={passwordRef}
-              className="flex-1 text-[15px] text-[#1f2937] font-medium"
-              style={{ height: 54, paddingVertical: 0 }}
-              placeholder="Enter your password"
-              placeholderTextColor="#9ca3af"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry={!showPassword}
-              autoCapitalize="none"
-              returnKeyType="done"
-              onSubmitEditing={handleLogin}
-              underlineColorAndroid="transparent"
-              autoComplete="off"
-            />
-            <TouchableOpacity
-              onPress={() => setShowPassword(!showPassword)}
-              className="p-[6px]"
-              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-            >
-              <Ionicons name={showPassword ? "eye-outline" : "eye-off-outline"} size={20} color="#6b7a82" />
-            </TouchableOpacity>
-          </View>
-
-          <TouchableOpacity
-            className="bg-primary rounded-[14px] h-[54px] items-center justify-center mt-1"
-            style={[{ elevation: 4 }, loading && { opacity: 0.75 }]}
-            onPress={handleLogin}
-            disabled={loading}
-            activeOpacity={0.9}
+        <Animated.View className="w-full" style={cardStyle}>
+          <View
+            className="bg-white rounded-[26px] p-6 border border-[rgba(15,122,85,0.08)]"
+            style={{
+              elevation: 10,
+              shadowColor: "#0f7a55",
+              shadowOpacity: 0.12,
+              shadowRadius: 24,
+              shadowOffset: { width: 0, height: 10 },
+            }}
           >
-            {loading ? <ActivityIndicator color="#fff" /> : (
-              <Text className="text-white text-[16px] font-extrabold tracking-[0.8px]">Sign in</Text>
+            {/* Email */}
+            <Field
+              label="Username / Email"
+              icon="person-outline"
+              focused={emailFocused}
+            >
+              <TextInput
+                className="flex-1 text-[15px] text-[#1f2937] font-medium"
+                style={{ height: 54, paddingVertical: 0 }}
+                placeholder="Enter your email"
+                placeholderTextColor="#9ca3af"
+                value={email}
+                onChangeText={setEmail}
+                onFocus={() => setEmailFocused(true)}
+                onBlur={() => setEmailFocused(false)}
+                autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType="email-address"
+                returnKeyType="next"
+                onSubmitEditing={() => passwordRef.current?.focus()}
+                blurOnSubmit={false}
+                underlineColorAndroid="transparent"
+                autoComplete="off"
+              />
+            </Field>
+
+            {/* Password */}
+            <Field
+              label="Password"
+              icon="lock-closed-outline"
+              focused={passFocused}
+            >
+              <TextInput
+                ref={passwordRef}
+                className="flex-1 text-[15px] text-[#1f2937] font-medium"
+                style={{ height: 54, paddingVertical: 0 }}
+                placeholder="Enter your password"
+                placeholderTextColor="#9ca3af"
+                value={password}
+                onChangeText={setPassword}
+                onFocus={() => setPassFocused(true)}
+                onBlur={() => setPassFocused(false)}
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+                returnKeyType="done"
+                onSubmitEditing={handleLogin}
+                underlineColorAndroid="transparent"
+                autoComplete="off"
+              />
+              <TouchableOpacity
+                onPress={() => setShowPassword(!showPassword)}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              >
+                <Ionicons
+                  name={showPassword ? "eye-outline" : "eye-off-outline"}
+                  size={20}
+                  color="#6b7a82"
+                />
+              </TouchableOpacity>
+            </Field>
+
+            {/* Sign in button */}
+            <Animated.View style={btnStyle}>
+              <TouchableOpacity
+                onPress={handleLogin}
+                onPressIn={onPressIn}
+                onPressOut={onPressOut}
+                disabled={loading}
+                activeOpacity={1}
+              >
+                <LinearGradient
+                  colors={
+                    loading
+                      ? ["#7bb8a4", "#7bb8a4"]
+                      : ["#0a6644", "#0f7a55", "#1a9068"]
+                  }
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={{
+                    height: 56,
+                    borderRadius: 16,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    marginTop: 4,
+                    elevation: 4,
+                  }}
+                >
+                  {loading ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <View className="flex-row items-center gap-2">
+                      <Text className="text-white text-[16px] font-extrabold tracking-[0.8px]">
+                        Sign in
+                      </Text>
+                      <Ionicons
+                        name="arrow-forward"
+                        size={18}
+                        color="rgba(255,255,255,0.85)"
+                      />
+                    </View>
+                  )}
+                </LinearGradient>
+              </TouchableOpacity>
+            </Animated.View>
+
+            {/* Biometric button */}
+            {biometricAvailable && (
+              <TouchableOpacity
+                className="flex-row items-center justify-center gap-2 mt-3 py-[14px] rounded-2xl border border-[#d4ece2]"
+                style={{ backgroundColor: "rgba(14,122,85,0.06)" }}
+                onPress={triggerBiometric}
+                activeOpacity={0.8}
+              >
+                <Ionicons name={biometricIcon} size={22} color="#0f7a55" />
+                <Text className="text-primary text-[14px] font-bold">
+                  เข้าสู่ระบบด้วย {biometricLabel}
+                </Text>
+              </TouchableOpacity>
             )}
-          </TouchableOpacity>
-        </View>
+          </View>
+        </Animated.View>
+
+        {/* Footer */}
+        <Animated.View
+          className="flex-row items-center gap-[5px] mt-6"
+          style={[textStyle, { opacity: 0.4 }]}
+        >
+          <Ionicons name="shield-checkmark-outline" size={12} color="#0a6644" />
+          <Text className="text-[10px] text-[#0a6644] font-semibold">
+            Secured by URUSmart · Uttaradit Rajabhat University
+          </Text>
+        </Animated.View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
