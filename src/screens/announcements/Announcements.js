@@ -3,6 +3,7 @@ import { FlatList, Platform, StatusBar, Text, TouchableOpacity, View } from "rea
 import Animated, { FadeInDown, FadeInRight } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
+import useFetch from "../../hook/useFetch";
 
 const pt = Platform.OS === "ios" ? 52 : (StatusBar.currentHeight ?? 24) + 12;
 
@@ -75,7 +76,14 @@ const AnnouncementItem = ({ item, index }) => {
 };
 
 export default function AnnouncementsScreen({ navigation, route }) {
-  const items = route.params?.items ?? [];
+  const itemsFromParams = route.params?.items;
+  const { data: fetchedAnnouncements = [], loading } = useFetch("/announcements", {
+    initialData: [],
+    params: { limit: 20 },
+    skip: Array.isArray(itemsFromParams) && itemsFromParams.length > 0,
+  });
+
+  const items = Array.isArray(itemsFromParams) && itemsFromParams.length > 0 ? itemsFromParams : fetchedAnnouncements;
 
   return (
     <View className="flex-1 bg-[#f0f6f2]">
