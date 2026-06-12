@@ -88,16 +88,17 @@ const ExpertiseForm = ({ navigation, route }) => {
     setForm((p) => ({ ...p, expert_id: v, name: v === "other" ? p.name : "" }));
   };
 
+  // มี options จริงเมื่อ > placeholder + "อื่น ๆ"
+  const hasRealOptions = expertiseOptions.length > 2;
+
   const handleSave = async () => {
     if (!form.group_id) { Alert.alert("กรุณาเลือกกลุ่มความเชี่ยวชาญ"); return; }
-    if (!form.expert_id) { Alert.alert("กรุณาเลือกความเชี่ยวชาญ"); return; }
-    if (form.expert_id === "other" && !form.name.trim()) {
-      Alert.alert("กรุณาระบุชื่อความเชี่ยวชาญ"); return;
-    }
-    const payload =
-      form.expert_id === "other"
-        ? { group_id: parseInt(form.group_id, 10), name: form.name.trim() }
-        : { group_id: parseInt(form.group_id, 10), expert_id: parseInt(form.expert_id, 10) };
+    if (hasRealOptions && !form.expert_id) { Alert.alert("กรุณาเลือกความเชี่ยวชาญ"); return; }
+    const needsName = form.expert_id === "other" || !hasRealOptions;
+    if (needsName && !form.name.trim()) { Alert.alert("กรุณาระบุชื่อความเชี่ยวชาญ"); return; }
+    const payload = needsName
+      ? { group_id: parseInt(form.group_id, 10), name: form.name.trim() }
+      : { group_id: parseInt(form.group_id, 10), expert_id: parseInt(form.expert_id, 10) };
     if (__DEV__) console.log("[ExpertiseForm] payload:", JSON.stringify(payload));
     setSaving(true);
     try {
@@ -146,8 +147,8 @@ const ExpertiseForm = ({ navigation, route }) => {
               <Ionicons name="ribbon-outline" size={16} color="#1a6b3c" />
               <Text className="text-[13px] font-semibold text-brand ml-1">รายการความเชี่ยวชาญ</Text>
             </View>
-            {items.map((entry) => (
-              <View key={entry.id} className="px-4 py-3 border-b border-[#f0f4f7] flex-row justify-between items-start">
+            {items.map((entry, index) => (
+              <View key={entry.id ?? index} className="px-4 py-3 border-b border-[#f0f4f7] flex-row justify-between items-start">
                 <View className="flex-1 pr-3">
                   <Text className="text-[13px] font-semibold text-[#1a1a2e]">
                     {entry.group_label ?? getGroupLabel(entry.group_id)}
@@ -196,36 +197,38 @@ const ExpertiseForm = ({ navigation, route }) => {
           />
           <View className="h-px bg-[#f0f4f7]" />
 
-          {/* 2. ความเชี่ยวชาญ (cascade) */}
-          <InlineDropdown
-            label="ความเชี่ยวชาญ"
-            value={form.expert_id}
-            options={expertiseOptions}
-            onSelect={handleExpertiseSelect}
-            loading={loadingExpertises}
-            required
-            searchable
-          />
-
-          {/* 3. TextInput สำหรับ "อื่น ๆ" */}
-          {form.expert_id === "other" && (
+          {/* 2. ความเชี่ยวชาญ (cascade) — แสดงเฉพาะเมื่อมี options จริง */}
+          {hasRealOptions && (
             <>
+              <InlineDropdown
+                label="ความเชี่ยวชาญ"
+                value={form.expert_id}
+                options={expertiseOptions}
+                onSelect={handleExpertiseSelect}
+                loading={loadingExpertises}
+                required
+                searchable
+              />
               <View className="h-px bg-[#f0f4f7]" />
-              <View className="px-4 py-3">
-                <Text className="text-[12px] text-[#888] font-medium mb-[6px]">
-                  ระบุชื่อความเชี่ยวชาญ <Text className="text-[#e74c3c]">*</Text>
-                </Text>
-                <TextInput
-                  className="text-[14px] text-[#1a1a2e] border border-[#e8ecf0] rounded-[10px] px-[12px] py-[10px] bg-[#f8fafb]"
-                  value={form.name}
-                  onChangeText={(v) => setForm((p) => ({ ...p, name: v }))}
-                  placeholder="พิมพ์ชื่อความเชี่ยวชาญ"
-                  placeholderTextColor="#bbb"
-                  autoCapitalize="none"
-                  returnKeyType="done"
-                />
-              </View>
             </>
+          )}
+
+          {/* 3. TextInput — แสดงเมื่อเลือก "อื่น ๆ" หรือไม่มี options */}
+          {(form.expert_id === "other" || !hasRealOptions) && (
+            <View className="px-4 py-3">
+              <Text className="text-[12px] text-[#888] font-medium mb-[6px]">
+                ชื่อความเชี่ยวชาญ <Text className="text-[#e74c3c]">*</Text>
+              </Text>
+              <TextInput
+                className="text-[14px] text-[#1a1a2e] border border-[#e8ecf0] rounded-[10px] px-[12px] py-[10px] bg-[#f8fafb]"
+                value={form.name}
+                onChangeText={(v) => setForm((p) => ({ ...p, name: v }))}
+                placeholder="พิมพ์ชื่อความเชี่ยวชาญ"
+                placeholderTextColor="#bbb"
+                autoCapitalize="none"
+                returnKeyType="done"
+              />
+            </View>
           )}
 
           <View className="flex-row gap-3 p-4">

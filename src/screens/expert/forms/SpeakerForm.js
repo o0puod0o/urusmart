@@ -25,7 +25,7 @@ const SpeakerForm = ({ navigation }) => {
 
   const handleSave = async () => {
     if (!form.year || !form.title.trim()) { Alert.alert(t("research.common.warning"), t("research.speaker.validation")); return; }
-    const payload = { year: form.year, name: form.title.trim() };
+    const payload = { year: parseInt(form.year, 10), name: form.title.trim() };
     try {
       editingItem ? await update(editingItem.id, payload) : await create(payload);
       Alert.alert(editingItem ? t("research.common.editSuccess") : t("research.common.addSuccess"), t("research.common.savedMsg"));

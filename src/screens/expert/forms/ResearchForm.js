@@ -12,10 +12,10 @@ const BASE_YEAR_LIST = Array.from({ length: 2569 - 2533 + 1 }, (_, i) => {
   return { id: String(y), label: String(y) };
 });
 
-// normalize ref items — รองรับหลาย field name ที่ backend อาจส่งมา
+// normalize ref items — ใช้ || แทน ?? เพื่อ skip empty string ด้วย (ไม่ใช่แค่ null/undefined)
 const toOpt = (d, i) => ({
-  id:    String(d.id ?? d.type_id ?? d.level_id ?? d.pmu_id ?? d.research_type_id ?? d.research_level_id ?? d.research_pmu_type_id ?? i),
-  label: d.name ?? d.label ?? d.type_name ?? d.level_name ?? d.pmu_name ?? d.title ?? "",
+  id:    String(d.id || d.type_id || d.level_id || d.pmu_id || d.research_type_id || d.research_level_id || d.research_pmu_type_id || i),
+  label: d.name || d.label || d.type_name || d.level_name || d.pmu_name || d.title || "",
 });
 
 const COL = { no: 28, year: 40, type: 76, pmu: 36, level: 40, edit: 44, del: 32 };
@@ -96,7 +96,7 @@ const ResearchForm = ({ navigation }) => {
               {items.length === 0 ? (
                 <Text className="text-center text-[#aaa] text-[13px] p-6">{t("research.researchForm.noData")}</Text>
               ) : items.map((entry, index) => (
-                <View key={entry.id} className="flex-row items-center px-[10px] py-[10px] border-b border-[#f0f4f7] gap-1" style={index % 2 === 0 ? { backgroundColor: "#f8fafb" } : {}}>
+                <View key={entry.id ?? index} className="flex-row items-center px-[10px] py-[10px] border-b border-[#f0f4f7] gap-1" style={index % 2 === 0 ? { backgroundColor: "#f8fafb" } : {}}>
                   <Text className="text-[11px] text-[#1a1a2e] text-center" style={{ width: COL.no }}>{index + 1}</Text>
                   <Text className="text-[11px] text-[#1a1a2e] text-center" style={{ width: COL.year }}>{entry.year}</Text>
                   <Text className="text-[11px] text-[#1a1a2e]" style={{ flex: 1, minWidth: 160 }} numberOfLines={3}>{entry.name}</Text>

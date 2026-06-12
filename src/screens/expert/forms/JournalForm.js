@@ -19,7 +19,7 @@ const JournalForm = ({ navigation }) => {
   const { journalTypes } = useRefs();
   const databaseOptions = useMemo(() => [
     { id: "", label: t("research.journal.dbPlaceholder") },
-    ...journalTypes.map((d) => ({ id: String(d.id), label: d.name ?? d.label ?? "" })),
+    ...journalTypes.map((d, i) => ({ id: String(d.id || d.journal_type_id || d.type_id || i + 1), label: d.name || d.label || "" })),
   ], [journalTypes, t]);
 
   const tableItems = useMemo(() => [...items].sort((a, b) => Number(b.year) - Number(a.year)), [items]);
@@ -29,7 +29,8 @@ const JournalForm = ({ navigation }) => {
 
   const handleSave = async () => {
     if (!form.year || !form.reference.trim()) { Alert.alert(t("research.common.warning"), t("research.journal.validation")); return; }
-    const payload = { year: form.year, name: form.reference.trim(), url: form.url.trim(), ...(form.database ? { journal_type_id: parseInt(form.database, 10) } : {}) };
+    if (!form.database) { Alert.alert(t("research.common.warning"), "กรุณาเลือกฐานข้อมูล"); return; }
+    const payload = { year: parseInt(form.year, 10), name: form.reference.trim(), url: form.url.trim(), journal_type_id: parseInt(form.database, 10) };
     try {
       editingItem ? await update(editingItem.id, payload) : await create(payload);
       Alert.alert(editingItem ? t("research.common.editSuccess") : t("research.common.addSuccess"), t("research.common.savedMsg"));
@@ -79,7 +80,7 @@ const JournalForm = ({ navigation }) => {
                   ))}
                 </View>
                 {tableItems.map((entry, index) => (
-                  <View key={entry.id} className="flex-row py-3 px-[10px] items-start border-b border-[#f0f4f7]" style={index % 2 === 1 ? { backgroundColor: "#fafbfc" } : {}}>
+                  <View key={entry.id ?? index} className="flex-row py-3 px-[10px] items-start border-b border-[#f0f4f7]" style={index % 2 === 1 ? { backgroundColor: "#fafbfc" } : {}}>
                     <Text className="text-[13px] text-[#1a1a2e] text-center leading-5" style={{ width: 32 }}>{index + 1}</Text>
                     <Text className="text-[13px] text-[#1a1a2e] text-center leading-5" style={{ width: 52 }}>{entry.year}</Text>
                     <Text className="text-[13px] text-[#1a1a2e] leading-5 px-2" style={{ width: 360 }} numberOfLines={4}>{entry.name}</Text>
