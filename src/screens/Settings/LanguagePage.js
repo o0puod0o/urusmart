@@ -22,10 +22,10 @@ export default function LanguagePage() {
   };
 
   return (
-    <View className="flex-1 bg-[#f0f4f1]">
-      <StatusBar barStyle="light-content" backgroundColor="#14532d" />
+    <View className="flex-1 bg-[#eaf5ef]">
+      <StatusBar barStyle="light-content" backgroundColor="#0f7a55" />
 
-      <View className="bg-brand flex-row items-center justify-between px-4 pb-[14px]" style={{ paddingTop: pt }}>
+      <View className="bg-primary flex-row items-center justify-between px-4 pb-[14px]" style={{ paddingTop: pt }}>
         <TouchableOpacity className="w-9 h-9 rounded-full bg-white/20 items-center justify-center" onPress={() => navigation.goBack()} activeOpacity={0.7}>
           <Ionicons name="chevron-back" size={22} color="#fff" />
         </TouchableOpacity>

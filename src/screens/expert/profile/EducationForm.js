@@ -1,11 +1,10 @@
-import React, { useMemo, useState } from "react";
-import { View, Text, ScrollView, TouchableOpacity, Alert } from "react-native";
+import React, { useRef, useState } from "react";
+import { Alert, KeyboardAvoidingView, Platform, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import AppHeader from "../../../components/AppHeader";
 import FormField from "../../../components/expert/FormField";
 import InlineDropdown from "../../../components/expert/InlineDropdown";
 import useResource from "../../../hook/useResource";
-import useRefs from "../../../hook/useRefs";
 
 const currentYear = new Date().getFullYear() + 543;
 const YEAR_OPTIONS = [
@@ -16,68 +15,85 @@ const YEAR_OPTIONS = [
   }),
 ];
 
+const DEGREE_OPTIONS = [
+  { id: "", label: "กรุณาเลือกระดับการศึกษา" },
+  { id: "1", label: "ต่ำกว่าปริญญาตรี" },
+  { id: "2", label: "ปริญญาตรี" },
+  { id: "3", label: "ปริญญาโท" },
+  { id: "4", label: "ปริญญาเอก" },
+];
+
 const EducationForm = ({ navigation }) => {
   const { items, create, update, remove } = useResource("/educations");
-  const { degrees } = useRefs();
-
-  const DEGREE_OPTIONS = useMemo(() => [
-    { id: "", label: "กรุณาเลือกระดับการศึกษา" },
-    ...degrees.map((d) => ({ id: String(d.id), label: d.name ?? d.label ?? "" })),
-  ], [degrees]);
+  const universityRef = useRef(null);
 
   const [editingItem, setEditingItem] = useState(null);
-  const [form, setForm] = useState({ year: "", degree: "", major: "", institution: "" });
+  const [form, setForm] = useState({ year: "", degree: "", course: "", university: "" });
 
   const setField = (key, val) => setForm((p) => ({ ...p, [key]: val }));
-  const openNewForm = () => { setEditingItem(null); setForm({ year: "", degree: "", major: "", institution: "" }); };
-  const openEditForm = (item) => { setEditingItem(item); setForm({ year: item.year, degree: item.degree, major: item.major, institution: item.institution }); };
+  const openNewForm = () => { setEditingItem(null); setForm({ year: "", degree: "", course: "", university: "" }); };
+  const openEditForm = (item) => {
+    setEditingItem(item);
+    const degId = item.degree_id ?? (typeof item.degree === "object" ? item.degree?.id : item.degree);
+    setForm({ year: String(item.year ?? ""), degree: String(degId ?? ""), course: item.course ?? "", university: item.university ?? "" });
+  };
+
+  const getDegreeLabel = (item) => {
+    const degId = String(item.degree_id ?? (typeof item.degree === "object" ? item.degree?.id : item.degree) ?? "");
+    return DEGREE_OPTIONS.find((d) => d.id === degId)?.label ?? degId;
+  };
 
   const handleSave = async () => {
-    if (!form.year || !form.degree || !form.major || !form.institution) {
-      Alert.alert("กรุณากรอกข้อมูลให้ครบทุกช่อง"); return;
+    if (!form.year || !form.degree || !form.course || !form.university) {
+      Alert.alert("กรุณากรอกข้อมูลให้ครบ", "กรุณากรอก ปี ระดับการศึกษา สาขา และสถาบัน"); return;
     }
     try {
-      editingItem
-        ? await update(editingItem.id, { degree: form.degree, year: form.year, major: form.major, institution: form.institution })
-        : await create({ degree: form.degree, year: form.year, major: form.major, institution: form.institution });
+      const payload = { degree: parseInt(form.degree, 10), year: form.year, course: form.course.trim(), university: form.university.trim() };
+      if (__DEV__) console.log("[EducationForm] payload:", JSON.stringify(payload));
+      editingItem ? await update(editingItem.id, payload) : await create(payload);
       Alert.alert(editingItem ? "แก้ไขสำเร็จ" : "บันทึกสำเร็จ");
       openNewForm();
-    } catch { Alert.alert("บันทึกไม่สำเร็จ", "กรุณาลองใหม่อีกครั้ง"); }
+    } catch (err) { Alert.alert("บันทึกไม่สำเร็จ", err.message ?? "กรุณาลองใหม่อีกครั้ง"); }
   };
 
   const handleDelete = (item) => {
-    Alert.alert("ลบข้อมูล", "ต้องการลบรายการนี้ใช่หรือไม่?", [
-      { text: "ยกเลิก", style: "cancel" },
-      { text: "ลบ", style: "destructive", onPress: async () => {
-        try { await remove(item.id); if (editingItem?.id === item.id) openNewForm(); }
-        catch { Alert.alert("ลบไม่สำเร็จ", "กรุณาลองใหม่อีกครั้ง"); }
-      }},
-    ]);
+    const doDelete = async () => {
+      try { await remove(item.id); if (editingItem?.id === item.id) openNewForm(); }
+      catch (err) { Alert.alert("ลบไม่สำเร็จ", err.message ?? "กรุณาลองใหม่อีกครั้ง"); }
+    };
+    if (Platform.OS === "web") {
+      if (window.confirm("ต้องการลบรายการนี้ใช่หรือไม่?")) doDelete();
+    } else {
+      Alert.alert("ลบข้อมูล", "ต้องการลบรายการนี้ใช่หรือไม่?", [
+        { text: "ยกเลิก", style: "cancel" },
+        { text: "ลบ", style: "destructive", onPress: doDelete },
+      ]);
+    }
   };
 
   return (
-    <View className="flex-1 bg-white">
+    <KeyboardAvoidingView className="flex-1 bg-[#eef2f7]" behavior={Platform.OS === "ios" ? "padding" : undefined}>
       <AppHeader title="ประวัติการศึกษา" onBack={() => navigation.goBack()} />
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 48, gap: 16 }} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={{ padding: 14, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
 
         {/* List */}
-        <View className="bg-white rounded-[20px] border border-[#dcebe1] p-[18px]" style={{ elevation: 2, shadowColor: "#0b3b22", shadowOpacity: 0.06, shadowRadius: 12, shadowOffset: { width: 0, height: 6 } }}>
-          <Text className="text-[18px] font-bold text-[#155f2c] mb-[14px]">ประวัติการศึกษา</Text>
+        <View className="bg-white rounded-2xl border border-[#e8ecf0] p-4 mb-[14px]">
+          <Text className="text-[16px] font-bold text-[#1a1a2e] mb-3">ประวัติการศึกษา</Text>
           {items.map((item) => (
-            <View key={item.id} className="flex-row justify-between items-start py-[14px] border-t border-[#eef4f0] gap-3">
-              <View className="flex-1 pr-2">
-                <Text className="text-[15px] font-bold text-[#1a2e22] mb-1">{item.title}</Text>
-                <Text className="text-[13px] text-[#5b6f64] mb-2">ปี {item.year}</Text>
-                <View className="self-start bg-[#e6f4ea] rounded-full px-[10px] py-1">
-                  <Text className="text-[12px] font-semibold text-[#155f2c]">{item.status}</Text>
-                </View>
+            <View key={item.id} className="bg-[#f8fafb] rounded-[14px] p-[14px] mb-3 flex-row justify-between items-center">
+              <View className="flex-1 pr-3">
+                <Text className="text-[14px] font-bold text-[#1a1a2e] mb-1">{item.course}</Text>
+                <Text className="text-[12px] text-[#4b5563] mb-[6px]">{item.university}</Text>
+                <Text className="text-[11px] text-[#6b7280]">
+                  {"ปี "}{item.year}{getDegreeLabel(item) ? ` · ${getDegreeLabel(item)}` : ""}
+                </Text>
               </View>
               <View className="flex-row gap-2">
-                <TouchableOpacity className="bg-[#1f7a3a] rounded-[10px] py-2 px-[14px]" onPress={() => openEditForm(item)} activeOpacity={0.8}>
-                  <Text className="text-white text-[13px] font-semibold">แก้ไข</Text>
+                <TouchableOpacity className="bg-[#f8f8f8] rounded-[10px] py-[9px] px-[14px]" onPress={() => openEditForm(item)}>
+                  <Text className="text-brand text-[12px] font-bold">แก้ไข</Text>
                 </TouchableOpacity>
-                <TouchableOpacity className="bg-[#fde8e8] rounded-[10px] py-2 px-[14px]" onPress={() => handleDelete(item)} activeOpacity={0.8}>
-                  <Text className="text-[#dc2626] text-[13px] font-semibold">ลบ</Text>
+                <TouchableOpacity className="bg-[#fde2e6] rounded-[10px] py-[9px] px-[14px]" onPress={() => handleDelete(item)}>
+                  <Text className="text-[#c0392b] text-[12px] font-bold">ลบ</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -85,28 +101,47 @@ const EducationForm = ({ navigation }) => {
         </View>
 
         {/* Form */}
-        <View className="bg-white rounded-[20px] border border-[#dcebe1] p-[18px]" style={{ elevation: 2, shadowColor: "#0b3b22", shadowOpacity: 0.06, shadowRadius: 12, shadowOffset: { width: 0, height: 6 } }}>
-          <Text className="text-[16px] font-bold text-[#155f2c] mb-3">{editingItem ? "แก้ไขข้อมูลประวัติการศึกษา" : "เพิ่มข้อมูลประวัติการศึกษา"}</Text>
+        <View className="bg-white rounded-2xl border border-[#e8ecf0] p-4">
+          <Text className="text-[16px] font-bold text-[#1a1a2e] mb-4">
+            {editingItem ? "แก้ไขข้อมูลประวัติการศึกษา" : "เพิ่มข้อมูลประวัติการศึกษา"}
+          </Text>
           <InlineDropdown label="ปีที่จบ (พ.ศ.)" value={form.year} options={YEAR_OPTIONS} onSelect={(v) => setField("year", v)} searchable />
-          <View className="h-px bg-[#eef4f0] my-2" />
+          <View className="h-px bg-[#f0f4f7] my-[10px]" />
           <InlineDropdown label="ระดับการศึกษา" value={form.degree} options={DEGREE_OPTIONS} onSelect={(v) => setField("degree", v)} />
-          <View className="h-px bg-[#eef4f0] my-2" />
-          <FormField label="วุฒิการศึกษา (สาขาวิชา)" value={form.major} onChangeText={(v) => setField("major", v)} />
-          <View className="h-px bg-[#eef4f0] my-2" />
-          <FormField label="ชื่อสถาบัน" value={form.institution} onChangeText={(v) => setField("institution", v)} />
+          <View className="h-px bg-[#f0f4f7] my-[10px]" />
+          <FormField
+            label="วุฒิการศึกษา (สาขาวิชา)"
+            value={form.course}
+            onChangeText={(v) => setField("course", v)}
+            onSubmitEditing={() => universityRef.current?.focus()}
+          />
+          <View className="h-px bg-[#f0f4f7] my-[10px]" />
+          <FormField
+            ref={universityRef}
+            label="ชื่อสถาบัน"
+            value={form.university}
+            onChangeText={(v) => setField("university", v)}
+            returnKeyType="done"
+            onSubmitEditing={handleSave}
+          />
 
-          <View className="flex-row gap-3 mt-[22px] flex-wrap">
-            <TouchableOpacity className="flex-1 bg-[#1f7a3a] rounded-xl py-4 items-center min-w-[200px]" style={{ elevation: 2 }} onPress={handleSave}>
-              <Text className="text-white text-[14px] font-bold">{editingItem ? "บันทึกการแก้ไข" : "เพิ่มข้อมูลประวัติการศึกษา"}</Text>
+          <View className="flex-row justify-between gap-3 mt-5">
+            <TouchableOpacity className="flex-1 min-w-[160px] bg-[#14532d] rounded-xl py-[14px] items-center" onPress={handleSave}>
+              <Text className="text-white text-[14px] font-semibold">
+                {editingItem ? "บันทึกการแก้ไข" : "เพิ่มข้อมูลประวัติการศึกษา"}
+              </Text>
             </TouchableOpacity>
-            <TouchableOpacity className="bg-[#fef2f2] border border-[#dc2626] rounded-xl py-[14px] px-[22px] flex-row items-center gap-[6px] justify-center min-w-[90px]" onPress={() => editingItem ? openEditForm(editingItem) : openNewForm()}>
+            <TouchableOpacity
+              className="flex-1 min-w-[120px] bg-[#fef2f2] border border-[#dc2626] rounded-xl py-[14px] flex-row items-center gap-[6px] justify-center"
+              onPress={() => editingItem ? openEditForm(editingItem) : openNewForm()}
+            >
               <Ionicons name="refresh" size={16} color="#dc2626" />
-              <Text className="text-[#dc2626] text-[14px] font-bold">รีเซ็ท</Text>
+              <Text className="text-[#dc2626] text-[14px] font-semibold">รีเซ็ท</Text>
             </TouchableOpacity>
           </View>
         </View>
       </ScrollView>
-    </View>
+    </KeyboardAvoidingView>
   );
 };
 

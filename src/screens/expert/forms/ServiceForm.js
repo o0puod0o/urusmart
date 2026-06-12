@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from "react";
-import { ActivityIndicator, Alert, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
+import React, { useRef, useMemo, useState } from "react";
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import AppHeader from "../../../components/AppHeader";
@@ -8,39 +8,45 @@ import useResource from "../../../hook/useResource";
 
 const currentThaiYear = new Date().getFullYear() + 543;
 const BASE_YEAR_LIST = Array.from({ length: currentThaiYear - 2532 }, (_, i) => ({ id: String(currentThaiYear - i), label: String(currentThaiYear - i) }));
-const INIT_FORM = { year: "", title: "", url: "", fileName: "" };
+const INIT_FORM = { year: "", name: "", link: "" };
 
 const ServiceForm = ({ navigation }) => {
   const { t } = useTranslation();
   const YEAR_OPTIONS = useMemo(() => [{ id: "", label: t("research.common.selectYear") }, ...BASE_YEAR_LIST], [t]);
-  const { items, loading, saving, create, update, remove } = useResource("/boardexes");
+  const { items, loading, saving, create, update, remove } = useResource("/academics");
+  const linkRef = useRef(null);
   const [editingItem, setEditingItem] = useState(null);
   const [form, setForm] = useState(INIT_FORM);
 
   const tableItems = useMemo(() => [...items].sort((a, b) => Number(b.year) - Number(a.year)), [items]);
   const setField = (k, v) => setForm((p) => ({ ...p, [k]: v }));
-  const openEdit = (e) => { setEditingItem(e); setForm({ year: e.year, title: e.title, url: e.url, fileName: e.fileName }); };
+  const openEdit = (e) => { setEditingItem(e); setForm({ year: e.year, name: e.name, link: e.link ?? "" }); };
   const openNew = () => { setEditingItem(null); setForm(INIT_FORM); };
 
   const handleSave = async () => {
-    if (!form.year || !form.title.trim()) { Alert.alert(t("research.common.warning"), t("research.service.validation")); return; }
-    const payload = { year: form.year, title: form.title.trim(), url: form.url.trim(), fileName: form.fileName.trim() };
+    if (!form.year || !form.name.trim()) { Alert.alert(t("research.common.warning"), t("research.service.validation")); return; }
+    const payload = { year: form.year, name: form.name.trim(), link: form.link.trim() };
     try {
       editingItem ? await update(editingItem.id, payload) : await create(payload);
       Alert.alert(editingItem ? t("research.common.editSuccess") : t("research.common.addSuccess"), t("research.common.savedMsg"));
       openNew();
-    } catch { Alert.alert(t("research.common.saveFail"), t("research.common.apiError")); }
+    } catch (err) { Alert.alert(t("research.common.saveFail"), err.message ?? t("research.common.apiError")); }
   };
 
   const handleDelete = (entry) => {
-    Alert.alert(t("research.common.deleteTitle"), t("research.common.deleteConfirm"), [
-      { text: t("research.common.cancel"), style: "cancel" },
-      { text: t("research.common.deleteBtn"), style: "destructive", onPress: async () => { try { await remove(entry.id); } catch { Alert.alert(t("research.common.deleteFail")); } } },
-    ]);
+    const doDelete = async () => { try { await remove(entry.id); } catch (err) { Alert.alert(t("research.common.deleteFail"), err.message); } };
+    if (Platform.OS === "web") {
+      if (window.confirm(t("research.common.deleteConfirm"))) doDelete();
+    } else {
+      Alert.alert(t("research.common.deleteTitle"), t("research.common.deleteConfirm"), [
+        { text: t("research.common.cancel"), style: "cancel" },
+        { text: t("research.common.deleteBtn"), style: "destructive", onPress: doDelete },
+      ]);
+    }
   };
 
   return (
-    <View className="flex-1 bg-[#f5f7f8]">
+    <KeyboardAvoidingView className="flex-1 bg-[#f5f7f8]" behavior={Platform.OS === "ios" ? "padding" : undefined}>
       <AppHeader title={t("research.service.heroTitle")} onBack={() => navigation.goBack()} />
       <ScrollView contentContainerStyle={{ paddingHorizontal: 14, paddingTop: 18, paddingBottom: 60 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
 
@@ -91,9 +97,9 @@ const ServiceForm = ({ navigation }) => {
                         <Text className="text-[#00614a] text-[12px] font-extrabold">{entry.year}</Text>
                       </View>
                     </View>
-                    <Text className="text-[14px] font-semibold text-[#1f2a2e] leading-5 px-1" style={{ width: 440 }} numberOfLines={3}>{entry.title}</Text>
-                    <Text className="text-[13px] font-bold text-[#00614a] leading-5 px-1" style={{ width: 100 }} numberOfLines={2}>{entry.url}</Text>
-                    <Text className="text-[14px] font-bold text-[#1f2a2e] px-1" style={{ width: 100 }} numberOfLines={2}>{entry.fileName}</Text>
+                    <Text className="text-[14px] font-semibold text-[#1f2a2e] leading-5 px-1" style={{ width: 440 }} numberOfLines={3}>{entry.name}</Text>
+                    <Text className="text-[13px] font-bold text-[#00614a] leading-5 px-1" style={{ width: 100 }} numberOfLines={2}>{entry.link}</Text>
+                    <Text className="text-[14px] font-bold text-[#1f2a2e] px-1" style={{ width: 100 }} numberOfLines={2}>{entry.picture}</Text>
                     <View className="flex-row gap-[6px] justify-center" style={{ width: 90 }}>
                       <TouchableOpacity className="w-[34px] h-[34px] rounded-lg bg-[#fff4e0] items-center justify-center" onPress={() => openEdit(entry)} activeOpacity={0.8}>
                         <Ionicons name="create-outline" size={17} color="#a8631a" />
@@ -126,24 +132,11 @@ const ServiceForm = ({ navigation }) => {
           <InlineDropdown label={`${t("research.common.year")}:`} value={form.year} options={YEAR_OPTIONS} onSelect={(v) => setField("year", v)} required />
           <View className="px-4 py-2">
             <Text className="text-[13px] font-extrabold text-[#3f4d50] mb-[6px]">{t("research.service.fieldLabel")}<Text className="text-[#d83a36]"> *</Text></Text>
-            <TextInput className="bg-white border border-[#e3e7eb] rounded-[10px] px-[14px] py-[10px] text-[14px] text-[#1f2a2e]" style={{ minHeight: 46 }} value={form.title} onChangeText={(v) => setField("title", v)} placeholder={t("research.service.placeholder")} placeholderTextColor="#9aa6b1" />
+            <TextInput className="bg-white border border-[#e3e7eb] rounded-[10px] px-[14px] py-[10px] text-[14px] text-[#1f2a2e]" style={{ minHeight: 46 }} value={form.name} onChangeText={(v) => setField("name", v)} placeholder={t("research.service.placeholder")} placeholderTextColor="#9aa6b1" returnKeyType="next" onSubmitEditing={() => linkRef.current?.focus()} blurOnSubmit={false} />
           </View>
           <View className="px-4 py-2">
             <Text className="text-[13px] font-extrabold text-[#3f4d50] mb-[6px]">{t("research.service.fieldLink")}</Text>
-            <TextInput className="bg-white border border-[#e3e7eb] rounded-[10px] px-[14px] py-[10px] text-[14px] text-[#1f2a2e]" style={{ minHeight: 46 }} value={form.url} onChangeText={(v) => setField("url", v)} placeholder="http://" placeholderTextColor="#9aa6b1" autoCapitalize="none" keyboardType="url" />
-          </View>
-          <View className="px-4 py-2">
-            <Text className="text-[13px] font-extrabold text-[#3f4d50] mb-[6px]">{t("research.service.fieldAttach")}</Text>
-            <TouchableOpacity
-              className="flex-row items-center bg-white border border-[#e3e7eb] rounded-[10px] min-h-[46px] px-3"
-              activeOpacity={0.8}
-              onPress={() => Alert.alert(t("research.service.fieldAttach"), "Connect file picker in next step")}
-            >
-              <View className="bg-[#e6f4ef] border border-[#e3e7eb] rounded-lg px-3 py-[6px]">
-                <Text className="text-[#00614a] text-[13px] font-extrabold">{t("research.service.chooseFile")}</Text>
-              </View>
-              <Text className="text-[#6b7a82] flex-1 text-[13px] ml-3">{form.fileName || t("research.service.noFile")}</Text>
-            </TouchableOpacity>
+            <TextInput ref={linkRef} className="bg-white border border-[#e3e7eb] rounded-[10px] px-[14px] py-[10px] text-[14px] text-[#1f2a2e]" style={{ minHeight: 46 }} value={form.link} onChangeText={(v) => setField("link", v)} placeholder="http://" placeholderTextColor="#9aa6b1" autoCapitalize="none" keyboardType="url" returnKeyType="done" blurOnSubmit />
           </View>
           <View className="flex-row gap-[10px] px-4 pt-[14px]">
             <TouchableOpacity className="flex-1 flex-row items-center justify-center gap-2 bg-[#007a5a] rounded-xl min-h-[50px]" style={{ elevation: 2, opacity: saving ? 0.6 : 1 }} onPress={handleSave} disabled={saving} activeOpacity={0.85}>
@@ -161,7 +154,7 @@ const ServiceForm = ({ navigation }) => {
           </View>
         </View>
       </ScrollView>
-    </View>
+    </KeyboardAvoidingView>
   );
 };
 

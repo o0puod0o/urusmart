@@ -1,12 +1,10 @@
-import React, { useRef } from "react";
-import { Animated, Platform, ScrollView, StatusBar, Text, TouchableOpacity, View } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
+import React, { useRef, useMemo } from "react";
+import { Animated, ScrollView, StatusBar, Text, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import useCurrentUser from "../../hook/useCurrentUser";
-
-const PT = Platform.OS === "ios" ? 56 : (StatusBar.currentHeight ?? 24) + 16;
+import HeaderBar from "../../components/HeaderBar";
 
 const getMenu = (t) => [
   { label: t("settings.notification"), sub: t("settings.notificationSub"), icon: "notifications-outline", route: "NotificationSetting", color: "#f59e0b", colorBg: "#fffbea" },
@@ -61,45 +59,18 @@ export default function SettingPage() {
   const { t } = useTranslation();
   const navigation = useNavigation();
   const { user, logout } = useCurrentUser(navigation);
-  const MENU = getMenu(t);
-
-  const initials = user?.name
-    ? user.name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()
-    : "อ.";
+  const MENU = useMemo(() => getMenu(t), [t]);
 
   return (
     <View className="flex-1 bg-[#eaf5ef]">
       <StatusBar barStyle="light-content" backgroundColor="#0f7a55" />
 
-      <LinearGradient
-        colors={["#064e35", "#0a6644", "#0f7a55"]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={{ paddingHorizontal: 22, paddingBottom: 28, paddingTop: PT, overflow: "hidden" }}
-      >
-        {/* blobs */}
-        <View className="absolute w-[200px] h-[200px] rounded-full" style={{ right: -60, top: -60, backgroundColor: "rgba(255,255,255,0.05)" }} />
-        <View className="absolute w-[120px] h-[120px] rounded-full" style={{ left: -30, bottom: -40, backgroundColor: "rgba(255,255,255,0.04)" }} />
-
-        {/* Profile row */}
-        <View className="flex-row items-center gap-4">
-          <View className="w-[60px] h-[60px] rounded-[18px] bg-white/20 items-center justify-center border border-white/30">
-            <Text className="text-white text-[22px] font-black">{initials}</Text>
-          </View>
-          <View className="flex-1">
-            <Text className="text-white text-[20px] font-black tracking-[-0.3px]">
-              {user?.name || t("settings.title")}
-            </Text>
-            <View className="flex-row items-center gap-[6px] mt-1">
-              <View className="w-2 h-2 rounded-full bg-[#4ade80]" />
-              <Text className="text-white/60 text-[12px] font-semibold">{t("settings.subtitle")}</Text>
-            </View>
-          </View>
-          <View className="w-10 h-10 rounded-full bg-white/15 border border-white/25 items-center justify-center">
-            <Ionicons name="settings-sharp" size={18} color="rgba(255,255,255,0.9)" />
-          </View>
-        </View>
-      </LinearGradient>
+      <HeaderBar
+        name={user.name}
+        photoUrl={user.photoUrl}
+        onNotification={() => navigation.navigate("Notifications")}
+        onLogout={logout}
+      />
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 20, paddingBottom: 40, gap: 12 }}>
         {/* Menu card */}
@@ -127,7 +98,7 @@ export default function SettingPage() {
           <View className="w-9 h-9 rounded-full bg-[#fef2f2] items-center justify-center">
             <Ionicons name="log-out-outline" size={20} color="#dc2626" />
           </View>
-          <Text className="text-[15px] font-bold text-[#dc2626]">ออกจากระบบ</Text>
+          <Text className="text-[15px] font-bold text-[#dc2626]">{t("settings.logout")}</Text>
         </TouchableOpacity>
 
         {/* App version */}

@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { Alert } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useTranslation } from "react-i18next";
 import { STORAGE_KEYS } from "../config";
 import { clearBiometricToken, setBiometricEnabled } from "../services/biometricService";
+import api from "../services/api";
 
 const normalizeUser = (data = {}) => ({
   name:     data.name ?? data.full_name ?? data.teacher_name ?? data.username ?? "",
@@ -18,6 +20,7 @@ const getRootNavigation = (navigation) => {
 
 export default function useCurrentUser(navigation) {
   const [user, setUser] = useState(normalizeUser());
+  const { t } = useTranslation();
 
   useEffect(() => {
     let mounted = true;
@@ -29,26 +32,27 @@ export default function useCurrentUser(navigation) {
   }, []);
 
   const logout = useCallback(() => {
-    Alert.alert("ออกจากระบบ", "คุณต้องการออกจากระบบใช่หรือไม่?", [
-      { text: "ยกเลิก", style: "cancel" },
+    Alert.alert(t("settings.logoutTitle"), t("settings.logoutMsg"), [
+      { text: t("settings.logoutCancel"), style: "cancel" },
       {
-        text: "ออกจากระบบ",
+        text: t("settings.logoutConfirm"),
         style: "destructive",
         onPress: async () => {
-          // ล้าง token ทั้งหมด รวม biometric
+          try { await api.post("/auth/logout"); } catch (_) {}
           await AsyncStorage.multiRemove([
             STORAGE_KEYS.TOKEN,
             STORAGE_KEYS.TOKEN_TYPE,
             STORAGE_KEYS.USER,
             STORAGE_KEYS.PUSH_TOKEN,
           ]);
+          // ลบ biometric token ด้วย เพื่อป้องกัน Face ID เข้าบัญชีเก่าหลัง logout
           await clearBiometricToken();
           await setBiometricEnabled(false);
           getRootNavigation(navigation).reset({ index: 0, routes: [{ name: "Login" }] });
         },
       },
     ]);
-  }, [navigation]);
+  }, [navigation, t]);
 
   return { user, logout };
 }

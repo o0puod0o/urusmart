@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { View, Text, ScrollView, TouchableOpacity, TextInput, ActivityIndicator } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
@@ -7,22 +7,19 @@ import AppHeader from "../../components/AppHeader";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import apiService from "../../services/api";
 
-export const api = {
-  getExpertGroups: async () => {
-    const res = await apiService.get("/interests");
-    return res.data?.data ?? res.data ?? [];
-  },
-  getInterests: async () => {
-    const res = await apiService.get("/interests");
-    return res.data?.data ?? res.data ?? [];
-  },
-  searchExperts: async (params) => {
-    try {
-      const res = await apiService.get("/lecturers", { params });
-      return { data: res.data?.data ?? res.data ?? [] };
-    } catch { return { data: [] }; }
-  },
-};
+// ── กลุ่มความเชี่ยวชาญ (hardcoded — id ตรงกับค่าที่ backend รับ) ──
+const EXPERT_GROUPS = [
+  { id: "", label: "กรุณาเลือกกลุ่มความเชี่ยวชาญ" },
+  { id: "กลุ่มครุศาสตร์ ศึกษาศาสตร์พลศึกษา และพลศึกษา", label: "กลุ่มครุศาสตร์ ศึกษาศาสตร์พลศึกษา และพลศึกษา" },
+  { id: "กลุ่มบริหาร พาณิชยศาสตร์ การบัญชี การท่องเที่ยวและโรงแรม เศรษฐศาสตร์", label: "กลุ่มบริหาร พาณิชยศาสตร์ การบัญชี การท่องเที่ยวและโรงแรม เศรษฐศาสตร์" },
+  { id: "กลุ่มมนุษยศาสตร์และสังคมศาสตร์", label: "กลุ่มมนุษยศาสตร์และสังคมศาสตร์" },
+  { id: "กลุ่มวิชาวิทยาศาสตร์กายภาพและชีวภาพ", label: "กลุ่มวิชาวิทยาศาสตร์กายภาพและชีวภาพ" },
+  { id: "กลุ่มวิทยาศาสตร์สุขภาพ", label: "กลุ่มวิทยาศาสตร์สุขภาพ" },
+  { id: "กลุ่มวิศวกรรมศาสตร์", label: "กลุ่มวิศวกรรมศาสตร์" },
+  { id: "กลุ่มศิลปกรรมศาสตร์", label: "กลุ่มศิลปกรรมศาสตร์" },
+  { id: "กลุ่มสถาปัตยกรรมศาสตร์", label: "กลุ่มสถาปัตยกรรมศาสตร์" },
+  { id: "กลุ่มเกษตรศาสตร์", label: "กลุ่มเกษตรศาสตร์" },
+];
 
 const getSearchByOptions = (t) => [
   { id: "", label: t("research.screen.from") },
@@ -105,26 +102,20 @@ const SearchSection = ({ onSearch }) => {
   const SEARCH_BY_OPTIONS = getSearchByOptions(t);
   const [searchBy, setSearchBy] = useState("");
   const [keyword, setKeyword] = useState("");
-  const [expertGroups, setExpertGroups] = useState([]);
-  const [interests, setInterests] = useState([]);
   const [selectedGroup, setSelectedGroup] = useState("");
   const [selectedInterest, setSelectedInterest] = useState("");
-  const [loadingGroups, setLoadingGroups] = useState(false);
-  const [loadingInterests, setLoadingInterests] = useState(false);
+  const [interests, setInterests] = useState([{ id: "", label: "กรุณาเลือกความสนใจ" }]);
+  const [loadingInterests, setLoadingInterests] = useState(true);
 
   useEffect(() => {
-    setLoadingGroups(true);
-    api.getExpertGroups()
-      .then((groups) => setExpertGroups([{ id: "", label: t("research.screen.allGroups") }, ...groups]))
-      .catch(() => setExpertGroups([{ id: "", label: t("research.screen.allGroups") }]))
-      .finally(() => setLoadingGroups(false));
-  }, []);
-
-  useEffect(() => {
-    setLoadingInterests(true);
-    api.getInterests()
-      .then((data) => setInterests([{ id: "", label: t("research.screen.allInterests") }, ...data]))
-      .catch(() => setInterests([{ id: "", label: t("research.screen.allInterests") }]))
+    apiService.get("/ref/search-options")
+      .then((r) => {
+        const rows = r.data?.interests ?? r.data?.data ?? [];
+        if (rows.length > 0) {
+          setInterests([{ id: "", label: "กรุณาเลือกความสนใจ" }, ...rows.map((i) => ({ id: i.name ?? i.id, label: i.name }))]);
+        }
+      })
+      .catch(() => {})
       .finally(() => setLoadingInterests(false));
   }, []);
 
@@ -149,10 +140,10 @@ const SearchSection = ({ onSearch }) => {
               placeholderTextColor="#aaa"
               value={keyword}
               onChangeText={setKeyword}
-              onSubmitEditing={() => onSearch({ searchBy, keyword })}
+              onSubmitEditing={() => onSearch({ expertise_group: selectedGroup || "all", interest: selectedInterest || "all", keyword })}
               returnKeyType="search"
             />
-            <TouchableOpacity className="bg-brand rounded-xl px-4 py-3" onPress={() => onSearch({ searchBy, keyword })}>
+            <TouchableOpacity className="bg-brand rounded-xl px-4 py-3" onPress={() => onSearch({ expertise_group: selectedGroup || "all", interest: selectedInterest || "all", keyword })}>
               <Text className="text-white text-[13px] font-semibold">{t("research.screen.search")}</Text>
             </TouchableOpacity>
           </View>
@@ -164,11 +155,11 @@ const SearchSection = ({ onSearch }) => {
         </View>
         <View className="gap-2">
           <Text className="text-[11px] font-bold text-[#888] uppercase tracking-[0.5px]">{t("research.screen.searchByGroup")}</Text>
-          <InlineDropdown value={selectedGroup} options={expertGroups} placeholder={t("research.screen.selectGroup")} onSelect={setSelectedGroup} loading={loadingGroups} fullWidth />
+          <InlineDropdown value={selectedGroup} options={EXPERT_GROUPS} placeholder={t("research.screen.selectGroup")} onSelect={setSelectedGroup} fullWidth />
           <InlineDropdown value={selectedInterest} options={interests} placeholder={t("research.screen.selectInterest")} onSelect={setSelectedInterest} loading={loadingInterests} fullWidth />
           <TouchableOpacity
             className="flex-row items-center justify-center gap-2 bg-brand rounded-xl py-[13px]"
-            onPress={() => onSearch({ searchBy: "group", expertGroup: selectedGroup, interest: selectedInterest })}
+            onPress={() => onSearch({ expertise_group: selectedGroup || "all", interest: selectedInterest || "all" })}
           >
             <Ionicons name="search-outline" size={16} color="#fff" />
             <Text className="text-white text-[13px] font-semibold">{t("research.screen.search")}</Text>

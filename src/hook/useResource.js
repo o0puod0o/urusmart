@@ -1,54 +1,6 @@
-/**
- * hook/useResource.js
- *
- * Generic CRUD hook — ใช้กับทุก resource endpoint
- *
- * ─── วิธีใช้ ────────────────────────────────────────────────────
- *
- *   const {
- *     items,            // array ของข้อมูลทั้งหมด
- *     loading,          // กำลังโหลด list
- *     error,            // ข้อความ error (null ถ้าไม่มี)
- *     saving,           // กำลัง create หรือ update
- *     removing,         // กำลัง delete
- *     create,           // fn(data) → Promise
- *     update,           // fn(id, data) → Promise
- *     remove,           // fn(id) → Promise
- *     refetch,          // fn() โหลด list ใหม่
- *   } = useResource("/researches");
- *
- * ─── ตัวอย่าง ───────────────────────────────────────────────────
- *
- *   // สร้างใหม่
- *   await create({ title: "งานวิจัย A", year: 2567 });
- *
- *   // แก้ไข
- *   await update(item.id, { title: "งานวิจัย B" });
- *
- *   // ลบ
- *   await remove(item.id);
- *
- * ─── Map endpoint ↔ API route ───────────────────────────────────
- *
- *   "/researches"   →  GET /api/researches      (index)
- *                      POST /api/researches     (store)
- *                      PUT /api/researches/:id  (update)
- *                      DELETE /api/researches/:id (destroy)
- *
- *   "/journals"     →  เหมือนกัน
- *   "/awards"       →  เหมือนกัน
- *   "/books"        →  เหมือนกัน
- *   "/patents"      →  เหมือนกัน
- *   "/proceedings"  →  เหมือนกัน
- *   "/trainings"    →  เหมือนกัน
- *   "/interests"    →  เหมือนกัน
- *   "/educations"   →  เหมือนกัน
- *   "/academics"    →  เหมือนกัน (ประวัติบริหาร)
- *   "/workexes"     →  เหมือนกัน (ประวัติการทำงาน)
- *   "/boardexes"    →  เหมือนกัน (ประวัติกรรมการ)
- *   "/hsps"         →  เหมือนกัน (Human Subjects)
- *   "/lecturers"    →  GET เท่านั้น (ค้นหาผู้เชี่ยวชาญ)
- */
+// Generic CRUD hook — ใช้กับทุก expert form
+// const { items, loading, saving, create, update, remove, refetch } = useResource("/awards")
+// year ต้องเป็น string ทุก endpoint ยกเว้น /researches ที่ต้องเป็น integer
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import api from "../services/api";
@@ -68,7 +20,6 @@ const useResource = (endpoint, options = {}) => {
     return () => { mounted.current = false; };
   }, []);
 
-  // ── GET list ──────────────────────────────────────────────────
   const refetch = useCallback(async () => {
     if (skip) return;
     try {
@@ -76,10 +27,10 @@ const useResource = (endpoint, options = {}) => {
       const res = await api.get(endpoint, { params });
       const result = res.data?.data ?? res.data;
       if (mounted.current) setItems(Array.isArray(result) ? result : []);
+      if (__DEV__ && Array.isArray(result) && result.length > 0) console.log(`[useResource] GET ${endpoint} fields:`, Object.keys(result[0]));
     } catch (err) {
-      if (mounted.current) {
-        setError(err.response?.data?.message ?? err.message ?? "โหลดข้อมูลไม่สำเร็จ");
-      }
+      if (__DEV__) console.warn(`[useResource] GET ${endpoint} ล้มเหลว:`, err?.response?.status, err.message);
+      if (mounted.current) setError(err.response?.data?.message ?? err.message ?? "โหลดข้อมูลไม่สำเร็จ");
     } finally {
       if (mounted.current) setLoading(false);
     }
@@ -87,7 +38,6 @@ const useResource = (endpoint, options = {}) => {
 
   useEffect(() => { refetch(); }, [refetch]);
 
-  // ── POST (create) ─────────────────────────────────────────────
   const create = useCallback(async (data) => {
     setSaving(true);
     try {
@@ -101,7 +51,6 @@ const useResource = (endpoint, options = {}) => {
     }
   }, [endpoint, refetch]);
 
-  // ── PUT (update) ──────────────────────────────────────────────
   const update = useCallback(async (id, data) => {
     setSaving(true);
     try {
@@ -115,7 +64,6 @@ const useResource = (endpoint, options = {}) => {
     }
   }, [endpoint, refetch]);
 
-  // ── DELETE (remove) ───────────────────────────────────────────
   const remove = useCallback(async (id) => {
     setRemoving(true);
     try {

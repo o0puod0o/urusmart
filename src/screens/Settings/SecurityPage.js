@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Alert, Platform, ScrollView, StatusBar, Switch, Text, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
+import { useTranslation } from "react-i18next";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { STORAGE_KEYS } from "../../config";
 import {
@@ -12,18 +13,17 @@ import {
   saveBiometricToken,
   clearBiometricToken,
 } from "../../services/biometricService";
-import { hasPin } from "../../services/pinService";
 
 const pt = Platform.OS === "ios" ? 54 : (StatusBar.currentHeight ?? 24) + 10;
 
 export default function SecurityPage() {
   const navigation = useNavigation();
+  const { t } = useTranslation();
 
-  const [biometric, setBiometric]       = useState(false);
-  const [biometricInfo, setBiometricInfo] = useState(null); // { supported, label, hasFaceId }
-  const [checking, setChecking]         = useState(true);
+  const [biometric, setBiometric]         = useState(false);
+  const [biometricInfo, setBiometricInfo] = useState(null);
+  const [checking, setChecking]           = useState(true);
 
-  // ── โหลด preference + ตรวจ hardware เมื่อเปิดหน้า ──────────
   useEffect(() => {
     (async () => {
       const [enabled, support] = await Promise.all([
@@ -36,51 +36,47 @@ export default function SecurityPage() {
     })();
   }, []);
 
-  // ── Toggle biometric ─────────────────────────────────────────
   const toggleBiometric = async (val) => {
     if (!biometricInfo?.supported) {
       Alert.alert(
-        "ไม่รองรับ",
-        biometricInfo?.reason ?? "อุปกรณ์นี้ไม่รองรับ Biometric",
+        t("security.notSupportedTitle"),
+        biometricInfo?.reason ?? t("security.biometricSub"),
       );
       return;
     }
 
     if (val) {
-      // เปิด → ต้องยืนยัน biometric ก่อน
       const result = await authenticate(
         `ยืนยันเพื่อเปิดใช้ ${biometricInfo.label ?? "Biometric"}`
       );
 
       if (!result.success) {
         Alert.alert(
-          "ยืนยันไม่สำเร็จ",
+          t("security.verifyFailTitle"),
           result.error === "user_cancel"
-            ? "คุณยกเลิกการยืนยัน"
-            : "ไม่สามารถยืนยันตัวตนได้ กรุณาลองใหม่",
+            ? t("security.verifyCancelled")
+            : t("security.verifyFailMsg"),
         );
-        return; // ไม่เปลี่ยน switch
+        return;
       }
 
-      // บันทึก token ปัจจุบันเพื่อใช้กับ biometric login
       const token = await AsyncStorage.getItem(STORAGE_KEYS.TOKEN);
       if (token) await saveBiometricToken(token);
 
       setBiometric(true);
       await setBiometricEnabled(true);
       Alert.alert(
-        "เปิดใช้งานแล้ว",
-        `${biometricInfo.label ?? "Biometric"} เปิดใช้งานสำเร็จ\nครั้งถัดไปสามารถล็อคอินด้วย ${biometricInfo.label ?? "Biometric"} ได้เลย`,
+        t("security.enabledTitle"),
+        t("security.enabledMsg", { label: biometricInfo.label ?? "Biometric" }),
       );
     } else {
-      // ปิด → ถามยืนยันก่อน
       Alert.alert(
-        "ปิด Biometric",
-        "ต้องการปิดการเข้าสู่ระบบด้วย Biometric ใช่ไหม?",
+        t("security.disableTitle"),
+        t("security.disableMsg"),
         [
-          { text: "ยกเลิก", style: "cancel" },
+          { text: t("security.cancel"), style: "cancel" },
           {
-            text: "ปิด",
+            text: t("security.close"),
             style: "destructive",
             onPress: async () => {
               setBiometric(false);
@@ -93,34 +89,14 @@ export default function SecurityPage() {
     }
   };
 
-  const handleChangePIN = async () => {
-    const pinExists = await hasPin();
-    navigation.navigate("PinScreen", { mode: pinExists ? "change" : "set" });
-  };
-
-  const handleResetPIN = () => {
-    Alert.alert(
-      "รีเซ็ต PIN",
-      "PIN ปัจจุบันจะถูกลบและตั้งใหม่ ต้องการดำเนินการต่อไหม?",
-      [
-        { text: "ยกเลิก", style: "cancel" },
-        { text: "รีเซ็ต", style: "destructive", onPress: () => navigation.navigate("PinScreen", { mode: "reset" }) },
-      ],
-    );
-  };
-
-  // ── label ไอคอน biometric ────────────────────────────────────
-  const biometricLabel = biometricInfo?.hasFaceId ? "Face ID" : "ลายนิ้วมือ";
+  const biometricLabel = biometricInfo?.hasFaceId ? "Face ID" : t("security.biometricFinger");
   const biometricIcon  = biometricInfo?.hasFaceId ? "scan-outline" : "finger-print-outline";
 
   return (
-    <View className="flex-1 bg-[#f0f4f1]">
-      <StatusBar barStyle="light-content" backgroundColor="#14532d" />
+    <View className="flex-1 bg-[#eaf5ef]">
+      <StatusBar barStyle="light-content" backgroundColor="#0f7a55" />
 
-      <View
-        className="bg-brand flex-row items-center justify-between px-4 pb-[14px]"
-        style={{ paddingTop: pt }}
-      >
+      <View className="bg-primary flex-row items-center justify-between px-4 pb-[14px]" style={{ paddingTop: pt }}>
         <TouchableOpacity
           className="w-9 h-9 rounded-full bg-white/20 items-center justify-center"
           onPress={() => navigation.goBack()}
@@ -128,72 +104,32 @@ export default function SecurityPage() {
         >
           <Ionicons name="chevron-back" size={22} color="#fff" />
         </TouchableOpacity>
-        <Text className="text-[17px] font-extrabold text-white">ความปลอดภัย</Text>
+        <Text className="text-[17px] font-extrabold text-white">{t("security.title")}</Text>
         <View className="w-9" />
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
-        {/* ── บัญชีและความปลอดภัย ── */}
         <Text className="text-[12px] font-bold text-[#8a9a90] px-5 pt-5 pb-2 uppercase tracking-[0.8px]">
-          บัญชีและความปลอดภัย
+          {t("security.section")}
         </Text>
 
         <View className="bg-white rounded-2xl mx-4 overflow-hidden border border-[#e0ebe4]">
-          {/* เปลี่ยน PIN */}
-          <TouchableOpacity
-            className="flex-row items-center gap-[14px] px-4 py-[14px] border-b border-[#e0ebe4]"
-            onPress={handleChangePIN}
-            activeOpacity={0.7}
-          >
-            <View className="w-10 h-10 rounded-xl bg-brand items-center justify-center">
-              <Ionicons name="keypad-outline" size={20} color="#fff" />
-            </View>
-            <View className="flex-1">
-              <Text className="text-[15px] font-bold text-[#101b17]">เปลี่ยน PIN</Text>
-              <Text className="text-[12px] font-medium text-[#5a6a60] mt-[2px]">6 หลัก</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={16} color="#8a9a90" />
-          </TouchableOpacity>
-
-          {/* รีเซ็ต PIN */}
-          <TouchableOpacity
-            className="flex-row items-center gap-[14px] px-4 py-[14px] border-b border-[#e0ebe4]"
-            onPress={handleResetPIN}
-            activeOpacity={0.7}
-          >
-            <View className="w-10 h-10 rounded-xl bg-[#e65100] items-center justify-center">
-              <Ionicons name="refresh-outline" size={20} color="#fff" />
-            </View>
-            <View className="flex-1">
-              <Text className="text-[15px] font-bold text-[#101b17]">รีเซ็ต PIN</Text>
-              <Text className="text-[12px] font-medium text-[#5a6a60] mt-[2px]">ล้างและตั้งค่า PIN ใหม่</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={16} color="#8a9a90" />
-          </TouchableOpacity>
-
-          {/* Biometric */}
-          <View className="flex-row items-center gap-[14px] px-4 py-[14px]">
+          <View className="flex-row items-center gap-[14px] px-4 py-[16px]">
             <View className="w-10 h-10 rounded-xl bg-brand items-center justify-center">
               <Ionicons name={biometricIcon} size={20} color="#fff" />
             </View>
             <View className="flex-1">
-              <Text className="text-[15px] font-bold text-[#101b17]">
-                ลายนิ้วมือ/ Face ID
-              </Text>
+              <Text className="text-[15px] font-bold text-[#101b17]">{t("security.biometric")}</Text>
               {checking ? (
-                <Text className="text-[12px] text-[#aaa] mt-[2px]">กำลังตรวจสอบ...</Text>
+                <Text className="text-[12px] text-[#aaa] mt-[2px]">{t("security.checking")}</Text>
               ) : !biometricInfo?.supported ? (
                 <Text className="text-[12px] text-[#e65100] mt-[2px]">
-                  {biometricInfo?.reason ?? "ไม่รองรับในอุปกรณ์นี้"}
+                  {biometricInfo?.reason ?? t("security.biometricSub")}
                 </Text>
               ) : biometric ? (
-                <Text className="text-[12px] text-[#0f7a55] font-semibold mt-[2px]">
-                  ✓ เปิดใช้งานอยู่
-                </Text>
+                <Text className="text-[12px] text-[#0f7a55] font-semibold mt-[2px]">{t("security.active")}</Text>
               ) : (
-                <Text className="text-[12px] font-medium text-[#5a6a60] mt-[2px]">
-                  ตรวจสอบข้อมูลด้วย ลายนิ้วมือ และ Face ID
-                </Text>
+                <Text className="text-[12px] font-medium text-[#5a6a60] mt-[2px]">{t("security.biometricSub")}</Text>
               )}
             </View>
             <Switch
@@ -207,12 +143,11 @@ export default function SecurityPage() {
           </View>
         </View>
 
-        {/* ── คำอธิบาย ── */}
         {biometricInfo?.supported && (
           <View className="flex-row items-start gap-2 bg-[#e8f5ee] rounded-[14px] mx-4 mt-4 p-[14px] border border-[#e0ebe4]">
             <Ionicons name="information-circle-outline" size={16} color="#1a6b3c" />
             <Text className="flex-1 text-[12px] text-[#5a6a60] leading-[18px]">
-              เมื่อเปิดใช้งาน{biometricLabel} ครั้งถัดไปที่เปิดแอปจะสามารถล็อคอินได้ทันทีโดยไม่ต้องพิมพ์รหัสผ่าน
+              {t("security.biometricNote", { label: biometricLabel })}
             </Text>
           </View>
         )}

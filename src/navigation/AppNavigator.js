@@ -1,11 +1,11 @@
 import React, { useEffect, useRef } from "react";
-import { Animated, View } from "react-native";
+import { Animated, Platform, View } from "react-native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 
-import LoginScreen from "../screens/Login";
+import LoginScreen from "../screens/login";
 import Homepage from "../screens/Homepage";
 import Cardpage from "../screens/Card";
 import ChatbotPage from "../screens/Chatbot";
@@ -16,8 +16,6 @@ import NotificationSettingPage from "../screens/Settings/NotificationSettingPage
 import LanguagePage from "../screens/Settings/LanguagePage";
 import SecurityPage from "../screens/Settings/SecurityPage";
 import ContactUsPage from "../screens/Settings/ContactUsPage";
-import PinScreen from "../screens/Settings/PinScreen";
-
 import Research from "../screens/expert/Research";
 import ResearchList from "../screens/expert/ResearchList";
 import ProfileForm from "../screens/expert/profile/ProfileForm";
@@ -54,18 +52,18 @@ function AnimatedTabIcon({ name, focused, color }) {
       Animated.parallel([
         Animated.spring(scale, {
           toValue: 1.15,
-          useNativeDriver: true,
+          useNativeDriver: Platform.OS !== "web",
           tension: 180,
           friction: 8,
         }),
         Animated.timing(pillOpacity, {
           toValue: 1,
           duration: 200,
-          useNativeDriver: true,
+          useNativeDriver: Platform.OS !== "web",
         }),
         Animated.spring(pillScale, {
           toValue: 1,
-          useNativeDriver: true,
+          useNativeDriver: Platform.OS !== "web",
           tension: 200,
           friction: 7,
         }),
@@ -74,18 +72,18 @@ function AnimatedTabIcon({ name, focused, color }) {
       Animated.parallel([
         Animated.spring(scale, {
           toValue: 1,
-          useNativeDriver: true,
+          useNativeDriver: Platform.OS !== "web",
           tension: 180,
           friction: 8,
         }),
         Animated.timing(pillOpacity, {
           toValue: 0,
           duration: 150,
-          useNativeDriver: true,
+          useNativeDriver: Platform.OS !== "web",
         }),
         Animated.spring(pillScale, {
           toValue: 0.7,
-          useNativeDriver: true,
+          useNativeDriver: Platform.OS !== "web",
           tension: 200,
           friction: 7,
         }),
@@ -131,7 +129,6 @@ function SettingStack() {
       <SettingStackNav.Screen name="Language" component={LanguagePage} />
       <SettingStackNav.Screen name="Security" component={SecurityPage} />
       <SettingStackNav.Screen name="ContactUs" component={ContactUsPage} />
-      <SettingStackNav.Screen name="PinScreen" component={PinScreen} />
     </SettingStackNav.Navigator>
   );
 }

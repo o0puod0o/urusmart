@@ -1,45 +1,23 @@
-/**
- * hook/useRefs.js
- *
- * ดึง reference / dropdown data ทั้งหมดแบบ cache
- * ข้อมูลพวกนี้ไม่ค่อยเปลี่ยน จึง fetch ครั้งเดียวแล้วเก็บไว้
- *
- * ─── วิธีใช้ ────────────────────────────────────────────────────
- *
- *   const { degrees, departments, journalTypes,
- *           researchTypes, researchLevels,
- *           researchPmuTypes, loading } = useRefs();
- *
- * ─── Map endpoint ↔ API route ───────────────────────────────────
- *
- *   degrees          →  GET /api/ref/degrees
- *   departments      →  GET /api/ref/departments
- *   journalTypes     →  GET /api/ref/journal-types
- *   researchTypes    →  GET /api/ref/research-types
- *   researchLevels   →  GET /api/ref/research-levels
- *   researchPmuTypes →  GET /api/ref/research-pmu-types
- *
- * ─── ตัวอย่าง (ใน EducationForm) ───────────────────────────────
- *
- *   const { degrees, loading } = useRefs();
- *
- *   <InlineDropdown
- *     options={degrees}
- *     placeholder="เลือกระดับการศึกษา"
- *   />
- */
+// Hook สำหรับ dropdown reference data (degrees, departments, journalTypes ฯลฯ)
+// ข้อมูลพวกนี้ไม่ค่อยเปลี่ยน — cache ไว้ใน module เพื่อไม่ให้ fetch ซ้ำทุกครั้งที่เปิดฟอร์ม
+//
+// Endpoints: GET /api/ref/degrees, /ref/departments, /ref/journal-types,
+//            /ref/research-types, /ref/research-levels, /ref/research-pmu-types
 
 import { useEffect, useRef, useState } from "react";
 import api from "../services/api";
 
-// cache ระดับ module — fetch ครั้งเดียวต่อ session
 const cache = {};
 
 const fetchRef = async (path) => {
   if (cache[path]) return cache[path];
   const res = await api.get(path);
   const data = res.data?.data ?? res.data ?? [];
-  cache[path] = Array.isArray(data) ? data : [];
+  const arr = Array.isArray(data) ? data : [];
+  if (__DEV__ && arr.length > 0 && arr[0].id === undefined) {
+    console.warn(`[useRefs] ${path}: items มีไม่มี field 'id' — fields ที่มี:`, Object.keys(arr[0]));
+  }
+  cache[path] = arr;
   return cache[path];
 };
 
@@ -62,30 +40,17 @@ const useRefs = () => {
 
   useEffect(() => {
     const load = async () => {
-      try {
-        const [
-          degrees,
-          departments,
-          journalTypes,
-          researchTypes,
-          researchLevels,
-          researchPmuTypes,
-        ] = await Promise.all([
-          fetchRef("/ref/degrees"),
-          fetchRef("/ref/departments"),
-          fetchRef("/ref/journal-types"),
-          fetchRef("/ref/research-types"),
-          fetchRef("/ref/research-levels"),
-          fetchRef("/ref/research-pmu-types"),
-        ]);
-        if (mounted.current) {
-          setRefs({ degrees, departments, journalTypes, researchTypes, researchLevels, researchPmuTypes });
-        }
-      } catch (_) {
-        // ใช้ array ว่างถ้า API ยังไม่พร้อม
-      } finally {
-        if (mounted.current) setLoading(false);
-      }
+      const keys = ["degrees", "departments", "journalTypes", "researchTypes", "researchLevels", "researchPmuTypes"];
+      const paths = ["/ref/degrees", "/ref/departments", "/ref/journal-types", "/ref/research-types", "/ref/research-levels", "/ref/research-pmu-types"];
+      const results = await Promise.allSettled(paths.map((p) => fetchRef(p)));
+      if (!mounted.current) return;
+      const merged = {};
+      results.forEach((r, i) => {
+        merged[keys[i]] = r.status === "fulfilled" ? r.value : [];
+        if (r.status === "rejected" && __DEV__) console.warn(`[useRefs] โหลด ${paths[i]} ไม่สำเร็จ:`, r.reason?.message);
+      });
+      setRefs((prev) => ({ ...prev, ...merged }));
+      setLoading(false);
     };
     load();
   }, []);

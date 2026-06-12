@@ -1,22 +1,15 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { View, ScrollView, StatusBar, Platform, Text, TouchableOpacity } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
+import { useFocusEffect } from "@react-navigation/native";
 import HeaderBar from "../components/HeaderBar";
-import SectionHeader from "../components/SectionHeader";
 import ServiceIconGrid from "../components/ServiceIconGrid";
 import AnnouncementCarousel from "../components/AnnouncementCarousel";
 import useCurrentUser from "../hook/useCurrentUser";
 import useFetch from "../hook/useFetch";
 import useExpertStats from "../hook/useExpertStats";
-
-const STAT_CONFIG = [
-  { key: "researches", icon: "bar-chart-outline", label: "งานวิจัย",  color: "#0f7a55", bg: "#d6f0e3", grad: ["#0f7a55","#1a9068"] },
-  { key: "journals",   icon: "newspaper-outline", label: "บทความ",    color: "#185fa5", bg: "#e8f0fb", grad: ["#185fa5","#2979c8"] },
-  { key: "patents",    icon: "ribbon-outline",    label: "สิทธิบัตร", color: "#7b1fa2", bg: "#f3e5f5", grad: ["#7b1fa2","#9c27b0"] },
-  { key: "awards",     icon: "trophy-outline",    label: "รางวัล",    color: "#e65100", bg: "#fff3e0", grad: ["#e65100","#f57c00"] },
-];
 
 const cardShadow = Platform.select({
   ios: { shadowColor: "#064e35", shadowOpacity: 0.1, shadowRadius: 16, shadowOffset: { width: 0, height: 8 } },
@@ -43,7 +36,20 @@ const StatItem = ({ item, value, loading }) => (
 const Homepage = ({ navigation }) => {
   const { t } = useTranslation();
   const { user, logout } = useCurrentUser(navigation);
-  const { stats, loading: statsLoading } = useExpertStats();
+  const { stats, loading: statsLoading, refetch: refetchStats } = useExpertStats();
+
+  useFocusEffect(
+    React.useCallback(() => {
+      refetchStats();
+    }, [refetchStats])
+  );
+
+  const STAT_CONFIG = useMemo(() => [
+    { key: "researches", icon: "bar-chart-outline", label: t("home.statResearch"), color: "#0f7a55", bg: "#d6f0e3", grad: ["#0f7a55","#1a9068"] },
+    { key: "journals",   icon: "newspaper-outline", label: t("home.statJournal"),  color: "#185fa5", bg: "#e8f0fb", grad: ["#185fa5","#2979c8"] },
+    { key: "patents",    icon: "ribbon-outline",    label: t("home.statPatent"),   color: "#7b1fa2", bg: "#f3e5f5", grad: ["#7b1fa2","#9c27b0"] },
+    { key: "awards",     icon: "trophy-outline",    label: t("home.statAward"),    color: "#e65100", bg: "#fff3e0", grad: ["#e65100","#f57c00"] },
+  ], [t]);
 
   const { data: announcements } = useFetch("/announcements", {
     initialData: [],
@@ -72,12 +78,15 @@ const Homepage = ({ navigation }) => {
           onViewAll={() => navigation.navigate("Announcements", {
             items: announcements?.length ? announcements : undefined,
           })}
+          onPressItem={(item) => navigation.navigate("Announcements", {
+            items: announcements?.length ? announcements : undefined,
+            selectedItem: item,
+          })}
           autoPlayMs={3500}
         />
 
         {/* ── Services Card ── */}
         <View className="mx-4 bg-white rounded-[20px] overflow-hidden" style={cardShadow}>
-          {/* Card Header */}
           <LinearGradient
             colors={["#f6fcf9", "#eef8f3"]}
             style={{ paddingHorizontal: 16, paddingTop: 14, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: "#e0eeea" }}
@@ -94,9 +103,8 @@ const Homepage = ({ navigation }) => {
           </View>
         </View>
 
-        {/* ── ผลงานของฉัน Card ── */}
+        {/* ── My Work Card ── */}
         <View className="mx-4 bg-white rounded-[20px] overflow-hidden" style={cardShadow}>
-          {/* Card Header */}
           <LinearGradient
             colors={["#f0fdfb", "#e6f7f5"]}
             style={{ paddingHorizontal: 16, paddingTop: 14, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: "#b2dfdb" }}
@@ -106,14 +114,14 @@ const Homepage = ({ navigation }) => {
                 <View className="w-7 h-7 rounded-[9px] bg-[#0d9488] items-center justify-center">
                   <Ionicons name="trophy-outline" size={15} color="#fff" />
                 </View>
-                <Text className="text-[15px] font-extrabold text-[#00695c]">ผลงานของฉัน</Text>
+                <Text className="text-[15px] font-extrabold text-[#00695c]">{t("home.myWork")}</Text>
               </View>
               <TouchableOpacity
                 className="flex-row items-center gap-1 bg-[#0d9488] rounded-full px-3 py-[5px]"
                 onPress={() => navigation.navigate("Research")}
                 activeOpacity={0.8}
               >
-                <Text className="text-white text-[11px] font-bold">จัดการ</Text>
+                <Text className="text-white text-[11px] font-bold">{t("home.manage")}</Text>
                 <Ionicons name="chevron-forward" size={11} color="#fff" />
               </TouchableOpacity>
             </View>
@@ -131,7 +139,6 @@ const Homepage = ({ navigation }) => {
             ))}
           </View>
 
-          {/* Divider */}
           <View className="h-px bg-[#e0f2f1] mx-4" />
 
           {/* Add button */}
@@ -145,7 +152,7 @@ const Homepage = ({ navigation }) => {
               <View className="w-6 h-6 rounded-full bg-white/20 items-center justify-center">
                 <Ionicons name="add" size={16} color="#fff" />
               </View>
-              <Text className="text-white text-[14px] font-bold tracking-[0.2px]">เพิ่มผลงานใหม่</Text>
+              <Text className="text-white text-[14px] font-bold tracking-[0.2px]">{t("home.addWork")}</Text>
             </TouchableOpacity>
           </View>
         </View>

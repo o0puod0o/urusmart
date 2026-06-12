@@ -1,5 +1,6 @@
 import "./global.css";
 import React, { useEffect, useState } from 'react';
+import { Platform } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import * as Notifications from 'expo-notifications';
 import AppNavigator from './src/navigation/AppNavigator';
@@ -15,6 +16,9 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    // expo-notifications ไม่รองรับบน web
+    if (Platform.OS === 'web') return;
+
     // ผู้ใช้แตะ notification ขณะ app ปิดอยู่ (killed state)
     Notifications.getLastNotificationResponseAsync().then((response) => {
       if (response) handleNotificationResponse(response);

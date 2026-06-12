@@ -11,30 +11,32 @@ const HeaderBar = ({ name, photoUrl, onNotification, onLogout }) => {
     ? name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()
     : "อ.";
 
-  const greeting = name ? `สวัสดี, ${name}` : "สวัสดี";
-
   return (
-    <View className="bg-primary px-5 pb-[18px]" style={{ paddingTop: pt }}>
-      <View className="flex-row items-center justify-between">
-        {/* Avatar + greeting */}
-        <View className="flex-row items-center gap-3 flex-1">
-          <View className="w-[48px] h-[48px] rounded-full bg-white/10 border-2 border-white items-center justify-center overflow-hidden">
-            {photoUrl ? (
-              <Image source={{ uri: photoUrl }} className="w-full h-full" />
-            ) : (
-              <Text className="text-white text-base font-extrabold">{initials}</Text>
-            )}
-          </View>
-          <View className="flex-1">
-            <Text className="text-white/60 text-[11px] font-semibold">ยินดีต้อนรับ</Text>
-            <Text className="text-white text-[15px] font-bold" numberOfLines={1}>
-              {greeting}
-            </Text>
-          </View>
+    <View className="bg-primary px-4 pb-3" style={{ paddingTop: pt }}>
+      <View className="flex-row items-center">
+        {/* Avatar — fixed width */}
+        <View className="w-[40px] h-[40px] rounded-full bg-white/10 border-2 border-white items-center justify-center overflow-hidden">
+          {photoUrl ? (
+            <Image source={{ uri: photoUrl }} className="w-full h-full" />
+          ) : (
+            <Text className="text-white text-[14px] font-extrabold">{initials}</Text>
+          )}
         </View>
 
-        {/* Actions */}
-        <View className="flex-row items-center gap-2">
+        {/* Logo — absolute center ทำให้อยู่กลางจริงๆ ไม่ขึ้นกับความกว้างซ้าย-ขวา */}
+        <View
+          style={{ position: "absolute", left: 0, right: 0, alignItems: "center" }}
+          pointerEvents="none"
+        >
+          <Image
+            source={logo}
+            style={{ width: 120, height: 40, tintColor: "#fff" }}
+            resizeMode="contain"
+          />
+        </View>
+
+        {/* Actions — push to right */}
+        <View className="flex-row items-center gap-2 ml-auto">
           <TouchableOpacity
             className="w-[36px] h-[36px] items-center justify-center rounded-full bg-white/10"
             onPress={onNotification}
@@ -50,15 +52,6 @@ const HeaderBar = ({ name, photoUrl, onNotification, onLogout }) => {
             <Ionicons name="log-out-outline" size={18} color="rgba(255,255,255,0.7)" />
           </TouchableOpacity>
         </View>
-      </View>
-
-      {/* Logo */}
-      <View className="items-center mt-2">
-        <Image
-          source={logo}
-          style={{ width: 130, height: 50, tintColor: "#fff" }}
-          resizeMode="contain"
-        />
       </View>
     </View>
   );

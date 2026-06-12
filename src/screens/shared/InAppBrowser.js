@@ -4,9 +4,19 @@ import { WebView } from "react-native-webview";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+// อนุญาตเฉพาะ http/https ป้องกัน javascript: file: data: URL injection
+const isSafeUrl = (u) => {
+  try {
+    const { protocol } = new URL(u);
+    return protocol === "http:" || protocol === "https:";
+  } catch {
+    return false;
+  }
+};
+
 export default function InAppBrowser({ route, navigation }) {
   const { url, title } = route.params;
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(isSafeUrl(url));
   const [canGoBack, setCanGoBack] = useState(false);
   const webViewRef = useRef(null);
   const insets = useSafeAreaInsets();
@@ -42,18 +52,26 @@ export default function InAppBrowser({ route, navigation }) {
         </TouchableOpacity>
       </View>
 
-      <WebView
-        ref={webViewRef}
-        source={{ uri: url }}
-        className="flex-1 bg-white"
-        onLoadStart={() => setLoading(true)}
-        onLoadEnd={() => setLoading(false)}
-        onNavigationStateChange={(navState) => setCanGoBack(navState.canGoBack)}
-        javaScriptEnabled
-        domStorageEnabled
-        startInLoadingState={false}
-        allowsBackForwardNavigationGestures
-      />
+      {isSafeUrl(url) ? (
+        <WebView
+          ref={webViewRef}
+          source={{ uri: url }}
+          className="flex-1 bg-white"
+          onLoadStart={() => setLoading(true)}
+          onLoadEnd={() => setLoading(false)}
+          onNavigationStateChange={(navState) => setCanGoBack(navState.canGoBack)}
+          javaScriptEnabled
+          domStorageEnabled
+          startInLoadingState={false}
+          allowsBackForwardNavigationGestures
+        />
+      ) : (
+        <View className="flex-1 items-center justify-center">
+          <Ionicons name="warning-outline" size={48} color="#ef4444" />
+          <Text className="text-[16px] font-bold text-[#1f2937] mt-3">URL ไม่ปลอดภัย</Text>
+          <Text className="text-[13px] text-[#6b7280] mt-1">รองรับเฉพาะ http และ https เท่านั้น</Text>
+        </View>
+      )}
 
       {loading && (
         <View className="absolute items-center justify-center" style={{ top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(255,255,255,0.85)" }}>

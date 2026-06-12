@@ -1,10 +1,11 @@
 import React, { useMemo, useState } from "react";
-import { ActivityIndicator, Alert, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import AppHeader from "../../../components/AppHeader";
 import InlineDropdown from "../../../components/expert/InlineDropdown";
 import useResource from "../../../hook/useResource";
+import useRefs from "../../../hook/useRefs";
 
 const BASE_YEAR_LIST = Array.from({ length: 2569 - 2533 + 1 }, (_, i) => ({ id: String(2569 - i), label: String(2569 - i) }));
 const INIT_FORM = { year: "", reference: "", url: "", database: "" };
@@ -15,32 +16,41 @@ const JournalForm = ({ navigation }) => {
   const { items, loading, saving, create, update, remove } = useResource("/journals");
   const [editingItem, setEditingItem] = useState(null);
   const [form, setForm] = useState(INIT_FORM);
-  const [databaseOptions] = useState([{ id: "", label: t("research.journal.dbPlaceholder") }]);
+  const { journalTypes } = useRefs();
+  const databaseOptions = useMemo(() => [
+    { id: "", label: t("research.journal.dbPlaceholder") },
+    ...journalTypes.map((d) => ({ id: String(d.id), label: d.name ?? d.label ?? "" })),
+  ], [journalTypes, t]);
 
   const tableItems = useMemo(() => [...items].sort((a, b) => Number(b.year) - Number(a.year)), [items]);
   const setField = (key, val) => setForm((p) => ({ ...p, [key]: val }));
-  const openEdit = (e) => { setEditingItem(e); setForm({ year: e.year, reference: e.reference, url: e.url, database: e.database }); };
+  const openEdit = (e) => { setEditingItem(e); setForm({ year: e.year, reference: e.name ?? "", url: e.url ?? "", database: String(e.journal_type_id ?? "") }); };
   const openNew = () => { setEditingItem(null); setForm(INIT_FORM); };
 
   const handleSave = async () => {
-    if (!form.year || !form.reference.trim() || !form.database) { Alert.alert(t("research.common.warning"), t("research.journal.validation")); return; }
-    const payload = { year: form.year, reference: form.reference.trim(), url: form.url.trim(), database: form.database };
+    if (!form.year || !form.reference.trim()) { Alert.alert(t("research.common.warning"), t("research.journal.validation")); return; }
+    const payload = { year: form.year, name: form.reference.trim(), url: form.url.trim(), ...(form.database ? { journal_type_id: parseInt(form.database, 10) } : {}) };
     try {
       editingItem ? await update(editingItem.id, payload) : await create(payload);
       Alert.alert(editingItem ? t("research.common.editSuccess") : t("research.common.addSuccess"), t("research.common.savedMsg"));
       openNew();
-    } catch { Alert.alert(t("research.common.saveFail"), t("research.common.apiError")); }
+    } catch (err) { Alert.alert(t("research.common.saveFail"), err.message ?? t("research.common.apiError")); }
   };
 
   const handleDelete = (entry) => {
-    Alert.alert(t("research.common.deleteTitle"), t("research.common.deleteConfirm"), [
-      { text: t("research.common.cancel"), style: "cancel" },
-      { text: t("research.common.deleteBtn"), style: "destructive", onPress: async () => { try { await remove(entry.id); } catch { Alert.alert(t("research.common.deleteFail")); } } },
-    ]);
+    const doDelete = async () => { try { await remove(entry.id); } catch (err) { Alert.alert(t("research.common.deleteFail"), err.message); } };
+    if (Platform.OS === "web") {
+      if (window.confirm(t("research.common.deleteConfirm"))) doDelete();
+    } else {
+      Alert.alert(t("research.common.deleteTitle"), t("research.common.deleteConfirm"), [
+        { text: t("research.common.cancel"), style: "cancel" },
+        { text: t("research.common.deleteBtn"), style: "destructive", onPress: doDelete },
+      ]);
+    }
   };
 
   return (
-    <View className="flex-1 bg-[#eef2f7]">
+    <KeyboardAvoidingView className="flex-1 bg-[#eef2f7]" behavior={Platform.OS === "ios" ? "padding" : undefined}>
       <AppHeader title="Journal" onBack={() => navigation.goBack()} />
       <ScrollView contentContainerStyle={{ padding: 14, paddingBottom: 40, gap: 14 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
 
@@ -72,8 +82,8 @@ const JournalForm = ({ navigation }) => {
                   <View key={entry.id} className="flex-row py-3 px-[10px] items-start border-b border-[#f0f4f7]" style={index % 2 === 1 ? { backgroundColor: "#fafbfc" } : {}}>
                     <Text className="text-[13px] text-[#1a1a2e] text-center leading-5" style={{ width: 32 }}>{index + 1}</Text>
                     <Text className="text-[13px] text-[#1a1a2e] text-center leading-5" style={{ width: 52 }}>{entry.year}</Text>
-                    <Text className="text-[13px] text-[#1a1a2e] leading-5 px-2" style={{ width: 360 }} numberOfLines={4}>{entry.reference}</Text>
-                    <Text className="text-[13px] text-[#1a1a2e] text-center leading-5" style={{ width: 90 }}>{entry.database}</Text>
+                    <Text className="text-[13px] text-[#1a1a2e] leading-5 px-2" style={{ width: 360 }} numberOfLines={4}>{entry.name}</Text>
+                    <Text className="text-[13px] text-[#1a1a2e] text-center leading-5" style={{ width: 90 }}>{databaseOptions.find((o) => o.id === String(entry.journal_type_id ?? ""))?.label ?? entry.journal_type_id}</Text>
                     <View className="items-center justify-center" style={{ width: 72 }}>
                       <TouchableOpacity className="bg-[#f0a500] rounded-lg px-[10px] py-[6px] min-w-[56px] items-center" onPress={() => openEdit(entry)} activeOpacity={0.8}>
                         <Text className="text-white text-[12px] font-bold">{t("research.common.editBtn")}</Text>
@@ -122,7 +132,7 @@ const JournalForm = ({ navigation }) => {
           </View>
         </View>
       </ScrollView>
-    </View>
+    </KeyboardAvoidingView>
   );
 };
 

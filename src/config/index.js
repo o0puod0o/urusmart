@@ -1,9 +1,7 @@
-// ─── API Base URL ─────────────────────────────────────────────
-// แก้แค่บรรทัดนี้บรรทัดเดียว ทุกไฟล์จะอัปเดตตาม
-export const API_BASE_URL = "http://10.1.72.33:8001/api";
+// URL ของ API — แก้ที่ .env เท่านั้น (EXPO_PUBLIC_API_URL)
+export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL;
 
-// ─── AsyncStorage Keys ────────────────────────────────────────
-// รวม key ทั้งหมดไว้ที่นี่ — ป้องกัน typo และ inconsistency
+// AsyncStorage keys — รวมไว้ที่นี่เพื่อป้องกัน typo
 export const STORAGE_KEYS = {
   TOKEN: "token",
   TOKEN_TYPE: "token_type",
@@ -11,10 +9,10 @@ export const STORAGE_KEYS = {
   PUSH_TOKEN: "push_token",
   NOTIF_SETTINGS: "@notif_settings",
   BIOMETRIC: "@biometric_enabled",
+  BIOMETRIC_FALLBACK: "@biometric_token_fallback",
 };
 
-// ─── SecureStore Keys (sensitive data) ───────────────────────
+// SecureStore keys — เก็บข้อมูล sensitive
 export const SECURE_KEYS = {
   BIOMETRIC_TOKEN: "biometric_token",
-  PIN: "app_pin",
 };

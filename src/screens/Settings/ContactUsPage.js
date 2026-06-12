@@ -2,45 +2,47 @@ import React from "react";
 import { Linking, Platform, ScrollView, StatusBar, Text, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
+import { useTranslation } from "react-i18next";
 
 const pt = Platform.OS === "ios" ? 54 : (StatusBar.currentHeight ?? 24) + 10;
 
-const SECTIONS = [
-  {
-    title: "ฝ่ายสนับสนุนระบบ",
-    items: [
-      { icon: "call-outline",  iconBg: "#2167b2", label: "โทรศัพท์", value: "090-323-4567",      onPress: () => Linking.openURL("tel:090-323-4567") },
-      { icon: "mail-outline",  iconBg: "#7c3aed", label: "อีเมล",    value: "support@uru.ac.th", onPress: () => Linking.openURL("mailto:support@uru.ac.th") },
-    ],
-  },
-  {
-    title: "เวลาทำการ",
-    items: [
-      { icon: "time-outline",             iconBg: "#c95b05", label: "จันทร์ – ศุกร์", value: "08:30 – 16:30 น.", onPress: null },
-      { icon: "calendar-clear-outline",   iconBg: "#c81e1e", label: "วันหยุด",         value: "ปิดทำการ",         onPress: null },
-    ],
-  },
-  {
-    title: "ช่องทางอื่น",
-    items: [
-      { icon: "globe-outline",    iconBg: "#1a6b3c", label: "เว็บไซต์", value: "www.uru.ac.th",   onPress: () => Linking.openURL("https://www.uru.ac.th") },
-      { icon: "location-outline", iconBg: "#1a6b3c", label: "ที่ตั้ง",  value: "อาคาร ICIT ชั้น 1", onPress: () => Linking.openURL("https://maps.app.goo.gl/vCDDKADLTq1mhVm19") },
-    ],
-  },
-];
-
 export default function ContactUsPage() {
   const navigation = useNavigation();
+  const { t } = useTranslation();
+
+  const SECTIONS = [
+    {
+      title: t("contact.support"),
+      items: [
+        { icon: "call-outline",  iconBg: "#2167b2", label: t("contact.phone"), value: "090-323-4567",      onPress: () => Linking.openURL("tel:090-323-4567") },
+        { icon: "mail-outline",  iconBg: "#7c3aed", label: t("contact.email"), value: "support@uru.ac.th", onPress: () => Linking.openURL("mailto:support@uru.ac.th") },
+      ],
+    },
+    {
+      title: t("contact.workHours"),
+      items: [
+        { icon: "time-outline",           iconBg: "#c95b05", label: t("contact.weekdays"), value: t("contact.weekdaysHours"), onPress: null },
+        { icon: "calendar-clear-outline", iconBg: "#c81e1e", label: t("contact.holiday"),  value: t("contact.holidayValue"), onPress: null },
+      ],
+    },
+    {
+      title: t("contact.other"),
+      items: [
+        { icon: "globe-outline",    iconBg: "#1a6b3c", label: t("contact.website"),  value: "www.uru.ac.th",          onPress: () => Linking.openURL("https://www.uru.ac.th") },
+        { icon: "location-outline", iconBg: "#1a6b3c", label: t("contact.location"), value: t("contact.locationValue"), onPress: () => Linking.openURL("https://maps.app.goo.gl/vCDDKADLTq1mhVm19") },
+      ],
+    },
+  ];
 
   return (
-    <View className="flex-1 bg-[#f0f4f1]">
-      <StatusBar barStyle="light-content" backgroundColor="#14532d" />
+    <View className="flex-1 bg-[#eaf5ef]">
+      <StatusBar barStyle="light-content" backgroundColor="#0f7a55" />
 
-      <View className="bg-brand flex-row items-center justify-between px-4 pb-[14px]" style={{ paddingTop: pt }}>
+      <View className="bg-primary flex-row items-center justify-between px-4 pb-[14px]" style={{ paddingTop: pt }}>
         <TouchableOpacity className="w-9 h-9 rounded-full bg-white/20 items-center justify-center" onPress={() => navigation.goBack()} activeOpacity={0.7}>
           <Ionicons name="chevron-back" size={22} color="#fff" />
         </TouchableOpacity>
-        <Text className="text-[17px] font-extrabold text-white">ติดต่อเรา</Text>
+        <Text className="text-[17px] font-extrabold text-white">{t("contact.title")}</Text>
         <View className="w-9" />
       </View>
 
@@ -73,7 +75,7 @@ export default function ContactUsPage() {
 
         <View className="flex-row items-start gap-2 bg-[#e8f5ee] rounded-[14px] mx-4 mt-4 p-[14px] border border-[#e0ebe4]">
           <Ionicons name="information-circle-outline" size={16} color="#1a6b3c" />
-          <Text className="flex-1 text-[12px] text-[#5a6a60] leading-[18px]">หากพบปัญหาการใช้งานระบบ กรุณาแจ้งพนักงานและรายละเอียดปัญหา</Text>
+          <Text className="flex-1 text-[12px] text-[#5a6a60] leading-[18px]">{t("contact.helpNote")}</Text>
         </View>
       </ScrollView>
     </View>

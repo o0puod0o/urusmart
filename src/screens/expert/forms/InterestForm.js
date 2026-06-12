@@ -1,40 +1,59 @@
-import React, { useState } from "react";
-import { View, Text, ScrollView, TouchableOpacity, Alert, ActivityIndicator, TextInput } from "react-native";
+import React, { useEffect, useState } from "react";
+import { Alert, KeyboardAvoidingView, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import AppHeader from "../../../components/AppHeader";
 import InlineDropdown from "../../../components/expert/InlineDropdown";
 import useResource from "../../../hook/useResource";
+import apiService from "../../../services/api";
 
 const InterestForm = ({ navigation }) => {
   const { t } = useTranslation();
-  const { items, loading: loadingOptions, create, remove } = useResource("/interests");
+  const { items, create, remove } = useResource("/interests");
   const [selectedInterest, setSelectedInterest] = useState("");
   const [customInterest, setCustomInterest] = useState("");
+  const [interestOptions, setInterestOptions] = useState([{ id: "", label: t("research.interest.selectPlaceholder") }]);
+  const [loadingOptions, setLoadingOptions] = useState(true);
 
-  const interestOptions = items.map((d) => ({ id: String(d.id), label: d.title ?? d.name ?? "" }));
+  useEffect(() => {
+    apiService.get("/ref/search-options")
+      .then((r) => {
+        const rows = r.data?.interests ?? r.data?.data ?? [];
+        if (rows.length > 0) {
+          setInterestOptions([
+            { id: "", label: t("research.interest.selectPlaceholder") },
+            ...rows.map((i) => ({ id: i.name ?? i.id, label: i.name })),
+          ]);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoadingOptions(false));
+  }, []);
 
   const handleAdd = async () => {
-    const title = selectedInterest
-      ? interestOptions.find((o) => o.id === selectedInterest)?.label
-      : customInterest.trim();
+    const title = selectedInterest || customInterest.trim();
     if (!title) { Alert.alert(t("research.interest.validation")); return; }
-    if (items.some((item) => (item.title ?? item.name ?? "").toLowerCase() === title.toLowerCase())) {
+    if (items.some((item) => (item.name ?? "").toLowerCase() === title.toLowerCase())) {
       Alert.alert(t("research.interest.duplicate")); return;
     }
-    try { await create({ title }); } catch { Alert.alert(t("research.common.saveFail"), t("research.common.apiError")); }
+    try { await create({ name: title }); } catch (err) { Alert.alert(t("research.common.saveFail"), err.message ?? t("research.common.apiError")); }
     setSelectedInterest(""); setCustomInterest("");
   };
 
   const handleDelete = (entry) => {
-    Alert.alert(t("research.common.deleteTitle"), t("research.common.deleteConfirm"), [
-      { text: t("research.common.cancel"), style: "cancel" },
-      { text: t("research.common.deleteBtn"), style: "destructive", onPress: async () => { try { await remove(entry.id); } catch { Alert.alert(t("research.common.deleteFail")); } } },
-    ]);
+    const doDelete = async () => { try { await remove(entry.id); } catch (err) { Alert.alert(t("research.common.deleteFail"), err.message); } };
+    if (Platform.OS === "web") {
+      if (window.confirm(t("research.common.deleteConfirm"))) doDelete();
+    } else {
+      Alert.alert(t("research.common.deleteTitle"), t("research.common.deleteConfirm"), [
+        { text: t("research.common.cancel"), style: "cancel" },
+        { text: t("research.common.deleteBtn"), style: "destructive", onPress: doDelete },
+      ]);
+    }
   };
 
   return (
-    <View className="flex-1 bg-[#eef2f7]">
+    <KeyboardAvoidingView className="flex-1 bg-[#eef2f7]" behavior={Platform.OS === "ios" ? "padding" : undefined}>
       <AppHeader title={t("research.interest.title")} onBack={() => navigation.goBack()} />
       <ScrollView contentContainerStyle={{ padding: 14, paddingBottom: 40, gap: 14 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
 
@@ -57,7 +76,7 @@ const InterestForm = ({ navigation }) => {
           ) : items.map((entry, index) => (
             <View key={entry.id} className="flex-row items-center px-4 py-3 border-b border-[#f0f4f7]" style={index % 2 === 1 ? { backgroundColor: "#fafbfc" } : {}}>
               <Text className="text-[13px] text-[#888] text-center leading-5" style={{ width: 50 }}>{index + 1}</Text>
-              <Text className="text-[13px] text-[#1a1a2e] leading-5 flex-1">{entry.title}</Text>
+              <Text className="text-[13px] text-[#1a1a2e] leading-5 flex-1">{entry.name}</Text>
               <View className="items-center" style={{ width: 60 }}>
                 <TouchableOpacity className="bg-[#e53935] rounded-lg px-[10px] py-[6px] min-w-12 items-center" onPress={() => handleDelete(entry)} activeOpacity={0.8}>
                   <Text className="text-white text-[12px] font-bold">{t("research.common.deleteBtn")}</Text>
@@ -76,7 +95,7 @@ const InterestForm = ({ navigation }) => {
           <InlineDropdown
             label={t("research.interest.selectExisting")}
             value={selectedInterest}
-            options={[{ id: "", label: t("research.interest.selectPlaceholder") }, ...interestOptions.filter((o) => o.id !== "")]}
+            options={interestOptions}
             onSelect={(v) => { setSelectedInterest(v); setCustomInterest(""); }}
             loading={loadingOptions}
           />
@@ -110,7 +129,7 @@ const InterestForm = ({ navigation }) => {
           </View>
         </View>
       </ScrollView>
-    </View>
+    </KeyboardAvoidingView>
   );
 };
 

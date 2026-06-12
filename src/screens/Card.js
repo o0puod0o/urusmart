@@ -6,6 +6,7 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import QRCode from "react-native-qrcode-svg";
+import Barcode from "react-native-barcode-svg";
 import { useTranslation } from "react-i18next";
 import HeaderBar from "../components/HeaderBar";
 import useCurrentUser from "../hook/useCurrentUser";
@@ -13,16 +14,23 @@ import api from "../services/api";
 
 const logo = require("../assets/urusmartlogo.png");
 
-const normalize = (d) => ({
-  name:       d.name ?? d.full_name ?? d.teacher_name ?? "",
-  position:   d.position ?? d.academic_position ?? "",
-  faculty:    d.faculty ?? d.faculty_name ?? "",
-  department: d.department ?? d.program ?? d.major ?? "",
-  email:      d.email ?? d.teacher_email ?? "",
-  phone:      d.phone ?? d.tel ?? d.mobile ?? "",
-  employeeId: d.employeeId ?? d.employee_id ?? d.staff_id ?? "",
-  photoUrl:   d.photoUrl ?? d.photo_url ?? d.avatar ?? "",
-});
+const normalize = (d) => {
+  const firstName = d.firstname_th ?? d.firstname_en ?? "";
+  const lastName  = d.lastname_th  ?? d.lastname_en  ?? "";
+  const fullName  = d.name ?? d.full_name ?? d.teacher_name ??
+    (firstName ? `${firstName} ${lastName}`.trim() : "");
+
+  return {
+    name:       fullName,
+    position:   d.position_name ?? d.position_label ?? d.position ?? d.academic_position ?? "",
+    faculty:    d.faculty ?? d.faculty_name ?? d.main_unit_name ?? d.main_unit ?? "",
+    department: d.department ?? d.program ?? d.major ?? d.sub_unit_name ?? d.sub_unit ?? d.branch ?? "",
+    email:      d.email ?? d.teacher_email ?? "",
+    phone:      d.phone ?? d.tel ?? d.mobile ?? d.phone_work ?? d.phone_mobile ?? "",
+    employeeId: d.employeeId ?? d.employee_id ?? d.staff_id ?? d.id_card ?? "",
+    photoUrl:   d.photoUrl ?? d.photo_url ?? d.avatar ?? d.picture ?? d.profile_image ?? "",
+  };
+};
 
 const initial = (name) =>
   name?.replace(/^(อาจารย์|ดร\.|ผศ\.|รศ\.)\s*/, "")?.trim()?.[0] ?? "อ";
@@ -121,22 +129,6 @@ export default function Cardpage({ navigation }) {
     return () => { cancelled = true; pulse.stop(); };
   }, []);
 
-  const handleShare = async () => {
-    const data = teacher ?? {};
-    try {
-      await Share.share({
-        title: "Digital Staff Card – URUSmart",
-        message: [
-          t("card.shareMsg"),
-          tc.name, tc.position,
-          [tc.faculty, tc.department].filter(Boolean).join(" "),
-          `Email: ${tc.email}`,
-          `โทร: ${tc.phone}`,
-        ].join("\n"),
-      });
-    } catch {}
-  };
-
   // merge: API data > user data > empty
   const raw = teacher ?? {};
   const tc = {
@@ -152,6 +144,21 @@ export default function Cardpage({ navigation }) {
   const ini = initial(tc.name);
   const affiliation = [tc.faculty, tc.department].filter(Boolean).join(" · ");
   const qrValue = `URUSMART:${tc.employeeId || "000"}:${tc.email || ""}`;
+
+  const handleShare = async () => {
+    try {
+      await Share.share({
+        title: "Digital Staff Card – URUSmart",
+        message: [
+          t("card.shareMsg"),
+          tc.name, tc.position,
+          affiliation,
+          `Email: ${tc.email}`,
+          `โทร: ${tc.phone}`,
+        ].join("\n"),
+      });
+    } catch {}
+  };
 
   return (
     <View className="flex-1 bg-[#f0f6f2]">
@@ -311,25 +318,22 @@ export default function Cardpage({ navigation }) {
 
                 {activeTab === "barcode" && (
                   <View className="items-center py-4">
-                    <View
-                      className="bg-white rounded-[14px] border border-[#dce8e2] px-4 py-3"
-                      style={{ shadowColor: "#064e35", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.06, shadowRadius: 10, elevation: 3 }}
-                    >
-                      <View className="flex-row items-end h-[80px]">
-                        {Array.from({ length: 50 }).map((_, i) => (
-                          <View
-                            key={i}
-                            className="h-full"
-                            style={{
-                              width: i % 7 === 0 ? 4 : i % 3 === 0 ? 2.5 : 1.5,
-                              marginHorizontal: 0.5,
-                              backgroundColor: i % 11 === 0 ? "#5aab8a" : i % 5 === 0 ? "#0a6644" : "#064e35",
-                              borderRadius: 1,
-                            }}
-                          />
-                        ))}
+                    {tc.employeeId ? (
+                      <View
+                        className="bg-white rounded-[20px] p-5 border border-[#dce8e2]"
+                        style={{ shadowColor: "#064e35", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 4 }}
+                      >
+                        <Barcode value={tc.employeeId} format="CODE128" width={1.8} height={80} lineColor="#064e35" background="#ffffff" />
                       </View>
-                    </View>
+                    ) : (
+                      <View
+                        className="bg-white rounded-[20px] p-5 border border-[#dce8e2] items-center justify-center"
+                        style={{ width: 200, height: 110, shadowColor: "#064e35", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 4 }}
+                      >
+                        <Ionicons name="barcode-outline" size={36} color="#c4d4cc" />
+                        <Text className="text-[12px] text-[#c4d4cc] font-semibold mt-2">{t("card.noEmployeeId")}</Text>
+                      </View>
+                    )}
                     <Text className="text-[#111c18] text-[13px] font-extrabold mt-4 text-center tracking-[2px]">
                       {tc.employeeId || "—"}
                     </Text>

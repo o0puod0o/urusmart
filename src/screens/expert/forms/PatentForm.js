@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from "react";
-import { ActivityIndicator, Alert, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
+import React, { useRef, useMemo, useState } from "react";
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import AppHeader from "../../../components/AppHeader";
@@ -12,32 +12,39 @@ const PatentForm = ({ navigation }) => {
   const { t } = useTranslation();
   const YEAR_OPTIONS = useMemo(() => [{ id: "", label: t("research.common.selectYear") }, ...BASE_YEAR_LIST], [t]);
   const { items, loading, saving, create, update, remove } = useResource("/patents");
+  const fileUrlRef = useRef(null);
   const [editingItem, setEditingItem] = useState(null);
   const [form, setForm] = useState({ year: "", title: "", fileUrl: "" });
 
   const tableItems = useMemo(() => [...items].sort((a, b) => Number(b.year) - Number(a.year)), [items]);
   const setField = (key, val) => setForm((p) => ({ ...p, [key]: val }));
-  const openEdit = (e) => { setEditingItem(e); setForm({ year: e.year, title: e.title, fileUrl: e.fileUrl }); };
+  const openEdit = (e) => { setEditingItem(e); setForm({ year: e.year, title: e.name ?? "", fileUrl: e.link ?? "" }); };
   const openNew = () => { setEditingItem(null); setForm({ year: "", title: "", fileUrl: "" }); };
 
   const handleSave = async () => {
     if (!form.year || !form.title.trim() || !form.fileUrl.trim()) { Alert.alert(t("research.common.warning"), t("research.patent.validation")); return; }
     try {
-      editingItem ? await update(editingItem.id, form) : await create(form);
+      const payload = { year: form.year, name: form.title.trim(), link: form.fileUrl.trim() };
+      editingItem ? await update(editingItem.id, payload) : await create(payload);
       Alert.alert(editingItem ? t("research.common.editSuccess") : t("research.common.addSuccess"), t("research.common.savedMsg"));
       openNew();
-    } catch { Alert.alert(t("research.common.saveFail"), t("research.common.apiError")); }
+    } catch (err) { Alert.alert(t("research.common.saveFail"), err.message ?? t("research.common.apiError")); }
   };
 
   const handleDelete = (entry) => {
-    Alert.alert(t("research.common.deleteTitle"), t("research.common.deleteConfirm"), [
-      { text: t("research.common.cancel"), style: "cancel" },
-      { text: t("research.common.deleteBtn"), style: "destructive", onPress: async () => { try { await remove(entry.id); } catch { Alert.alert(t("research.common.deleteFail")); } } },
-    ]);
+    const doDelete = async () => { try { await remove(entry.id); } catch (err) { Alert.alert(t("research.common.deleteFail"), err.message); } };
+    if (Platform.OS === "web") {
+      if (window.confirm(t("research.common.deleteConfirm"))) doDelete();
+    } else {
+      Alert.alert(t("research.common.deleteTitle"), t("research.common.deleteConfirm"), [
+        { text: t("research.common.cancel"), style: "cancel" },
+        { text: t("research.common.deleteBtn"), style: "destructive", onPress: doDelete },
+      ]);
+    }
   };
 
   return (
-    <View className="flex-1 bg-[#f5f7f8]">
+    <KeyboardAvoidingView className="flex-1 bg-[#f5f7f8]" behavior={Platform.OS === "ios" ? "padding" : undefined}>
       <AppHeader title={t("research.patent.title")} onBack={() => navigation.goBack()} />
       <ScrollView contentContainerStyle={{ paddingHorizontal: 14, paddingTop: 18, paddingBottom: 60 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
 
@@ -88,8 +95,8 @@ const PatentForm = ({ navigation }) => {
                         <Text className="text-[#00614a] text-[12px] font-extrabold">{entry.year}</Text>
                       </View>
                     </View>
-                    <Text className="text-[14px] font-semibold text-[#1f2a2e] leading-5 px-1" style={{ width: 360 }}>{entry.title}</Text>
-                    <Text className="text-[12px] font-bold text-[#00614a] leading-[18px] px-1" style={{ width: 200 }} numberOfLines={2}>{entry.fileUrl}</Text>
+                    <Text className="text-[14px] font-semibold text-[#1f2a2e] leading-5 px-1" style={{ width: 360 }}>{entry.name}</Text>
+                    <Text className="text-[12px] font-bold text-[#00614a] leading-[18px] px-1" style={{ width: 200 }} numberOfLines={2}>{entry.link}</Text>
                     <View className="flex-row gap-[6px] justify-center" style={{ width: 110 }}>
                       <TouchableOpacity className="w-[34px] h-[34px] rounded-lg bg-[#fff4e0] items-center justify-center" onPress={() => openEdit(entry)}>
                         <Ionicons name="create-outline" size={16} color="#f7a23b" />
@@ -120,11 +127,11 @@ const PatentForm = ({ navigation }) => {
           <InlineDropdown label="ปี:" value={form.year} options={YEAR_OPTIONS} onSelect={(v) => setField("year", v)} required searchable />
           <View className="px-4 py-2">
             <Text className="text-[13px] font-extrabold text-[#3f4d50] mb-[6px]">{t("research.patent.fieldTitle")}<Text className="text-[#d83a36]"> *</Text></Text>
-            <TextInput className="bg-white border border-[#e3e7eb] rounded-[10px] px-[14px] py-[10px] text-[14px] text-[#1f2a2e]" style={{ minHeight: 46 }} value={form.title} onChangeText={(v) => setField("title", v)} placeholder={t("research.patent.placeholderTitle")} placeholderTextColor="#9aa6b1" />
+            <TextInput className="bg-white border border-[#e3e7eb] rounded-[10px] px-[14px] py-[10px] text-[14px] text-[#1f2a2e]" style={{ minHeight: 46 }} value={form.title} onChangeText={(v) => setField("title", v)} placeholder={t("research.patent.placeholderTitle")} placeholderTextColor="#9aa6b1" returnKeyType="next" onSubmitEditing={() => fileUrlRef.current?.focus()} blurOnSubmit={false} />
           </View>
           <View className="px-4 py-2">
             <Text className="text-[13px] font-extrabold text-[#3f4d50] mb-[6px]">{t("research.patent.fieldLink")}<Text className="text-[#d83a36]"> *</Text></Text>
-            <TextInput className="bg-white border border-[#e3e7eb] rounded-[10px] px-[14px] py-[10px] text-[14px] text-[#1f2a2e]" style={{ minHeight: 52 }} value={form.fileUrl} onChangeText={(v) => setField("fileUrl", v)} placeholder="https://..." placeholderTextColor="#9aa6b1" autoCapitalize="none" keyboardType="url" />
+            <TextInput ref={fileUrlRef} className="bg-white border border-[#e3e7eb] rounded-[10px] px-[14px] py-[10px] text-[14px] text-[#1f2a2e]" style={{ minHeight: 52 }} value={form.fileUrl} onChangeText={(v) => setField("fileUrl", v)} placeholder="https://..." placeholderTextColor="#9aa6b1" autoCapitalize="none" keyboardType="url" returnKeyType="done" blurOnSubmit />
           </View>
           <View className="flex-row gap-[10px] px-4 pt-4">
             <TouchableOpacity className="flex-1 flex-row items-center justify-center gap-2 bg-[#007a5a] rounded-xl py-[13px]" style={{ elevation: 2, opacity: saving ? 0.6 : 1 }} onPress={handleSave} disabled={saving} activeOpacity={0.85}>
@@ -142,7 +149,7 @@ const PatentForm = ({ navigation }) => {
           </View>
         </View>
       </ScrollView>
-    </View>
+    </KeyboardAvoidingView>
   );
 };
 

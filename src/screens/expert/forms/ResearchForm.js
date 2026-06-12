@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from "react";
-import { View, Text, TextInput, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from "react-native";
+import { View, Text, TextInput, ScrollView, TouchableOpacity, Alert, ActivityIndicator, KeyboardAvoidingView, Platform } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import AppHeader from "../../../components/AppHeader";
@@ -12,43 +12,72 @@ const BASE_YEAR_LIST = Array.from({ length: 2569 - 2533 + 1 }, (_, i) => {
   return { id: String(y), label: String(y) };
 });
 
+// normalize ref items — รองรับหลาย field name ที่ backend อาจส่งมา
+const toOpt = (d, i) => ({
+  id:    String(d.id ?? d.type_id ?? d.level_id ?? d.pmu_id ?? d.research_type_id ?? d.research_level_id ?? d.research_pmu_type_id ?? i),
+  label: d.name ?? d.label ?? d.type_name ?? d.level_name ?? d.pmu_name ?? d.title ?? "",
+});
+
 const COL = { no: 28, year: 40, type: 76, pmu: 36, level: 40, edit: 44, del: 32 };
 
 const ResearchForm = ({ navigation }) => {
   const { t } = useTranslation();
   const YEAR_OPTIONS = useMemo(() => [{ id: "", label: t("research.common.selectYear") }, ...BASE_YEAR_LIST], [t]);
   const { items, saving, create, update, remove } = useResource("/researches");
-  const { researchTypes, loading: loadingTypes } = useRefs();
+  const { researchTypes, researchLevels, researchPmuTypes, loading: loadingTypes } = useRefs();
   const [editingItem, setEditingItem] = useState(null);
   const [form, setForm] = useState({ year: "", title: "", type: "", pmu: "", level: "" });
 
-  const typeOptions = [
+  const typeOptions = useMemo(() => [
     { id: "", label: t("research.researchForm.typePlaceholder") },
-    ...researchTypes.map((d) => ({ id: String(d.id), label: d.name ?? d.label ?? "" })),
-  ];
+    ...researchTypes.map(toOpt),
+  ], [researchTypes, t]);
+
+  const pmuOptions = useMemo(() => [
+    { id: "", label: t("research.researchForm.pmuPlaceholder") },
+    ...researchPmuTypes.map(toOpt),
+  ], [researchPmuTypes, t]);
+
+  const levelOptions = useMemo(() => [
+    { id: "", label: t("research.researchForm.levelPlaceholder") },
+    ...researchLevels.map(toOpt),
+  ], [researchLevels, t]);
 
   const setField = (key, val) => setForm((p) => ({ ...p, [key]: val }));
-  const openEdit = (entry) => { setEditingItem(entry); setForm({ year: entry.year, title: entry.title, type: entry.type, pmu: entry.pmu, level: entry.level }); };
+  const openEdit = (entry) => { setEditingItem(entry); setForm({ year: entry.year, title: entry.name ?? "", type: String(entry.research_type_id ?? ""), pmu: String(entry.research_PMU_type_id ?? ""), level: String(entry.research_level_id ?? "") }); };
   const openNew = () => { setEditingItem(null); setForm({ year: "", title: "", type: "", pmu: "", level: "" }); };
 
   const handleSave = async () => {
     if (!form.year || !form.title.trim()) { Alert.alert(t("research.common.warning"), t("research.researchForm.validation")); return; }
     try {
-      editingItem ? await update(editingItem.id, form) : await create(form);
+      const payload = {
+        year: parseInt(form.year, 10),
+        name: form.title.trim(),
+        ...(form.type  ? { research_type_id:     parseInt(form.type,  10) } : {}),
+        ...(form.pmu   ? { research_PMU_type_id:  parseInt(form.pmu,   10) } : {}),
+        ...(form.level ? { research_level_id:     parseInt(form.level, 10) } : {}),
+      };
+      if (__DEV__) console.log("[ResearchForm] payload:", JSON.stringify(payload));
+      editingItem ? await update(editingItem.id, payload) : await create(payload);
       Alert.alert(editingItem ? t("research.common.editSuccess") : t("research.common.addSuccess"), t("research.common.savedMsg"));
       openNew();
-    } catch { Alert.alert(t("research.common.saveFail"), t("research.common.apiError")); }
+    } catch (err) { Alert.alert(t("research.common.saveFail"), err.message ?? t("research.common.apiError")); }
   };
 
   const handleDelete = (entry) => {
-    Alert.alert(t("research.common.deleteTitle"), t("research.common.deleteConfirm"), [
-      { text: t("research.common.cancel"), style: "cancel" },
-      { text: t("research.common.deleteBtn"), style: "destructive", onPress: async () => { try { await remove(entry.id); } catch { Alert.alert(t("research.common.deleteFail")); } } },
-    ]);
+    const doDelete = async () => { try { await remove(entry.id); } catch (err) { Alert.alert(t("research.common.deleteFail"), err.message); } };
+    if (Platform.OS === "web") {
+      if (window.confirm(t("research.common.deleteConfirm"))) doDelete();
+    } else {
+      Alert.alert(t("research.common.deleteTitle"), t("research.common.deleteConfirm"), [
+        { text: t("research.common.cancel"), style: "cancel" },
+        { text: t("research.common.deleteBtn"), style: "destructive", onPress: doDelete },
+      ]);
+    }
   };
 
   return (
-    <View className="flex-1 bg-[#eef2f7]">
+    <KeyboardAvoidingView className="flex-1 bg-[#eef2f7]" behavior={Platform.OS === "ios" ? "padding" : undefined}>
       <AppHeader title={t("research.researchForm.title")} onBack={() => navigation.goBack()} />
       <ScrollView contentContainerStyle={{ padding: 14, paddingBottom: 40, gap: 14 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
 
@@ -70,10 +99,10 @@ const ResearchForm = ({ navigation }) => {
                 <View key={entry.id} className="flex-row items-center px-[10px] py-[10px] border-b border-[#f0f4f7] gap-1" style={index % 2 === 0 ? { backgroundColor: "#f8fafb" } : {}}>
                   <Text className="text-[11px] text-[#1a1a2e] text-center" style={{ width: COL.no }}>{index + 1}</Text>
                   <Text className="text-[11px] text-[#1a1a2e] text-center" style={{ width: COL.year }}>{entry.year}</Text>
-                  <Text className="text-[11px] text-[#1a1a2e]" style={{ flex: 1, minWidth: 160 }} numberOfLines={3}>{entry.title}</Text>
-                  <Text className="text-[11px] text-primary text-center" style={{ width: COL.type }}>{entry.type}</Text>
-                  <Text className="text-[11px] text-[#1a1a2e] text-center" style={{ width: COL.pmu }}>{entry.pmu}</Text>
-                  <Text className="text-[11px] text-[#1a1a2e] text-center" style={{ width: COL.level }}>{entry.level}</Text>
+                  <Text className="text-[11px] text-[#1a1a2e]" style={{ flex: 1, minWidth: 160 }} numberOfLines={3}>{entry.name}</Text>
+                  <Text className="text-[11px] text-primary text-center" style={{ width: COL.type }}>{entry.research_type_id}</Text>
+                  <Text className="text-[11px] text-[#1a1a2e] text-center" style={{ width: COL.pmu }}>{entry.research_PMU_type_id}</Text>
+                  <Text className="text-[11px] text-[#1a1a2e] text-center" style={{ width: COL.level }}>{entry.research_level_id}</Text>
                   <TouchableOpacity className="rounded-[6px] py-[5px] items-center justify-center bg-[#fff3cd]" style={{ width: COL.edit }} onPress={() => openEdit(entry)}>
                     <Text className="text-[10px] font-bold text-[#856404]">{t("research.common.editBtn")}</Text>
                   </TouchableOpacity>
@@ -106,6 +135,10 @@ const ResearchForm = ({ navigation }) => {
           ) : (
             <InlineDropdown label={t("research.researchForm.fieldType")} value={form.type} options={typeOptions} onSelect={(v) => setField("type", v)} />
           )}
+          <View className="h-px bg-[#f0f4f7]" />
+          <InlineDropdown label={t("research.researchForm.fieldPmu")} value={form.pmu} options={pmuOptions} onSelect={(v) => setField("pmu", v)} />
+          <View className="h-px bg-[#f0f4f7]" />
+          <InlineDropdown label={t("research.researchForm.fieldLevel")} value={form.level} options={levelOptions} onSelect={(v) => setField("level", v)} />
           <View className="flex-row gap-[10px] p-4">
             <TouchableOpacity className="flex-1 bg-brand rounded-[10px] py-[14px] items-center justify-center" style={{ elevation: 3 }} onPress={handleSave} activeOpacity={0.85}>
               <Text className="text-white text-[13px] font-bold">{editingItem ? t("research.common.saveEdit") : t("research.researchForm.addForm")}</Text>
@@ -117,7 +150,7 @@ const ResearchForm = ({ navigation }) => {
           </View>
         </View>
       </ScrollView>
-    </View>
+    </KeyboardAvoidingView>
   );
 };
 
