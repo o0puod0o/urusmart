@@ -7,18 +7,17 @@ import AppHeader from "../../components/AppHeader";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import apiService from "../../services/api";
 
-// ── กลุ่มความเชี่ยวชาญ (hardcoded — id ตรงกับค่าที่ backend รับ) ──
-const EXPERT_GROUPS = [
-  { id: "", label: "กรุณาเลือกกลุ่มความเชี่ยวชาญ" },
-  { id: "กลุ่มครุศาสตร์ ศึกษาศาสตร์พลศึกษา และพลศึกษา", label: "กลุ่มครุศาสตร์ ศึกษาศาสตร์พลศึกษา และพลศึกษา" },
-  { id: "กลุ่มบริหาร พาณิชยศาสตร์ การบัญชี การท่องเที่ยวและโรงแรม เศรษฐศาสตร์", label: "กลุ่มบริหาร พาณิชยศาสตร์ การบัญชี การท่องเที่ยวและโรงแรม เศรษฐศาสตร์" },
-  { id: "กลุ่มมนุษยศาสตร์และสังคมศาสตร์", label: "กลุ่มมนุษยศาสตร์และสังคมศาสตร์" },
-  { id: "กลุ่มวิชาวิทยาศาสตร์กายภาพและชีวภาพ", label: "กลุ่มวิชาวิทยาศาสตร์กายภาพและชีวภาพ" },
-  { id: "กลุ่มวิทยาศาสตร์สุขภาพ", label: "กลุ่มวิทยาศาสตร์สุขภาพ" },
-  { id: "กลุ่มวิศวกรรมศาสตร์", label: "กลุ่มวิศวกรรมศาสตร์" },
-  { id: "กลุ่มศิลปกรรมศาสตร์", label: "กลุ่มศิลปกรรมศาสตร์" },
-  { id: "กลุ่มสถาปัตยกรรมศาสตร์", label: "กลุ่มสถาปัตยกรรมศาสตร์" },
-  { id: "กลุ่มเกษตรศาสตร์", label: "กลุ่มเกษตรศาสตร์" },
+const getExpertGroups = (t) => [
+  { id: "", label: t("research.screen.selectGroupPlaceholder") },
+  { id: "กลุ่มครุศาสตร์ ศึกษาศาสตร์พลศึกษา และพลศึกษา",                           label: t("research.expertGroup.education") },
+  { id: "กลุ่มบริหาร พาณิชยศาสตร์ การบัญชี การท่องเที่ยวและโรงแรม เศรษฐศาสตร์", label: t("research.expertGroup.business") },
+  { id: "กลุ่มมนุษยศาสตร์และสังคมศาสตร์",                                           label: t("research.expertGroup.humanities") },
+  { id: "กลุ่มวิชาวิทยาศาสตร์กายภาพและชีวภาพ",                                     label: t("research.expertGroup.science") },
+  { id: "กลุ่มวิทยาศาสตร์สุขภาพ",                                                   label: t("research.expertGroup.health") },
+  { id: "กลุ่มวิศวกรรมศาสตร์",                                                       label: t("research.expertGroup.engineering") },
+  { id: "กลุ่มศิลปกรรมศาสตร์",                                                       label: t("research.expertGroup.finearts") },
+  { id: "กลุ่มสถาปัตยกรรมศาสตร์",                                                   label: t("research.expertGroup.architecture") },
+  { id: "กลุ่มเกษตรศาสตร์",                                                           label: t("research.expertGroup.agriculture") },
 ];
 
 const getSearchByOptions = (t) => [
@@ -100,19 +99,21 @@ const InlineDropdown = ({ value, options, placeholder, onSelect, loading, fullWi
 const SearchSection = ({ onSearch }) => {
   const { t } = useTranslation();
   const SEARCH_BY_OPTIONS = getSearchByOptions(t);
+  const EXPERT_GROUPS = getExpertGroups(t);
   const [searchBy, setSearchBy] = useState("");
   const [keyword, setKeyword] = useState("");
   const [selectedGroup, setSelectedGroup] = useState("");
   const [selectedInterest, setSelectedInterest] = useState("");
-  const [interests, setInterests] = useState([{ id: "", label: "กรุณาเลือกความสนใจ" }]);
+  const [rawInterests, setRawInterests] = useState([]);
   const [loadingInterests, setLoadingInterests] = useState(true);
+  const interestOptions = [{ id: "", label: t("research.screen.selectInterestPlaceholder") }, ...rawInterests];
 
   useEffect(() => {
     apiService.get("/ref/search-options")
       .then((r) => {
         const rows = r.data?.interests ?? r.data?.data ?? [];
         if (rows.length > 0) {
-          setInterests([{ id: "", label: "กรุณาเลือกความสนใจ" }, ...rows.map((i) => ({ id: i.name ?? i.id, label: i.name }))]);
+          setRawInterests(rows.map((i) => ({ id: i.name ?? i.id, label: i.name })));
         }
       })
       .catch(() => {})
@@ -155,8 +156,8 @@ const SearchSection = ({ onSearch }) => {
         </View>
         <View className="gap-2">
           <Text className="text-[11px] font-bold text-[#888] uppercase tracking-[0.5px]">{t("research.screen.searchByGroup")}</Text>
-          <InlineDropdown value={selectedGroup} options={EXPERT_GROUPS} placeholder={t("research.screen.selectGroup")} onSelect={setSelectedGroup} fullWidth />
-          <InlineDropdown value={selectedInterest} options={interests} placeholder={t("research.screen.selectInterest")} onSelect={setSelectedInterest} loading={loadingInterests} fullWidth />
+          <InlineDropdown value={selectedGroup} options={EXPERT_GROUPS} placeholder={t("research.screen.selectGroupPlaceholder")} onSelect={setSelectedGroup} fullWidth />
+          <InlineDropdown value={selectedInterest} options={interestOptions} placeholder={t("research.screen.selectInterestPlaceholder")} onSelect={setSelectedInterest} loading={loadingInterests} fullWidth />
           <TouchableOpacity
             className="flex-row items-center justify-center gap-2 bg-brand rounded-xl py-[13px]"
             onPress={() => onSearch({ expertise_group: selectedGroup || "all", interest: selectedInterest || "all" })}
@@ -237,7 +238,7 @@ const Research = ({ navigation }) => {
 
   return (
     <View className="flex-1 bg-[#eaf5ef]">
-      <AppHeader title="ระบบฐานข้อมูลผู้เชี่ยวชาญ" onBack={() => navigation.goBack()} />
+      <AppHeader title={t("research.screen.expertDb")} onBack={() => navigation.goBack()} />
       <ScrollView
         contentContainerStyle={{ padding: 14, paddingBottom: 30 + insets.bottom, gap: 14 }}
         showsVerticalScrollIndicator={false}

@@ -1,14 +1,14 @@
 import React from "react";
-import { Linking, Platform, ScrollView, StatusBar, Text, TouchableOpacity, View } from "react-native";
+import { Linking, ScrollView, StatusBar, Text, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
-
-const pt = Platform.OS === "ios" ? 54 : (StatusBar.currentHeight ?? 24) + 10;
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function ContactUsPage() {
   const navigation = useNavigation();
   const { t } = useTranslation();
+  const { top } = useSafeAreaInsets();
 
   const SECTIONS = [
     {
@@ -38,7 +38,7 @@ export default function ContactUsPage() {
     <View className="flex-1 bg-[#eaf5ef]">
       <StatusBar barStyle="light-content" backgroundColor="#0f7a55" />
 
-      <View className="bg-primary flex-row items-center justify-between px-4 pb-[14px]" style={{ paddingTop: pt }}>
+      <View className="bg-primary flex-row items-center justify-between px-4 pb-[14px]" style={{ paddingTop: top + 10 }}>
         <TouchableOpacity className="w-9 h-9 rounded-full bg-white/20 items-center justify-center" onPress={() => navigation.goBack()} activeOpacity={0.7}>
           <Ionicons name="chevron-back" size={22} color="#fff" />
         </TouchableOpacity>

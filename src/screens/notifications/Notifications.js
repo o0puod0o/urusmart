@@ -1,11 +1,10 @@
 import React, { useState } from "react";
-import { FlatList, Platform, StatusBar, Text, TouchableOpacity, View } from "react-native";
+import { FlatList, StatusBar, Text, TouchableOpacity, View } from "react-native";
 import Animated, { FadeInRight, FadeInDown } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
-
-const pt = Platform.OS === "ios" ? 52 : (StatusBar.currentHeight ?? 24) + 12;
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const NotifItem = ({ item, onPress, index }) => (
   <Animated.View entering={FadeInRight.delay(index * 50).springify().damping(16)}>
@@ -57,6 +56,7 @@ const NotifItem = ({ item, onPress, index }) => (
 
 export default function NotificationsScreen({ navigation }) {
   const { t } = useTranslation();
+  const { top } = useSafeAreaInsets();
   const [notifications, setNotifications] = useState([]);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
@@ -75,7 +75,7 @@ export default function NotificationsScreen({ navigation }) {
       <StatusBar barStyle="light-content" backgroundColor="#064e35" />
 
       {/* Header */}
-      <LinearGradient colors={["#064e35", "#0a6644"]} style={{ paddingTop: pt, paddingBottom: 18, paddingHorizontal: 16 }}>
+      <LinearGradient colors={["#064e35", "#0a6644"]} style={{ paddingTop: top + 10, paddingBottom: 18, paddingHorizontal: 16 }}>
         <View className="flex-row items-center gap-[10px]">
           <TouchableOpacity
             className="w-9 h-9 rounded-xl items-center justify-center"

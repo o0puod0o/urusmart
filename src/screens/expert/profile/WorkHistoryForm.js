@@ -1,22 +1,26 @@
 import React, { useRef, useState, useMemo } from "react";
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, Platform, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import AppHeader from "../../../components/AppHeader";
+import FormContainer from "../../../components/expert/FormContainer";
 import InlineDropdown from "../../../components/expert/InlineDropdown";
 import FormField from "../../../components/expert/FormField";
 import useResource from "../../../hook/useResource";
+import useConfirm from "../../../hook/useConfirm";
 
 const currentYear = new Date().getFullYear() + 543;
 const BASE_YEAR_LIST = Array.from({ length: currentYear - 2529 }, (_, i) => ({ id: String(currentYear - i), label: String(currentYear - i) }));
 
 const WorkHistoryForm = ({ navigation, route }) => {
   const { t } = useTranslation();
-  const YEAR_OPTIONS = useMemo(() => [{ id: "", label: t("research.common.selectYear") }, ...BASE_YEAR_LIST], [t]);
-  const { items, create, update, remove } = useResource("/workexes");
+  const YEAR_END_OPTIONS = useMemo(() => [{ id: "", label: t("research.common.selectYear") }, { id: "ปัจจุบัน", label: "ปัจจุบัน" }, ...BASE_YEAR_LIST], [t]);
+  const { items, loading, saving, create, update, remove } = useResource("/workexes");
+  const sortedItems = useMemo(() => [...items].sort((a, b) => Number(a.id) - Number(b.id)), [items]);
   const item = route?.params?.item || null;
   const workplaceRef = useRef(null);
 
+  const { confirm, ConfirmDialog } = useConfirm();
   const [editingItem, setEditingItem] = useState(item);
   const [form, setForm] = useState({ position: item?.position || "", workplace: item?.workplace || "", year_start: item?.year_start || "", year_end: item?.year_end || "" });
 
@@ -49,26 +53,62 @@ const WorkHistoryForm = ({ navigation, route }) => {
   };
 
   return (
-    <KeyboardAvoidingView className="flex-1 bg-[#eef2f7]" behavior={Platform.OS === "ios" ? "padding" : undefined}>
+    <FormContainer className="flex-1 bg-[#f5f7f8]">
       <AppHeader title={t("research.workHistory.title")} onBack={() => navigation.goBack()} />
-      <ScrollView contentContainerStyle={{ padding: 14, paddingBottom: 40 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        contentContainerStyle={{ paddingHorizontal: 14, paddingTop: 18, paddingBottom: 60 }}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
+      >
+
+        <View className="flex-row items-center bg-white border border-[#eef1f4] rounded-2xl px-[14px] py-[14px] mb-4" style={{ elevation: 1 }}>
+          <View className="w-11 h-11 rounded-xl bg-[#e6f4ef] items-center justify-center mr-3">
+            <Ionicons name="briefcase" size={22} color="#007a5a" />
+          </View>
+          <View className="flex-1">
+            <Text className="text-[11px] font-bold text-[#6b7a82] uppercase tracking-[0.8px]">จัดการข้อมูล</Text>
+            <Text className="text-[19px] font-black text-[#3f4d50] mt-[2px]">{t("research.workHistory.title")}</Text>
+          </View>
+          <View className="bg-[#007a5a] rounded-full min-w-9 px-[10px] py-[5px] items-center">
+            <Text className="text-white text-[13px] font-black">{items.length}</Text>
+          </View>
+        </View>
 
         {/* List */}
-        <View className="bg-white rounded-2xl border border-[#e8ecf0] p-4 mb-[14px]">
-          <Text className="text-[16px] font-bold text-[#1a1a2e] mb-3">{t("research.workHistory.title")}</Text>
-          {items.map((entry) => (
-            <View key={entry.id} className="bg-[#f8fafb] rounded-[14px] p-[14px] mb-3 flex-row justify-between items-center">
+        <View className="bg-white rounded-2xl border border-[#eef1f4] overflow-hidden mb-4" style={{ elevation: 1 }}>
+          <View className="flex-row items-center gap-2 bg-[#e6f4ef] border-b border-[#eef1f4] px-[14px] py-[11px]">
+            <Ionicons name="list-outline" size={16} color="#00614a" />
+            <Text className="text-[13px] font-extrabold text-[#00614a]">{t("research.workHistory.title")}</Text>
+          </View>
+          {loading ? (
+            <View className="flex-row items-center justify-center py-9 gap-[10px]">
+              <ActivityIndicator size="small" color="#007a5a" />
+              <Text className="text-[13px] text-[#6b7a82]">{t("research.common.loading")}</Text>
+            </View>
+          ) : sortedItems.length === 0 ? (
+            <View className="items-center py-9">
+              <Ionicons name="folder-open-outline" size={42} color="#9aa6b1" />
+              <Text className="text-[14px] font-bold text-[#1f2a2e] mt-[10px]">ยังไม่มีข้อมูล{t("research.workHistory.title")}</Text>
+              <Text className="text-[12px] text-[#6b7a82] mt-1">{t("research.common.addBelow")}</Text>
+            </View>
+          ) : sortedItems.map((entry, index) => (
+            <View key={entry.id} className="p-[14px] flex-row justify-between items-center border-b border-[#eef1f4]" style={index % 2 === 1 ? { backgroundColor: "#fafbfc" } : {}}>
               <View className="flex-1 pr-3">
                 <Text className="text-[14px] font-bold text-[#1a1a2e] mb-1">{entry.position}</Text>
                 <Text className="text-[12px] text-[#4b5563] mb-[6px]">{entry.workplace}</Text>
-                <Text className="text-[11px] text-[#6b7280]">{t("research.workHistory.startLabel")} {entry.year_start} - {t("research.workHistory.endLabel")} {entry.year_end}</Text>
+                <View className="flex-row items-center gap-2 flex-wrap">
+                  <View className="bg-[#e6f4ef] rounded-full px-[10px] py-1">
+                    <Text className="text-[#00614a] text-[12px] font-extrabold">{entry.year_start || "-"} - {entry.year_end || "-"}</Text>
+                  </View>
+                </View>
               </View>
               <View className="flex-row gap-2">
-                <TouchableOpacity className="bg-[#f8f8f8] rounded-[10px] py-[9px] px-[14px]" onPress={() => openEdit(entry)}>
-                  <Text className="text-brand text-[12px] font-bold">{t("research.common.editBtn")}</Text>
+                <TouchableOpacity className="w-[34px] h-[34px] rounded-lg bg-[#fff4e0] items-center justify-center" onPress={() => openEdit(entry)}>
+                  <Ionicons name="create-outline" size={17} color="#a8631a" />
                 </TouchableOpacity>
-                <TouchableOpacity className="bg-[#fde2e6] rounded-[10px] py-[9px] px-[14px]" onPress={() => handleDelete(entry)}>
-                  <Text className="text-[#c0392b] text-[12px] font-bold">{t("research.common.deleteBtn")}</Text>
+                <TouchableOpacity className="w-[34px] h-[34px] rounded-lg bg-[#fde7e7] items-center justify-center" onPress={() => handleDelete(entry)}>
+                  <Ionicons name="trash-outline" size={17} color="#df4c4b" />
                 </TouchableOpacity>
               </View>
             </View>
@@ -76,8 +116,13 @@ const WorkHistoryForm = ({ navigation, route }) => {
         </View>
 
         {/* Form */}
-        <View className="bg-white rounded-2xl border border-[#e8ecf0] p-4">
-          <Text className="text-[16px] font-bold text-[#1a1a2e] mb-4">{editingItem ? t("research.workHistory.editForm") : t("research.workHistory.addForm")}</Text>
+        <View className="bg-white border border-[#eef1f4] rounded-2xl pb-[18px]" style={{ elevation: 1 }}>
+          <View className="flex-row items-center justify-between border-b border-[#eef1f4] px-4 py-3 mb-2">
+            <View className="flex-row items-center">
+              <Ionicons name={editingItem ? "create" : "add-circle"} size={18} color="#007a5a" />
+              <Text className="text-[16px] font-black text-[#3f4d50] ml-2">{editingItem ? t("research.workHistory.editForm") : t("research.workHistory.addForm")}</Text>
+            </View>
+          </View>
           <FormField
             label={t("research.workHistory.colPosition")}
             value={form.position}
@@ -93,21 +138,25 @@ const WorkHistoryForm = ({ navigation, route }) => {
             returnKeyType="done"
           />
           <View className="h-px bg-[#f0f4f7] my-[10px]" />
-          <InlineDropdown label={t("research.workHistory.colStart")} value={form.year_start} options={YEAR_OPTIONS} onSelect={(v) => setField("year_start", v)} searchable />
+          <InlineDropdown label={t("research.workHistory.colStart")} value={form.year_start} options={YEAR_END_OPTIONS} onSelect={(v) => setField("year_start", v)} searchable />
           <View className="h-px bg-[#f0f4f7] my-[10px]" />
-          <InlineDropdown label={t("research.workHistory.colEnd")} value={form.year_end} options={YEAR_OPTIONS} onSelect={(v) => setField("year_end", v)} searchable />
-          <View className="flex-row justify-between gap-3 mt-5">
-            <TouchableOpacity className="flex-1 min-w-[160px] bg-[#14532d] rounded-xl py-[14px] items-center" onPress={handleSave}>
-              <Text className="text-white text-[14px] font-semibold">{editingItem ? t("research.common.saveEdit") : t("research.workHistory.addForm")}</Text>
+          <InlineDropdown label={t("research.workHistory.colEnd")} value={form.year_end} options={YEAR_END_OPTIONS} onSelect={(v) => setField("year_end", v)} searchable />
+          <View className="flex-row gap-[10px] px-4 pt-[14px]">
+            <TouchableOpacity className="flex-1 flex-row items-center justify-center gap-2 bg-[#007a5a] rounded-xl py-[13px]" style={{ elevation: 2, opacity: saving ? 0.6 : 1 }} onPress={handleSave} disabled={saving}>
+              {saving ? <ActivityIndicator size="small" color="#fff" /> : <>
+                <Ionicons name={editingItem ? "checkmark-circle" : "add-circle"} size={18} color="#fff" />
+                <Text className="text-white text-[14px] font-black">{editingItem ? t("research.common.saveEdit") : t("research.workHistory.addForm")}</Text>
+              </>}
             </TouchableOpacity>
-            <TouchableOpacity className="flex-1 min-w-[120px] bg-[#fef2f2] border border-[#dc2626] rounded-xl py-[14px] flex-row items-center gap-[6px] justify-center" onPress={() => editingItem ? openEdit(editingItem) : openNew()}>
+            <TouchableOpacity className="flex-row items-center gap-[6px] bg-[#fef2f2] border-[1.5px] border-[#dc2626] rounded-xl px-[18px]" onPress={() => confirm({ title: "รีเซ็ตฟอร์ม", message: "ต้องการเคลียร์ข้อมูลในฟอร์มหรือไม่?", icon: "refresh", onConfirm: openNew })}>
               <Ionicons name="refresh" size={16} color="#dc2626" />
-              <Text className="text-[#dc2626] text-[14px] font-semibold">{t("research.common.reset")}</Text>
+              <Text className="text-[#dc2626] text-[14px] font-black">{t("research.common.reset")}</Text>
             </TouchableOpacity>
           </View>
         </View>
       </ScrollView>
-    </KeyboardAvoidingView>
+      <ConfirmDialog />
+    </FormContainer>
   );
 };
 

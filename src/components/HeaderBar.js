@@ -1,18 +1,19 @@
 import React from "react";
-import { Image, Platform, StatusBar, Text, TouchableOpacity, View } from "react-native";
+import { Image, Text, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const logo = require("../assets/urusmartlogo.png");
 
-const pt = Platform.OS === "ios" ? 46 : (StatusBar.currentHeight ?? 24) + 8;
-
 const HeaderBar = ({ name, photoUrl, onNotification, onLogout }) => {
+  const { top } = useSafeAreaInsets();
+
   const initials = name
     ? name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()
     : "อ.";
 
   return (
-    <View className="bg-primary px-4 pb-3" style={{ paddingTop: pt }}>
+    <View className="bg-primary px-4 pb-3" style={{ paddingTop: top + 8 }}>
       <View className="flex-row items-center">
         {/* Avatar — fixed width */}
         <View className="w-[40px] h-[40px] rounded-full bg-white/10 border-2 border-white items-center justify-center overflow-hidden">

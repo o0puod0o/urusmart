@@ -1,29 +1,173 @@
 import React, { useEffect, useState } from "react";
-import { ActivityIndicator, FlatList, Image, SafeAreaView, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, FlatList, Image, Text, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
+import AppHeader from "../../components/AppHeader";
+import { stripNamePrefix } from "../../utils/name";
+import { fixPhotoUrl } from "../../utils/image";
 import apiService from "../../services/api";
 
-const Avatar = ({ name, photoUrl, size = 52 }) => {
+// ── Avatar ─────────────────────────────────────────────────
+const Avatar = ({ name, photoUrl, index }) => {
   const initial = name?.replace(/^(อาจารย์|ดร\.|ผศ\.|รศ\.)\s*/, "").trim()?.[0] ?? "อ";
   return (
-    <View style={{ width: size, height: size, borderRadius: size / 2, overflow: "hidden", backgroundColor: "#e6f4ef", borderWidth: 2, borderColor: "#b8dfd0", alignItems: "center", justifyContent: "center" }}>
-      {photoUrl ? (
-        <Image source={{ uri: photoUrl }} style={{ width: "100%", height: "100%" }} />
-      ) : (
-        <Text style={{ color: "#0f7a55", fontSize: size * 0.38, fontWeight: "900" }}>{initial}</Text>
-      )}
+    <View style={{ position: "relative", flexShrink: 0 }}>
+      <View style={{
+        width: 76, height: 76, borderRadius: 38,
+        overflow: "hidden",
+        backgroundColor: "#c8e6d6",
+        borderWidth: 2.5, borderColor: "#007a5a",
+        alignItems: "center", justifyContent: "center",
+      }}>
+        {photoUrl
+          ? <Image source={{ uri: photoUrl }} style={{ width: "100%", height: "100%" }} resizeMode="cover" />
+          : <Text style={{ fontSize: 28, fontWeight: "900", color: "#007a5a" }}>{initial}</Text>
+        }
+      </View>
+      {/* ลำดับ */}
+      <View style={{
+        position: "absolute", bottom: -2, right: -2,
+        backgroundColor: "#007a5a", borderRadius: 10,
+        minWidth: 20, height: 20,
+        paddingHorizontal: 5,
+        alignItems: "center", justifyContent: "center",
+        borderWidth: 2, borderColor: "#fff",
+      }}>
+        <Text style={{ fontSize: 10, fontWeight: "900", color: "#fff" }}>{index + 1}</Text>
+      </View>
     </View>
   );
 };
 
+// ── Chip ───────────────────────────────────────────────────
+const Chip = ({ label, color = "#007a5a", bg = "#e6f4ef", border = "#9fd4bc" }) => (
+  <View style={{ backgroundColor: bg, borderWidth: 1, borderColor: border, borderRadius: 999, paddingHorizontal: 9, paddingVertical: 3, marginRight: 5, marginBottom: 4 }}>
+    <Text style={{ fontSize: 11, fontWeight: "700", color }} numberOfLines={1}>{label}</Text>
+  </View>
+);
+
+// ── ExpertCard ─────────────────────────────────────────────
+const ExpertCard = ({ item, index, onPress }) => {
+  const { t } = useTranslation();
+  const name      = stripNamePrefix(item.full_name_th ?? item.full_name_en ?? item.name ?? item.full_name ?? "");
+  const position  = item.position ?? item.academic_position ?? "";
+  const faculty   = item.faculty_name_th ?? item.department_name_th ?? item.faculty ?? item.faculty_name ?? "";
+  const dept      = item.department_name_th ?? item.unit_name_th ?? "";
+  const photoUrl  = fixPhotoUrl(item.picture ?? item.photoUrl ?? item.photo_url ?? item.avatar ?? "");
+  const expertises = (item.expertises ?? []).map((e) => e.name ?? e.label ?? String(e)).filter(Boolean);
+  const interests  = (item.interests  ?? []).map((e) => e.name ?? e.label ?? String(e)).filter(Boolean);
+
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={0.88}
+      style={{
+        backgroundColor: "#fff",
+        borderRadius: 16,
+        marginBottom: 12,
+        overflow: "hidden",
+        elevation: 3,
+        shadowColor: "#064e35",
+        shadowOpacity: 0.1,
+        shadowRadius: 10,
+        shadowOffset: { width: 0, height: 4 },
+      }}
+    >
+      {/* Green top border */}
+      <View style={{ height: 3, backgroundColor: "#007a5a" }} />
+
+      <View style={{ padding: 14, gap: 12 }}>
+        {/* Row 1: Avatar + Info */}
+        <View style={{ flexDirection: "row", gap: 12, alignItems: "flex-start" }}>
+          <Avatar name={name} photoUrl={photoUrl} index={index} />
+
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 16, fontWeight: "800", color: "#0a1a12", lineHeight: 22, letterSpacing: -0.2 }} numberOfLines={2}>
+              {name || "—"}
+            </Text>
+
+            {!!position && (
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 4, alignSelf: "flex-start", backgroundColor: "#e6f4ef", borderWidth: 1, borderColor: "#9fd4bc", borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3, marginTop: 5 }}>
+                <Ionicons name="ribbon-outline" size={11} color="#007a5a" />
+                <Text style={{ fontSize: 11, fontWeight: "700", color: "#007a5a" }} numberOfLines={1}>{position}</Text>
+              </View>
+            )}
+
+            {!!(faculty || dept) && (
+              <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 4, marginTop: 5 }}>
+                <Ionicons name="business-outline" size={12} color="#a0b8b0" style={{ marginTop: 1 }} />
+                <Text style={{ fontSize: 11, color: "#5a7a6e", flex: 1, lineHeight: 16 }} numberOfLines={2}>
+                  {[faculty, dept !== faculty ? dept : ""].filter(Boolean).join("  ·  ")}
+                </Text>
+              </View>
+            )}
+          </View>
+        </View>
+
+        {/* Divider */}
+        <View style={{ height: 1, backgroundColor: "#eef4f1" }} />
+
+        {/* Row 2: Expertise + Interest chips */}
+        <View style={{ gap: 8 }}>
+          {/* ความเชี่ยวชาญ */}
+          <View>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginBottom: 5 }}>
+              <View style={{ width: 18, height: 18, borderRadius: 5, backgroundColor: "#007a5a", alignItems: "center", justifyContent: "center" }}>
+                <Ionicons name="settings-sharp" size={11} color="#fff" />
+              </View>
+              <Text style={{ fontSize: 11, fontWeight: "800", color: "#005c42", letterSpacing: 0.3 }}>{t("research.screen.expertiseLabel")}</Text>
+            </View>
+            {expertises.length > 0
+              ? <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
+                  {expertises.slice(0, 4).map((tag, i) => <Chip key={i} label={tag} />)}
+                  {expertises.length > 4 && <Chip label={`+${expertises.length - 4}`} color="#6b8f80" bg="#f0f8f4" border="#c4ddd5" />}
+                </View>
+              : <Text style={{ fontSize: 12, color: "#aabbB4", fontStyle: "italic", marginLeft: 2 }}>—</Text>
+            }
+          </View>
+
+          {/* ความสนใจ */}
+          <View>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginBottom: 5 }}>
+              <View style={{ width: 18, height: 18, borderRadius: 5, backgroundColor: "#f59e0b", alignItems: "center", justifyContent: "center" }}>
+                <Ionicons name="star" size={11} color="#fff" />
+              </View>
+              <Text style={{ fontSize: 11, fontWeight: "800", color: "#92600a", letterSpacing: 0.3 }}>{t("research.screen.interestLabel")}</Text>
+            </View>
+            {interests.length > 0
+              ? <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
+                  {interests.slice(0, 4).map((tag, i) => <Chip key={i} label={tag} color="#92600a" bg="#fff8e7" border="#f5c842" />)}
+                  {interests.length > 4 && <Chip label={`+${interests.length - 4}`} color="#b08050" bg="#fffaf0" border="#e8d0a0" />}
+                </View>
+              : <Text style={{ fontSize: 12, color: "#aabb4", fontStyle: "italic", marginLeft: 2 }}>—</Text>
+            }
+          </View>
+        </View>
+
+        {/* Row 3: CTA button */}
+        <View style={{ flexDirection: "row", justifyContent: "flex-end" }}>
+          <View style={{
+            flexDirection: "row", alignItems: "center", gap: 6,
+            backgroundColor: "#007a5a", borderRadius: 10,
+            paddingHorizontal: 14, paddingVertical: 8,
+          }}>
+            <Text style={{ fontSize: 12, fontWeight: "700", color: "#fff" }}>{t("research.screen.viewExpert")}</Text>
+            <Ionicons name="arrow-forward" size={14} color="#fff" />
+          </View>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+};
+
+// ── Screen ─────────────────────────────────────────────────
 export default function ResearchList({ navigation, route }) {
   const { t } = useTranslation();
-  const { title, icon = "search-outline", searchParams = {} } = route?.params || {};
+  const { searchParams = {} } = route?.params || {};
 
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError]     = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -42,95 +186,52 @@ export default function ResearchList({ navigation, route }) {
     return () => { cancelled = true; };
   }, []);
 
-  const renderItem = ({ item }) => {
-    const name = item.full_name_th ?? item.full_name_en ?? item.name ?? item.full_name ?? "";
-    const position = item.position ?? item.academic_position ?? "";
-    const faculty = item.department_name_th ?? item.department_name_en ?? item.faculty ?? item.faculty_name ?? "";
-    const photoUrl = item.picture ?? item.photoUrl ?? item.photo_url ?? item.avatar ?? "";
-    const tags = [...(item.expertises ?? []), ...(item.interests ?? [])].slice(0, 3);
-
-    return (
-      <View
-        className="bg-white rounded-[16px] border border-[#dce8e2] p-[14px] mb-3 flex-row gap-3"
-        style={{ elevation: 2, shadowColor: "#064e35", shadowOpacity: 0.06, shadowRadius: 8, shadowOffset: { width: 0, height: 3 } }}
-      >
-        <Avatar name={name} photoUrl={photoUrl} />
-        <View className="flex-1">
-          <Text className="text-[15px] font-extrabold text-[#0d1f18] leading-5" numberOfLines={1}>{name || "—"}</Text>
-          {!!position && (
-            <View className="flex-row items-center gap-1 mt-[3px]">
-              <Ionicons name="ribbon-outline" size={11} color="#0f7a55" />
-              <Text className="text-[12px] font-semibold text-[#0f7a55]" numberOfLines={1}>{position}</Text>
-            </View>
-          )}
-          {!!faculty && (
-            <Text className="text-[11px] text-[#8fa89f] font-medium mt-[2px]" numberOfLines={1}>{faculty}</Text>
-          )}
-          {tags.length > 0 && (
-            <View className="flex-row flex-wrap gap-[5px] mt-[8px]">
-              {tags.map((tag, i) => (
-                <View key={i} className="bg-[#eef8f3] rounded-full px-[8px] py-[3px]">
-                  <Text className="text-[10px] font-bold text-[#0a6644]" numberOfLines={1}>
-                    {tag.name ?? tag.label ?? String(tag)}
-                  </Text>
-                </View>
-              ))}
-            </View>
-          )}
-        </View>
-        <View className="justify-center">
-          <Ionicons name="chevron-forward" size={16} color="#c4d4cc" />
-        </View>
-      </View>
-    );
-  };
-
   return (
-    <SafeAreaView className="flex-1 bg-[#f0f6f2]">
-      {/* Header */}
-      <View className="flex-row items-center bg-white border-b border-[#dce8e2] px-4 py-[14px] gap-3">
-        <TouchableOpacity className="w-8 h-8 items-center justify-center" onPress={() => navigation.goBack()} activeOpacity={0.75}>
-          <Ionicons name="chevron-back" size={24} color="#0f7a55" />
-        </TouchableOpacity>
-        <View className="w-8 h-8 rounded-[10px] bg-[#e6f4ef] items-center justify-center">
-          <Ionicons name={icon} size={16} color="#0f7a55" />
-        </View>
-        <Text className="flex-1 text-[17px] font-extrabold text-[#111c18]" numberOfLines={1}>{title ?? t("research.list.title")}</Text>
-        {!loading && (
-          <View className="bg-[#eef8f3] rounded-full px-3 py-[4px]">
-            <Text className="text-[12px] font-bold text-[#0f7a55]">{results.length}</Text>
-          </View>
-        )}
-      </View>
+    <View style={{ flex: 1, backgroundColor: "#f0f4f2" }}>
+      <AppHeader title={t("research.screen.expertList")} onBack={() => navigation.goBack()} />
 
+      {/* Content */}
       {loading ? (
-        <View className="flex-1 items-center justify-center gap-3">
-          <ActivityIndicator size="large" color="#0f7a55" />
-          <Text className="text-[13px] text-[#8fa89f] font-semibold">{t("research.common.loading")}</Text>
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 12 }}>
+          <ActivityIndicator size="large" color="#007a5a" />
+          <Text style={{ fontSize: 13, color: "#8fa89f", fontWeight: "600" }}>{t("research.common.loading")}</Text>
         </View>
       ) : error ? (
-        <View className="flex-1 items-center justify-center gap-3 px-8">
-          <Ionicons name="cloud-offline-outline" size={44} color="#c4d4cc" />
-          <Text className="text-[16px] font-bold text-[#0d1f18]">{t("research.list.errorTitle")}</Text>
-          <Text className="text-[13px] text-[#8fa89f] text-center">{error}</Text>
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 12, paddingHorizontal: 32 }}>
+          <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: "#fff", borderWidth: 1, borderColor: "#e4ede9", alignItems: "center", justifyContent: "center" }}>
+            <Ionicons name="cloud-offline-outline" size={38} color="#c4d4cc" />
+          </View>
+          <Text style={{ fontSize: 16, fontWeight: "700", color: "#0d1f18" }}>{t("research.list.errorTitle")}</Text>
+          <Text style={{ fontSize: 13, color: "#8fa89f", textAlign: "center" }}>{error}</Text>
         </View>
       ) : results.length === 0 ? (
-        <View className="flex-1 items-center justify-center gap-3 px-8">
-          <View className="w-24 h-24 rounded-full bg-white border border-[#dce8e2] items-center justify-center" style={{ elevation: 2 }}>
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 12, paddingHorizontal: 32 }}>
+          <View style={{ width: 88, height: 88, borderRadius: 44, backgroundColor: "#fff", borderWidth: 1, borderColor: "#e4ede9", alignItems: "center", justifyContent: "center" }}>
             <Ionicons name="search-outline" size={40} color="#c4d4cc" />
           </View>
-          <Text className="text-[16px] font-bold text-[#0d1f18]">{t("research.list.noData")}</Text>
-          <Text className="text-[13px] text-[#8fa89f] text-center font-medium">{t("research.list.desc")}</Text>
+          <Text style={{ fontSize: 16, fontWeight: "700", color: "#0d1f18" }}>{t("research.list.noData")}</Text>
+          <Text style={{ fontSize: 13, color: "#8fa89f", textAlign: "center", fontWeight: "500" }}>{t("research.list.desc")}</Text>
         </View>
       ) : (
         <FlatList
           data={results}
-          keyExtractor={(item, index) => `${item.id ?? index}`}
-          renderItem={renderItem}
+          keyExtractor={(item, i) => `${item.id ?? i}`}
+          ListHeaderComponent={
+            <Text style={{ fontSize: 12, color: "#8fa89f", fontWeight: "600", paddingHorizontal: 14, paddingTop: 14, paddingBottom: 4 }}>
+              {t("research.screen.foundCount", { count: results.length })}
+            </Text>
+          }
+          renderItem={({ item, index }) => (
+            <ExpertCard
+              item={item}
+              index={index}
+              onPress={() => navigation.navigate("ProfileDetail", { id: item.id })}
+            />
+          )}
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 36 }}
+          contentContainerStyle={{ paddingHorizontal: 14, paddingTop: 4, paddingBottom: 40 }}
         />
       )}
-    </SafeAreaView>
+    </View>
   );
 }

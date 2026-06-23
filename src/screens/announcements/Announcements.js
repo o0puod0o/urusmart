@@ -1,20 +1,38 @@
-import React, { useState } from "react";
-import { ActivityIndicator, FlatList, Modal, Platform, ScrollView, StatusBar, Text, TouchableOpacity, View } from "react-native";
-import Animated, { FadeInDown } from "react-native-reanimated";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import {
+  ActivityIndicator,
+  Animated,
+  Dimensions,
+  FlatList,
+  Linking,
+  Modal,
+  PanResponder,
+  ScrollView,
+  Share,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View,
+} from "react-native";
+import ReAnimated, { FadeInDown } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ANNOUNCE_PALETTES } from "../../constants/announcePalettes";
 import useFetch from "../../hook/useFetch";
 
-const pt = Platform.OS === "ios" ? 52 : (StatusBar.currentHeight ?? 24) + 12;
+const SHEET_H = Dimensions.get("window").height * 0.72;
 
+// ── List card ─────────────────────────────────────────────
 const AnnouncementItem = ({ item, index, highlighted, defaultTag, defaultTitle, onPress }) => {
   const palette = ANNOUNCE_PALETTES[index % ANNOUNCE_PALETTES.length];
   const title = item.title || item.name || item.topic || item.message || defaultTitle;
 
   return (
-    <Animated.View entering={FadeInDown.delay(index * 60).springify().damping(14)}>
+    <ReAnimated.View entering={FadeInDown.delay(index * 60).springify().damping(14)}>
       <TouchableOpacity
         className="bg-white rounded-[18px] overflow-hidden border"
         activeOpacity={0.82}
@@ -69,66 +87,292 @@ const AnnouncementItem = ({ item, index, highlighted, defaultTag, defaultTitle, 
           </View>
         </View>
       </TouchableOpacity>
-    </Animated.View>
+    </ReAnimated.View>
   );
 };
 
+// ── Bottom Sheet Detail ────────────────────────────────────
 const AnnouncementDetailModal = ({ item, defaultTag, defaultTitle, onClose }) => {
+  const { t } = useTranslation();
+  const { bottom } = useSafeAreaInsets();
+
+  const translateY = useRef(new Animated.Value(SHEET_H)).current;
+  const backdrop = useRef(new Animated.Value(0)).current;
+  const onCloseRef = useRef(onClose);
+  useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
+
+  // Open animation each time a new item is selected
+  useEffect(() => {
+    if (!item) return;
+    translateY.setValue(SHEET_H);
+    backdrop.setValue(0);
+    Animated.parallel([
+      Animated.spring(translateY, { toValue: 0, useNativeDriver: true, tension: 58, friction: 11 }),
+      Animated.timing(backdrop, { toValue: 1, duration: 250, useNativeDriver: true }),
+    ]).start();
+  }, [item]);
+
+  const dismiss = useCallback(() => {
+    Animated.parallel([
+      Animated.timing(translateY, { toValue: SHEET_H, duration: 260, useNativeDriver: true }),
+      Animated.timing(backdrop, { toValue: 0, duration: 200, useNativeDriver: true }),
+    ]).start(() => onCloseRef.current());
+  }, []);
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, g) => g.dy > 5,
+      onPanResponderMove: (_, g) => {
+        if (g.dy > 0) translateY.setValue(g.dy);
+      },
+      onPanResponderRelease: (_, g) => {
+        if (g.dy > 80 || g.vy > 0.8) {
+          Animated.parallel([
+            Animated.timing(translateY, { toValue: SHEET_H, duration: 260, useNativeDriver: true }),
+            Animated.timing(backdrop, { toValue: 0, duration: 200, useNativeDriver: true }),
+          ]).start(() => onCloseRef.current());
+        } else {
+          Animated.spring(translateY, { toValue: 0, useNativeDriver: true, tension: 80, friction: 12 }).start();
+        }
+      },
+    })
+  ).current;
+
   if (!item) return null;
-  const title   = item.title || item.name || item.topic || item.message || defaultTitle;
-  const body    = item.body  || item.content || item.detail || item.description || item.sub || "";
-  const tag     = item.tag   ?? defaultTag;
+
+  const title = item.title || item.name || item.topic || defaultTitle;
+  const body = item.message || item.body || item.content || item.detail || item.description || item.sub || "";
+  const tag = item.tag ?? defaultTag;
+  const icon = item.icon ?? ANNOUNCE_PALETTES[0].icon;
+  const colors = item.colors ?? ANNOUNCE_PALETTES[0].colors;
+  const hasUrl = !!item.url;
+
+  const formatDate = (ds) => {
+    if (!ds) return null;
+    try {
+      const d = new Date(ds);
+      if (isNaN(d.getTime())) return ds;
+      const day = d.toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" });
+      const time = d.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" });
+      return `${day} • ${time} น.`;
+    } catch { return ds; }
+  };
+  const dateStr = item.published_at ? formatDate(item.published_at) : (item.date ?? null);
+
+  const handleShare = async () => {
+    try {
+      const msg = [title, body, item.url].filter(Boolean).join("\n\n");
+      await Share.share({ message: msg, title });
+    } catch (_) {}
+  };
 
   return (
-    <Modal visible animationType="slide" transparent onRequestClose={onClose}>
-      <View className="flex-1 justify-end" style={{ backgroundColor: "rgba(0,0,0,0.45)" }}>
-        <View className="bg-white rounded-t-[28px] overflow-hidden" style={{ maxHeight: "85%" }}>
-          {/* Handle bar */}
-          <View className="items-center pt-3 pb-1">
-            <View className="w-10 h-1 rounded-full bg-[#dce8e2]" />
-          </View>
+    <Modal visible transparent statusBarTranslucent animationType="none" onRequestClose={dismiss}>
+      {/* Dimmed backdrop — tap to close */}
+      <TouchableWithoutFeedback onPress={dismiss}>
+        <Animated.View
+          style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(0,0,0,0.52)", opacity: backdrop }]}
+        />
+      </TouchableWithoutFeedback>
 
-          {/* Header */}
-          <View className="flex-row items-center justify-between px-5 py-3 border-b border-[#eef3f0]">
-            <View className="bg-[#eef8f3] rounded-full px-3 py-[4px]">
-              <Text className="text-primary text-[11px] font-extrabold">{tag}</Text>
-            </View>
-            <TouchableOpacity
-              className="w-8 h-8 rounded-full bg-[#f0f4f2] items-center justify-center"
-              onPress={onClose}
-              activeOpacity={0.75}
-            >
-              <Ionicons name="close" size={18} color="#4a5568" />
-            </TouchableOpacity>
+      {/* Sheet positioned at bottom */}
+      <View style={{ flex: 1, justifyContent: "flex-end" }} pointerEvents="box-none">
+        <Animated.View
+          style={{
+            height: SHEET_H,
+            backgroundColor: "#fff",
+            borderTopLeftRadius: 24,
+            borderTopRightRadius: 24,
+            elevation: 24,
+            shadowColor: "#000",
+            shadowOpacity: 0.22,
+            shadowRadius: 24,
+            shadowOffset: { width: 0, height: -6 },
+            transform: [{ translateY }],
+            overflow: "hidden",
+          }}
+        >
+          {/* Drag handle */}
+          <View
+            {...panResponder.panHandlers}
+            style={{ alignItems: "center", paddingTop: 12, paddingBottom: 10 }}
+          >
+            <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: "#dde7e3" }} />
           </View>
 
           <ScrollView
-            contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
+            style={{ flex: 1 }}
             showsVerticalScrollIndicator={false}
+            bounces
+            contentContainerStyle={{ paddingBottom: 8 }}
           >
-            {!!item.date && (
-              <Text className="text-[#9aabaa] text-[12px] font-semibold mb-3">{item.date}</Text>
-            )}
-            <Text className="text-[#0d1f18] text-[18px] font-extrabold leading-7 mb-4">{title}</Text>
-            {!!body ? (
-              <Text className="text-[#374151] text-[14px] leading-6">{body}</Text>
-            ) : (
-              <Text className="text-[#9aabaa] text-[13px] italic">ไม่มีรายละเอียดเพิ่มเติม</Text>
-            )}
+            {/* ── Hero ── */}
+            <View style={{ alignItems: "center", paddingHorizontal: 24, paddingTop: 4, paddingBottom: 22, gap: 14 }}>
+              <LinearGradient
+                colors={colors}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={{
+                  width: 80,
+                  height: 80,
+                  borderRadius: 26,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  elevation: 4,
+                  shadowColor: colors[1],
+                  shadowOpacity: 0.35,
+                  shadowRadius: 12,
+                  shadowOffset: { width: 0, height: 4 },
+                }}
+              >
+                <Ionicons name={icon} size={38} color="rgba(255,255,255,0.97)" />
+              </LinearGradient>
+
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap", justifyContent: "center" }}>
+                <View style={{ backgroundColor: "#eef8f3", borderRadius: 20, paddingHorizontal: 12, paddingVertical: 5 }}>
+                  <Text style={{ color: "#0f7a55", fontSize: 11, fontWeight: "800", letterSpacing: 0.3 }}>{tag}</Text>
+                </View>
+                {!!dateStr && (
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                    <Ionicons name="time-outline" size={12} color="#9aabaa" />
+                    <Text style={{ color: "#9aabaa", fontSize: 11, fontWeight: "600" }}>{dateStr}</Text>
+                  </View>
+                )}
+              </View>
+            </View>
+
+            {/* ── Title ── */}
+            <View style={{ paddingHorizontal: 24, paddingBottom: 18 }}>
+              <Text style={{ color: "#0d1f18", fontSize: 20, fontWeight: "800", lineHeight: 29, letterSpacing: -0.4 }}>
+                {title}
+              </Text>
+            </View>
+
+            {/* ── Divider ── */}
+            <View style={{ height: 1, backgroundColor: "#f0f4f2", marginHorizontal: 24, marginBottom: 20 }} />
+
+            {/* ── Body ── */}
+            <View style={{ paddingHorizontal: 24, paddingBottom: 32 }}>
+              {body ? (
+                <Text style={{ color: "#374151", fontSize: 14.5, lineHeight: 25, fontWeight: "500" }}>
+                  {body}
+                </Text>
+              ) : (
+                <View style={{ alignItems: "center", paddingTop: 16, paddingBottom: 8, gap: 12 }}>
+                  <View style={{
+                    width: 84,
+                    height: 84,
+                    borderRadius: 42,
+                    backgroundColor: "#f0f6f2",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    borderWidth: 2,
+                    borderColor: "#dce8e2",
+                  }}>
+                    <Ionicons name="mail-open-outline" size={38} color="#b2cfc6" />
+                  </View>
+                  <Text style={{ color: "#4a5568", fontSize: 15, fontWeight: "700", textAlign: "center" }}>
+                    {t("announce.detailEmpty")}
+                  </Text>
+                  <Text style={{ color: "#9aabaa", fontSize: 13, fontWeight: "500", textAlign: "center", lineHeight: 20, maxWidth: 250 }}>
+                    {t("announce.detailEmptySub")}
+                  </Text>
+                </View>
+              )}
+            </View>
           </ScrollView>
-        </View>
+
+          {/* ── Footer actions ── */}
+          <View style={{
+            flexDirection: "row",
+            gap: 10,
+            paddingHorizontal: 20,
+            paddingTop: 12,
+            paddingBottom: Math.max(bottom, 16),
+            borderTopWidth: 1,
+            borderTopColor: "#f0f4f2",
+          }}>
+            {hasUrl && (
+              <TouchableOpacity
+                onPress={() => Linking.openURL(item.url).catch(() => {})}
+                activeOpacity={0.85}
+                style={{
+                  flex: 1,
+                  height: 48,
+                  borderRadius: 15,
+                  backgroundColor: "#0f7a55",
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 6,
+                }}
+              >
+                <Ionicons name="open-outline" size={17} color="#fff" />
+                <Text style={{ color: "#fff", fontSize: 14, fontWeight: "700" }}>{t("announce.readMore")}</Text>
+              </TouchableOpacity>
+            )}
+
+            <TouchableOpacity
+              onPress={handleShare}
+              activeOpacity={0.85}
+              style={{
+                flex: hasUrl ? 0 : 1,
+                width: hasUrl ? 48 : undefined,
+                height: 48,
+                borderRadius: 15,
+                backgroundColor: "#f0f6f2",
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: hasUrl ? 0 : 6,
+              }}
+            >
+              <Ionicons name="share-social-outline" size={19} color="#0f7a55" />
+              {!hasUrl && (
+                <Text style={{ color: "#0f7a55", fontSize: 14, fontWeight: "700" }}>{t("announce.share")}</Text>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={dismiss}
+              activeOpacity={0.85}
+              style={{
+                width: 48,
+                height: 48,
+                borderRadius: 15,
+                backgroundColor: "#f0f6f2",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Ionicons name="close" size={20} color="#64748b" />
+            </TouchableOpacity>
+          </View>
+        </Animated.View>
       </View>
     </Modal>
   );
 };
 
+// ── Screen ─────────────────────────────────────────────────
 export default function AnnouncementsScreen({ navigation, route }) {
   const { t } = useTranslation();
+  const { top } = useSafeAreaInsets();
   const { data: fetched, loading } = useFetch("/announcements", { initialData: [] });
-  const seedItems    = route.params?.items ?? [];
-  const items        = fetched?.length ? fetched : seedItems;
-  const highlightId  = route.params?.highlightId ?? null;
+  const seedItems   = route.params?.items ?? [];
+  const items       = fetched?.length ? fetched : seedItems;
+  const highlightId = route.params?.highlightId ?? null;
   const [selected, setSelected] = useState(route.params?.selectedItem ?? null);
+
+  const selectItem = useCallback((item, index) => {
+    const palette = ANNOUNCE_PALETTES[index % ANNOUNCE_PALETTES.length];
+    setSelected({
+      ...item,
+      colors: item.colors ?? palette.colors,
+      icon:   item.icon   ?? palette.icon,
+    });
+  }, []);
 
   return (
     <View className="flex-1 bg-[#f0f6f2]">
@@ -136,7 +380,7 @@ export default function AnnouncementsScreen({ navigation, route }) {
 
       <LinearGradient
         colors={["#064e35", "#0a6644"]}
-        style={{ paddingTop: pt, paddingBottom: 18, paddingHorizontal: 16 }}
+        style={{ paddingTop: top + 10, paddingBottom: 18, paddingHorizontal: 16 }}
       >
         <View className="flex-row items-center gap-3">
           <TouchableOpacity
@@ -175,19 +419,19 @@ export default function AnnouncementsScreen({ navigation, route }) {
             highlighted={highlightId != null && item.id === highlightId}
             defaultTag={t("announce.defaultTag")}
             defaultTitle={t("announce.defaultTitle")}
-            onPress={() => setSelected(item)}
+            onPress={() => selectItem(item, index)}
           />
         )}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 36, gap: 10 }}
         ListEmptyComponent={
-          <Animated.View entering={FadeInDown.springify()} className="items-center justify-center pt-20 gap-4">
+          <ReAnimated.View entering={FadeInDown.springify()} className="items-center justify-center pt-20 gap-4">
             <View className="w-24 h-24 rounded-full bg-white border border-[#dce8e2] items-center justify-center" style={{ elevation: 2 }}>
               <Ionicons name="newspaper-outline" size={44} color="#c4d4cc" />
             </View>
             <Text className="text-[16px] font-bold text-[#94a3b8]">{t("announce.empty")}</Text>
             <Text className="text-[13px] text-[#bbc]">{t("announce.emptySub")}</Text>
-          </Animated.View>
+          </ReAnimated.View>
         }
       />
 

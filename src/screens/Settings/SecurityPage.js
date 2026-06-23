@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from "react";
-import { Alert, Platform, ScrollView, StatusBar, Switch, Text, TouchableOpacity, View } from "react-native";
+import { Alert, ScrollView, StatusBar, Switch, Text, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { STORAGE_KEYS } from "../../config";
 import {
@@ -14,11 +15,10 @@ import {
   clearBiometricToken,
 } from "../../services/biometricService";
 
-const pt = Platform.OS === "ios" ? 54 : (StatusBar.currentHeight ?? 24) + 10;
-
 export default function SecurityPage() {
   const navigation = useNavigation();
   const { t } = useTranslation();
+  const { top } = useSafeAreaInsets();
 
   const [biometric, setBiometric]         = useState(false);
   const [biometricInfo, setBiometricInfo] = useState(null);
@@ -96,7 +96,7 @@ export default function SecurityPage() {
     <View className="flex-1 bg-[#eaf5ef]">
       <StatusBar barStyle="light-content" backgroundColor="#0f7a55" />
 
-      <View className="bg-primary flex-row items-center justify-between px-4 pb-[14px]" style={{ paddingTop: pt }}>
+      <View className="bg-primary flex-row items-center justify-between px-4 pb-[14px]" style={{ paddingTop: top + 10 }}>
         <TouchableOpacity
           className="w-9 h-9 rounded-full bg-white/20 items-center justify-center"
           onPress={() => navigation.goBack()}

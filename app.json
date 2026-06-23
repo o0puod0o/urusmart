@@ -26,6 +26,7 @@
       },
       "edgeToEdgeEnabled": true,
       "softwareKeyboardLayoutMode": "pan",
+      "usesCleartextTraffic": true,
       "permissions": [
         "android.permission.RECEIVE_BOOT_COMPLETED",
         "android.permission.VIBRATE",
@@ -46,6 +47,14 @@
       ],
       "expo-local-authentication",
       "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "URU Smart ต้องการเข้าถึงรูปภาพเพื่อเปลี่ยนรูปโปรไฟล์",
+          "cameraPermission": "URU Smart ต้องการเข้าถึงกล้องเพื่อถ่ายรูปโปรไฟล์",
+          "microphonePermission": false
+        }
+      ],
       "@react-native-community/datetimepicker"
     ]
   }

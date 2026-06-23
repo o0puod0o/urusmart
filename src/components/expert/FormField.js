@@ -1,10 +1,25 @@
 import React from "react";
-import { View, Text, TextInput } from "react-native";
+import { View, Text, TextInput, Platform } from "react-native";
 
 const FormField = React.forwardRef(
-  ({ label, value, onChangeText, required, multiline, keyboardType, placeholder, returnKeyType, onSubmitEditing, editable = true }, ref) => {
+  (
+    {
+      label,
+      value,
+      onChangeText,
+      required,
+      multiline,
+      keyboardType,
+      placeholder,
+      returnKeyType,
+      onSubmitEditing,
+      onLayout,
+      editable = true,
+    },
+    ref,
+  ) => {
     return (
-      <View className="p-[14px]">
+      <View className="p-[14px]" onLayout={onLayout}>
         <Text className="text-[12px] text-[#888] font-medium mb-[6px]">
           {label}
           {required && <Text className="text-[#e74c3c]"> *</Text>}
@@ -18,10 +33,22 @@ const FormField = React.forwardRef(
             onChangeText={onChangeText}
             placeholder={placeholder || `กรอก${label}`}
             placeholderTextColor="#bbb"
-            keyboardType={keyboardType || "default"}
+            keyboardType={multiline ? "default" : keyboardType || "default"}
             multiline={multiline}
             numberOfLines={multiline ? 3 : 1}
             textAlignVertical={multiline ? "top" : "center"}
+            autoCorrect={
+              multiline ? false : Platform.OS === "ios" ? true : false
+            }
+            spellCheck={
+              multiline ? false : Platform.OS === "ios" ? true : false
+            }
+            textContentType={
+              multiline ? "none" : Platform.OS === "ios" ? undefined : "none"
+            }
+            autoComplete={
+              multiline ? "off" : Platform.OS === "ios" ? undefined : "off"
+            }
             autoCapitalize="none"
             returnKeyType={multiline ? "default" : (returnKeyType ?? "next")}
             onSubmitEditing={onSubmitEditing}
@@ -34,7 +61,7 @@ const FormField = React.forwardRef(
         )}
       </View>
     );
-  }
+  },
 );
 
 export default FormField;

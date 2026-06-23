@@ -1,35 +1,40 @@
 import React from "react";
-import { View, Text, TouchableOpacity, Platform, StatusBar } from "react-native";
-
-const pt = Platform.OS === "ios" ? 52 : (StatusBar.currentHeight ?? 24) + 8;
+import { StatusBar, Text, TouchableOpacity, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const AppHeader = ({ title, onBack, rightIcon, onRightPress }) => {
+  const { top } = useSafeAreaInsets();
+
   return (
-    <View className="bg-brand flex-row items-center justify-between px-4 pb-4" style={{ paddingTop: pt }}>
-      <TouchableOpacity
-        onPress={onBack}
-        className="w-9 h-9 rounded-full bg-white/10 items-center justify-center"
-      >
-        <Text className="text-white text-2xl font-light" style={{ marginTop: -2 }}>
-          ‹
-        </Text>
-      </TouchableOpacity>
-
-      <Text className="text-white text-base font-semibold flex-1 text-center mx-2" numberOfLines={1}>
-        {title}
-      </Text>
-
-      {rightIcon ? (
+    <>
+      <StatusBar barStyle="light-content" backgroundColor="#0f7a55" />
+      <View className="bg-brand flex-row items-center justify-between px-4 pb-4" style={{ paddingTop: top + 8 }}>
         <TouchableOpacity
-          onPress={onRightPress}
+          onPress={onBack}
           className="w-9 h-9 rounded-full bg-white/10 items-center justify-center"
+          activeOpacity={0.75}
         >
-          <Text className="text-white text-[22px]">{rightIcon}</Text>
+          <Ionicons name="chevron-back" size={22} color="#fff" />
         </TouchableOpacity>
-      ) : (
-        <View className="w-9" />
-      )}
-    </View>
+
+        <Text className="text-white text-base font-semibold flex-1 text-center mx-2" numberOfLines={1}>
+          {title}
+        </Text>
+
+        {rightIcon ? (
+          <TouchableOpacity
+            onPress={onRightPress}
+            className="w-9 h-9 rounded-full bg-white/10 items-center justify-center"
+            activeOpacity={0.75}
+          >
+            <Ionicons name={rightIcon} size={20} color="#fff" />
+          </TouchableOpacity>
+        ) : (
+          <View className="w-9" />
+        )}
+      </View>
+    </>
   );
 };
 

@@ -24,6 +24,7 @@ import Animated, {
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { onLoginSuccess } from "../services/notificationService";
 import { API_BASE_URL, STORAGE_KEYS } from "../config";
 import {
@@ -36,8 +37,6 @@ import {
 } from "../services/biometricService";
 
 const API_URL = API_BASE_URL;
-const PT = Platform.OS === "ios" ? 60 : (StatusBar.currentHeight ?? 24) + 20;
-const PB = Platform.OS === "ios" ? 48 : 32;
 
 // ── Field ปกติ ไม่ใช้ Reanimated (ป้องกัน crash) ──────────────
 const Field = ({ label, icon, children, focused }) => (
@@ -61,6 +60,9 @@ const Field = ({ label, icon, children, focused }) => (
 );
 
 const Login = ({ navigation }) => {
+  const { top } = useSafeAreaInsets();
+  const PT = top + 16;
+  const PB = Platform.OS === "ios" ? 48 : 32;
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -71,6 +73,10 @@ const Login = ({ navigation }) => {
   const [biometricLabel, setBiometricLabel] = useState("Biometric");
   const [biometricIcon, setBiometricIcon] = useState("finger-print-outline");
   const [biometricReady, setBiometricReady] = useState(false);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const scrollRef = useRef(null);
+  const focusedFieldRef = useRef(null);
   const passwordRef = useRef(null);
 
   // ── Entrance animations ──
@@ -119,6 +125,47 @@ const Login = ({ navigation }) => {
     return () => clearTimeout(timer);
   }, [biometricReady]);
 
+  useEffect(() => {
+    const showEvent =
+      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvent =
+      Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+    const showSub = Keyboard.addListener(showEvent, (event) => {
+      setKeyboardVisible(true);
+      setKeyboardHeight(event.endCoordinates?.height ?? 0);
+
+      if (Platform.OS === "android") {
+        const targetY = focusedFieldRef.current === "password" ? 230 : 150;
+        setTimeout(() => {
+          scrollRef.current?.scrollTo({ y: targetY, animated: true });
+        }, 50);
+      }
+    });
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      setKeyboardVisible(false);
+      setKeyboardHeight(0);
+      focusedFieldRef.current = null;
+    });
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
+  const scrollFocusedInputIntoView = (field, y = 0) => {
+    if (Platform.OS !== "android") return;
+    focusedFieldRef.current = field;
+    requestAnimationFrame(() => {
+      setTimeout(
+        () => {
+          scrollRef.current?.scrollTo({ y, animated: true });
+        },
+        keyboardVisible ? 80 : 260,
+      );
+    });
+  };
+
   const logoStyle = useAnimatedStyle(() => ({
     transform: [{ scale: logoScale.value }],
     opacity: logoOpacity.value,
@@ -158,8 +205,14 @@ const Login = ({ navigation }) => {
     try {
       const response = await fetch(`${API_URL}/auth/login`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify({ email: trimmedEmail, password: trimmedPassword }),
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          email: trimmedEmail,
+          password: trimmedPassword,
+        }),
       });
       const data = await response.json();
       if (response.ok) {
@@ -174,14 +227,22 @@ const Login = ({ navigation }) => {
           const support = await checkSupport();
           if (support.supported) await setBiometricEnabled(true);
         }
-        try { await onLoginSuccess(); } catch (_) {}
+        try {
+          await onLoginSuccess();
+        } catch (_) {}
         setLoading(false);
         navigation.reset({ index: 0, routes: [{ name: "MainTabs" }] });
       } else {
-        Alert.alert("เข้าสู่ระบบไม่สำเร็จ", data.message || "username หรือรหัสผ่านไม่ถูกต้อง");
+        Alert.alert(
+          "เข้าสู่ระบบไม่สำเร็จ",
+          data.message || "username หรือรหัสผ่านไม่ถูกต้อง",
+        );
       }
     } catch (_) {
-      Alert.alert("เกิดข้อผิดพลาด", "ไม่สามารถเข้าสู่ระบบได้ กรุณาตรวจสอบ API Server และเครือข่าย");
+      Alert.alert(
+        "เกิดข้อผิดพลาด",
+        "ไม่สามารถเข้าสู่ระบบได้ กรุณาตรวจสอบ API Server และเครือข่าย",
+      );
     } finally {
       setLoading(false);
     }
@@ -192,7 +253,10 @@ const Login = ({ navigation }) => {
     if (!result.success) return;
     const token = await getBiometricToken();
     if (!token) {
-      Alert.alert("ไม่พบข้อมูล", "กรุณาเข้าสู่ระบบด้วย email และรหัสผ่านก่อน 1 ครั้ง");
+      Alert.alert(
+        "ไม่พบข้อมูล",
+        "กรุณาเข้าสู่ระบบด้วย email และรหัสผ่านก่อน 1 ครั้ง",
+      );
       return;
     }
     await AsyncStorage.setItem(STORAGE_KEYS.TOKEN, token);
@@ -239,16 +303,20 @@ const Login = ({ navigation }) => {
       />
 
       <ScrollView
+        ref={scrollRef}
         contentContainerStyle={{
           flexGrow: 1,
           alignItems: "center",
-          justifyContent: "center",
+          justifyContent: keyboardVisible ? "flex-start" : "center",
           paddingHorizontal: 24,
-          paddingTop: PT,
-          paddingBottom: PB,
+          paddingTop: keyboardVisible ? 8 : PT,
+          paddingBottom: keyboardVisible
+            ? Math.max(keyboardHeight + 20, PB)
+            : PB,
         }}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
         bounces={false}
       >
         {/* Logo */}
@@ -319,16 +387,20 @@ const Login = ({ navigation }) => {
                 placeholderTextColor="#9ca3af"
                 value={email}
                 onChangeText={setEmail}
-                onFocus={() => setEmailFocused(true)}
+                onFocus={() => {
+                  setEmailFocused(true);
+                  scrollFocusedInputIntoView("email", 150);
+                }}
                 onBlur={() => setEmailFocused(false)}
                 autoCapitalize="none"
                 autoCorrect={false}
+                spellCheck={false}
                 keyboardType="email-address"
                 returnKeyType="next"
                 onSubmitEditing={() => passwordRef.current?.focus()}
                 blurOnSubmit={false}
                 underlineColorAndroid="transparent"
-                autoComplete="off"
+                textContentType="none"
               />
             </Field>
 
@@ -346,14 +418,20 @@ const Login = ({ navigation }) => {
                 placeholderTextColor="#9ca3af"
                 value={password}
                 onChangeText={setPassword}
-                onFocus={() => setPassFocused(true)}
+                onFocus={() => {
+                  setPassFocused(true);
+                  scrollFocusedInputIntoView("password", 230);
+                }}
                 onBlur={() => setPassFocused(false)}
                 secureTextEntry={!showPassword}
                 autoCapitalize="none"
+                autoCorrect={false}
+                spellCheck={false}
+                keyboardType="default"
                 returnKeyType="done"
                 onSubmitEditing={handleLogin}
                 underlineColorAndroid="transparent"
-                autoComplete="off"
+                textContentType="none"
               />
               <TouchableOpacity
                 onPress={() => setShowPassword(!showPassword)}

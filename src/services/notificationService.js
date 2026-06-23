@@ -1,4 +1,3 @@
-import * as Notifications from "expo-notifications";
 import * as Device from "expo-device";
 import Constants from "expo-constants";
 import { Platform } from "react-native";
@@ -7,36 +6,54 @@ import { navigate } from "../navigation/navigationRef";
 import { STORAGE_KEYS } from "../config";
 import api from "./api";
 
+const isExpoGo = Constants.appOwnership === "expo";
+
+const getNotifications = () => {
+  if (Platform.OS === "web" || isExpoGo) return null;
+  return require("expo-notifications");
+};
+
 // แสดง notification ขณะ app เปิดอยู่ (foreground) — mobile only
-if (Platform.OS !== "web") {
-  Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-      shouldShowAlert: true,
-      shouldPlaySound: true,
-      shouldSetBadge: true,
-    }),
-  });
+if (Platform.OS !== "web" && !isExpoGo) {
+  try {
+    const Notifications = getNotifications();
+    Notifications.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowAlert: true,
+        shouldPlaySound: true,
+        shouldSetBadge: true,
+      }),
+    });
+  } catch (error) {
+    if (__DEV__) {
+      console.warn("[Notifications] handler setup skipped:", error?.message);
+    }
+  }
 }
 
 // ── ขอ permission + ดึง push token ───────────────────────────
 export async function registerForPushNotificationsAsync() {
   if (Platform.OS === "web") return null;
+  if (isExpoGo) return null;
   if (!Device.isDevice) {
     if (__DEV__) console.warn("[Notifications] ต้องใช้อุปกรณ์จริง ไม่รองรับ Simulator");
     return null;
   }
 
-  if (Platform.OS === "android") {
-    await Notifications.setNotificationChannelAsync("default", {
-      name: "URU Smart",
-      importance: Notifications.AndroidImportance.MAX,
-      vibrationPattern: [0, 250, 250, 250],
-      lightColor: "#0f7a55",
-      sound: "default",
-    });
-  }
-
   try {
+    const Notifications = getNotifications();
+    if (!Notifications) return null;
+
+    if (Platform.OS === "android") {
+      await Notifications.setNotificationChannelAsync("default", {
+        name: "URU Smart",
+        importance: Notifications.AndroidImportance.MAX,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: "#0f7a55",
+        sound: "default",
+      });
+    }
+
     const { status: existing } = await Notifications.getPermissionsAsync();
     let finalStatus = existing;
     if (existing !== "granted") {

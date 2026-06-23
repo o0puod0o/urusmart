@@ -1,10 +1,21 @@
-import React, { useState, useMemo } from "react";
-import { View, Text, TextInput, ScrollView, TouchableOpacity, Alert, ActivityIndicator, KeyboardAvoidingView, Platform } from "react-native";
+import React, { useState, useMemo, useEffect } from "react";
+import {
+  View,
+  Text,
+  TextInput,
+  ScrollView,
+  TouchableOpacity,
+  Alert,
+  ActivityIndicator,
+  Platform,
+} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import AppHeader from "../../../components/AppHeader";
+import FormContainer from "../../../components/expert/FormContainer";
 import InlineDropdown from "../../../components/expert/InlineDropdown";
 import useResource from "../../../hook/useResource";
+import useConfirm from "../../../hook/useConfirm";
 import useRefs from "../../../hook/useRefs";
 
 const BASE_YEAR_LIST = Array.from({ length: 2569 - 2533 + 1 }, (_, i) => {
@@ -14,143 +25,540 @@ const BASE_YEAR_LIST = Array.from({ length: 2569 - 2533 + 1 }, (_, i) => {
 
 // normalize ref items — ใช้ || แทน ?? เพื่อ skip empty string ด้วย (ไม่ใช่แค่ null/undefined)
 const toOpt = (d, i) => ({
-  id:    String(d.id || d.type_id || d.level_id || d.pmu_id || d.research_type_id || d.research_level_id || d.research_pmu_type_id || i),
-  label: d.name || d.label || d.type_name || d.level_name || d.pmu_name || d.title || "",
+  id: String(
+    d.id ||
+      d.type_id ||
+      d.level_id ||
+      d.pmu_id ||
+      d.research_type_id ||
+      d.research_level_id ||
+      d.research_pmu_type_id ||
+      i,
+  ),
+  label:
+    d.name ||
+    d.label ||
+    d.type_name ||
+    d.level_name ||
+    d.pmu_name ||
+    d.title ||
+    "",
 });
 
-const COL = { no: 28, year: 40, type: 76, pmu: 36, level: 40, edit: 44, del: 32 };
+const findLabel = (options, value) => {
+  if (value === undefined || value === null || value === "") return "";
+  return options.find((o) => String(o.id) === String(value))?.label ?? "";
+};
+
+const getResearchTitle = (entry) =>
+  entry.name ??
+  entry.title ??
+  entry.research_name ??
+  entry.research_title ??
+  entry.research?.name ??
+  entry.research?.title ??
+  "";
+
+const getResearchTypeId = (entry) =>
+  entry.research_type_id ??
+  entry.type_id ??
+  entry.research_type?.id ??
+  entry.type?.id ??
+  "";
+
+const getResearchPmuId = (entry) =>
+  entry.research_PMU_type_id ??
+  entry.research_pmu_type_id ??
+  entry.pmu_id ??
+  entry.research_PMU_type?.id ??
+  entry.research_pmu_type?.id ??
+  "";
+
+const getResearchLevelId = (entry) =>
+  entry.research_level_id ??
+  entry.level_id ??
+  entry.research_level?.id ??
+  entry.level?.id ??
+  "";
+
+const getResearchTypeLabel = (entry, options) =>
+  entry.research_type?.name ??
+  entry.type?.name ??
+  entry.research_type_name ??
+  entry.type_name ??
+  findLabel(options, getResearchTypeId(entry));
+
+const getResearchPmuLabel = (entry, options) =>
+  entry.research_PMU_type?.name ??
+  entry.research_pmu_type?.name ??
+  entry.pmu_type?.name ??
+  entry.research_PMU_type_name ??
+  entry.research_pmu_type_name ??
+  entry.pmu_name ??
+  findLabel(options, getResearchPmuId(entry));
+
+const getResearchLevelLabel = (entry, options) =>
+  entry.research_level?.name ??
+  entry.level?.name ??
+  entry.research_level_name ??
+  entry.level_name ??
+  findLabel(options, getResearchLevelId(entry));
 
 const ResearchForm = ({ navigation }) => {
   const { t } = useTranslation();
-  const YEAR_OPTIONS = useMemo(() => [{ id: "", label: t("research.common.selectYear") }, ...BASE_YEAR_LIST], [t]);
-  const { items, saving, create, update, remove } = useResource("/researches");
-  const { researchTypes, researchLevels, researchPmuTypes, loading: loadingTypes } = useRefs();
+  const YEAR_OPTIONS = useMemo(
+    () => [
+      { id: "", label: t("research.common.selectYear") },
+      ...BASE_YEAR_LIST,
+    ],
+    [t],
+  );
+  const { confirm, ConfirmDialog } = useConfirm();
+  const {
+    items,
+    loading: loadingItems,
+    saving,
+    create,
+    update,
+    remove,
+  } = useResource("/researches");
+  const {
+    researchTypes,
+    researchLevels,
+    researchPmuTypes,
+    loading: loadingTypes,
+  } = useRefs();
+  const tableItems = useMemo(
+    () => [...items].sort((a, b) => Number(a.id) - Number(b.id)),
+    [items],
+  );
+
+  useEffect(() => {
+    if (__DEV__ && items.length > 0) {
+      console.log("=== [ResearchForm] GET /researches ===");
+      console.log("  จำนวน:", items.length);
+      console.log("  keys ของ item แรก:", Object.keys(items[0]));
+      console.log("  item แรก (full):", JSON.stringify(items[0], null, 2));
+      console.log("=====================================");
+    }
+  }, [items]);
+
   const [editingItem, setEditingItem] = useState(null);
-  const [form, setForm] = useState({ year: "", title: "", type: "", pmu: "", level: "" });
+  const [form, setForm] = useState({
+    year: "",
+    title: "",
+    type: "",
+    pmu: "",
+    level: "",
+  });
 
-  const typeOptions = useMemo(() => [
-    { id: "", label: t("research.researchForm.typePlaceholder") },
-    ...researchTypes.map(toOpt),
-  ], [researchTypes, t]);
+  const typeOptions = useMemo(
+    () => [
+      { id: "", label: t("research.researchForm.typePlaceholder") },
+      ...researchTypes.map(toOpt),
+    ],
+    [researchTypes, t],
+  );
 
-  const pmuOptions = useMemo(() => [
-    { id: "", label: t("research.researchForm.pmuPlaceholder") },
-    ...researchPmuTypes.map(toOpt),
-  ], [researchPmuTypes, t]);
+  const pmuOptions = useMemo(
+    () => [
+      { id: "", label: t("research.researchForm.pmuPlaceholder") },
+      ...researchPmuTypes.map(toOpt),
+    ],
+    [researchPmuTypes, t],
+  );
 
-  const levelOptions = useMemo(() => [
-    { id: "", label: t("research.researchForm.levelPlaceholder") },
-    ...researchLevels.map(toOpt),
-  ], [researchLevels, t]);
+  const levelOptions = useMemo(
+    () => [
+      { id: "", label: t("research.researchForm.levelPlaceholder") },
+      ...researchLevels.map(toOpt),
+    ],
+    [researchLevels, t],
+  );
 
   const setField = (key, val) => setForm((p) => ({ ...p, [key]: val }));
-  const openEdit = (entry) => { setEditingItem(entry); setForm({ year: entry.year, title: entry.name ?? "", type: String(entry.research_type_id ?? ""), pmu: String(entry.research_PMU_type_id ?? ""), level: String(entry.research_level_id ?? "") }); };
-  const openNew = () => { setEditingItem(null); setForm({ year: "", title: "", type: "", pmu: "", level: "" }); };
+  const openEdit = (entry) => {
+    setEditingItem(entry);
+    setForm({
+      year: String(entry.year ?? ""),
+      title: getResearchTitle(entry),
+      type: String(getResearchTypeId(entry)),
+      pmu: String(getResearchPmuId(entry)),
+      level: String(getResearchLevelId(entry)),
+    });
+  };
+  const openNew = () => {
+    setEditingItem(null);
+    setForm({ year: "", title: "", type: "", pmu: "", level: "" });
+  };
 
   const handleSave = async () => {
-    if (!form.year || !form.title.trim()) { Alert.alert(t("research.common.warning"), t("research.researchForm.validation")); return; }
+    if (!form.year || !form.title.trim()) {
+      Alert.alert(
+        t("research.common.warning"),
+        t("research.researchForm.validation"),
+      );
+      return;
+    }
     try {
       const payload = {
-        year: parseInt(form.year, 10),
+        year: String(form.year),
         name: form.title.trim(),
-        ...(form.type  ? { research_type_id:     parseInt(form.type,  10) } : {}),
-        ...(form.pmu   ? { research_PMU_type_id:  parseInt(form.pmu,   10) } : {}),
-        ...(form.level ? { research_level_id:     parseInt(form.level, 10) } : {}),
+        ...(form.type ? { research_type_id: parseInt(form.type, 10) } : {}),
+        ...(form.pmu ? { research_PMU_type_id: parseInt(form.pmu, 10) } : {}),
+        ...(form.level ? { research_level_id: parseInt(form.level, 10) } : {}),
       };
-      if (__DEV__) console.log("[ResearchForm] payload:", JSON.stringify(payload));
-      editingItem ? await update(editingItem.id, payload) : await create(payload);
-      Alert.alert(editingItem ? t("research.common.editSuccess") : t("research.common.addSuccess"), t("research.common.savedMsg"));
+      if (__DEV__)
+        console.log("[ResearchForm] payload:", JSON.stringify(payload));
+      editingItem
+        ? await update(editingItem.id, payload)
+        : await create(payload);
+      Alert.alert(
+        editingItem
+          ? t("research.common.editSuccess")
+          : t("research.common.addSuccess"),
+        t("research.common.savedMsg"),
+      );
       openNew();
-    } catch (err) { Alert.alert(t("research.common.saveFail"), err.message ?? t("research.common.apiError")); }
+    } catch (err) {
+      Alert.alert(
+        t("research.common.saveFail"),
+        err.message ?? t("research.common.apiError"),
+      );
+    }
   };
 
   const handleDelete = (entry) => {
-    const doDelete = async () => { try { await remove(entry.id); } catch (err) { Alert.alert(t("research.common.deleteFail"), err.message); } };
+    const doDelete = async () => {
+      try {
+        await remove(entry.id);
+      } catch (err) {
+        Alert.alert(t("research.common.deleteFail"), err.message);
+      }
+    };
     if (Platform.OS === "web") {
       if (window.confirm(t("research.common.deleteConfirm"))) doDelete();
     } else {
-      Alert.alert(t("research.common.deleteTitle"), t("research.common.deleteConfirm"), [
-        { text: t("research.common.cancel"), style: "cancel" },
-        { text: t("research.common.deleteBtn"), style: "destructive", onPress: doDelete },
-      ]);
+      Alert.alert(
+        t("research.common.deleteTitle"),
+        t("research.common.deleteConfirm"),
+        [
+          { text: t("research.common.cancel"), style: "cancel" },
+          {
+            text: t("research.common.deleteBtn"),
+            style: "destructive",
+            onPress: doDelete,
+          },
+        ],
+      );
     }
   };
 
   return (
-    <KeyboardAvoidingView className="flex-1 bg-[#eef2f7]" behavior={Platform.OS === "ios" ? "padding" : undefined}>
-      <AppHeader title={t("research.researchForm.title")} onBack={() => navigation.goBack()} />
-      <ScrollView contentContainerStyle={{ padding: 14, paddingBottom: 40, gap: 14 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+    <FormContainer className="flex-1 bg-[#f5f7f8]">
+      <AppHeader
+        title={t("research.researchForm.title")}
+        onBack={() => navigation.goBack()}
+      />
+      <ScrollView
+        contentContainerStyle={{
+          paddingHorizontal: 14,
+          paddingTop: 18,
+          paddingBottom: 60,
+        }}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
+      >
+        {/* Hero */}
+        <View
+          className="flex-row items-center bg-white border border-[#eef1f4] rounded-2xl px-[14px] py-[14px] mb-4"
+          style={{ elevation: 1 }}
+        >
+          <View className="w-11 h-11 rounded-xl bg-[#e6f4ef] items-center justify-center mr-3">
+            <Ionicons name="flask" size={22} color="#007a5a" />
+          </View>
+          <View className="flex-1">
+            <Text className="text-[11px] font-bold text-[#6b7a82] uppercase tracking-[0.8px]">
+              จัดการข้อมูล
+            </Text>
+            <Text className="text-[19px] font-black text-[#3f4d50] mt-[2px]">
+              {t("research.researchForm.title")}
+            </Text>
+          </View>
+          <View className="bg-[#007a5a] rounded-full min-w-9 px-[10px] py-[5px] items-center">
+            <Text className="text-white text-[13px] font-black">
+              {items.length}
+            </Text>
+          </View>
+        </View>
 
         {/* Table */}
-        <View className="bg-white rounded-2xl border border-[#e8ecf0] overflow-hidden">
-          <View className="bg-[#f8fafb] border-b border-[#e8ecf0] px-4 py-3">
-            <Text className="text-[14px] font-bold text-primary">{t("research.researchForm.editForm")}</Text>
+        <View
+          className="bg-white border border-[#eef1f4] rounded-2xl overflow-hidden mb-4"
+          style={{ elevation: 1 }}
+        >
+          <View className="flex-row items-center gap-2 bg-[#e6f4ef] border-b border-[#eef1f4] px-[14px] py-[11px]">
+            <Ionicons name="list-outline" size={16} color="#00614a" />
+            <Text className="text-[13px] font-extrabold text-[#00614a]">
+              {t("research.researchForm.listTitle") ??
+                t("research.researchForm.title")}
+            </Text>
           </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <View>
-              <View className="flex-row items-center bg-[#f0faf4] px-[10px] py-[10px] border-b border-[#e8ecf0] gap-1">
-                {[{ w: COL.no, label: t("research.common.no") }, { w: COL.year, label: t("research.common.year") }, { flex: 1, minW: 160, label: t("research.researchForm.colTitle") }, { w: COL.type, label: t("research.researchForm.colType") }, { w: COL.pmu, label: t("research.researchForm.colPmu") }, { w: COL.level, label: t("research.researchForm.colLevel") }, { w: COL.edit, label: t("research.common.editBtn") }, { w: COL.del, label: t("research.common.deleteBtn") }].map((col, i) => (
-                  <Text key={i} className="text-[11px] font-bold text-primary text-center" style={col.flex ? { flex: 1, minWidth: col.minW } : { width: col.w }}>{col.label}</Text>
-                ))}
-              </View>
-              {items.length === 0 ? (
-                <Text className="text-center text-[#aaa] text-[13px] p-6">{t("research.researchForm.noData")}</Text>
-              ) : items.map((entry, index) => (
-                <View key={entry.id ?? index} className="flex-row items-center px-[10px] py-[10px] border-b border-[#f0f4f7] gap-1" style={index % 2 === 0 ? { backgroundColor: "#f8fafb" } : {}}>
-                  <Text className="text-[11px] text-[#1a1a2e] text-center" style={{ width: COL.no }}>{index + 1}</Text>
-                  <Text className="text-[11px] text-[#1a1a2e] text-center" style={{ width: COL.year }}>{entry.year}</Text>
-                  <Text className="text-[11px] text-[#1a1a2e]" style={{ flex: 1, minWidth: 160 }} numberOfLines={3}>{entry.name}</Text>
-                  <Text className="text-[11px] text-primary text-center" style={{ width: COL.type }}>{entry.research_type_id}</Text>
-                  <Text className="text-[11px] text-[#1a1a2e] text-center" style={{ width: COL.pmu }}>{entry.research_PMU_type_id}</Text>
-                  <Text className="text-[11px] text-[#1a1a2e] text-center" style={{ width: COL.level }}>{entry.research_level_id}</Text>
-                  <TouchableOpacity className="rounded-[6px] py-[5px] items-center justify-center bg-[#fff3cd]" style={{ width: COL.edit }} onPress={() => openEdit(entry)}>
-                    <Text className="text-[10px] font-bold text-[#856404]">{t("research.common.editBtn")}</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity className="rounded-[6px] py-[5px] items-center justify-center bg-[#fde2e6]" style={{ width: COL.del }} onPress={() => handleDelete(entry)}>
-                    <Text className="text-[10px] font-bold text-[#c0392b]">{t("research.common.deleteBtn")}</Text>
-                  </TouchableOpacity>
-                </View>
-              ))}
+          {loadingItems ? (
+            <View className="flex-row items-center justify-center py-9 gap-[10px]">
+              <ActivityIndicator size="small" color="#007a5a" />
+              <Text className="text-[13px] text-[#6b7a82]">
+                {t("research.common.loading")}
+              </Text>
             </View>
-          </ScrollView>
+          ) : items.length === 0 ? (
+            <View className="items-center py-9">
+              <Ionicons name="folder-open-outline" size={42} color="#9aa6b1" />
+              <Text className="text-[14px] font-bold text-[#1f2a2e] mt-[10px]">
+                {t("research.researchForm.noData")}
+              </Text>
+              <Text className="text-[12px] text-[#6b7a82] mt-1">
+                {t("research.common.addBelow")}
+              </Text>
+            </View>
+          ) : (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View style={{ minWidth: 880 }}>
+                <View className="flex-row items-center bg-white border-b border-[#e3e7eb] px-3 py-3">
+                  {[
+                    { w: 40, label: "ที่" },
+                    { w: 80, label: "ปี" },
+                    { w: 280, label: "ชื่องานวิจัย" },
+                    { w: 130, label: "ประเภท" },
+                    { w: 130, label: "แหล่งทุน" },
+                    { w: 110, label: "ระดับ" },
+                    { w: 110, label: t("research.common.manage") },
+                  ].map((col, i) => (
+                    <Text
+                      key={i}
+                      className="text-[11px] font-extrabold text-[#6b7a82] uppercase tracking-[0.5px] px-1"
+                      style={{ width: col.w }}
+                    >
+                      {col.label}
+                    </Text>
+                  ))}
+                </View>
+                {tableItems.map((entry, index) => {
+                  const title = getResearchTitle(entry);
+                  const year = entry.year ?? entry.research_year ?? "";
+                  const typeLabel = getResearchTypeLabel(entry, typeOptions);
+                  const pmuLabel = getResearchPmuLabel(entry, pmuOptions);
+                  const levelLabel = getResearchLevelLabel(entry, levelOptions);
+                  return (
+                    <View
+                      key={entry.id ?? index}
+                      className="flex-row items-center px-3 py-3 border-b border-[#eef1f4]"
+                      style={
+                        index % 2 === 1 ? { backgroundColor: "#fafbfc" } : {}
+                      }
+                    >
+                      <Text
+                        className="text-[14px] font-bold text-[#1f2a2e] text-center px-1"
+                        style={{ width: 40 }}
+                      >
+                        {index + 1}
+                      </Text>
+                      <View style={{ width: 80 }}>
+                        <View className="self-start bg-[#e6f4ef] rounded-full px-[10px] py-1">
+                          <Text className="text-[#00614a] text-[12px] font-extrabold">
+                            {year || "—"}
+                          </Text>
+                        </View>
+                      </View>
+                      <Text
+                        className="text-[14px] font-semibold text-[#1f2a2e] leading-5 px-1"
+                        style={{ width: 280 }}
+                        numberOfLines={2}
+                      >
+                        {title || "—"}
+                      </Text>
+                      <Text
+                        className="text-[13px] text-[#3f4d50] px-1"
+                        style={{ width: 130 }}
+                        numberOfLines={2}
+                      >
+                        {typeLabel || "—"}
+                      </Text>
+                      <Text
+                        className="text-[13px] text-[#3f4d50] px-1"
+                        style={{ width: 130 }}
+                        numberOfLines={2}
+                      >
+                        {pmuLabel || "—"}
+                      </Text>
+                      <Text
+                        className="text-[13px] text-[#3f4d50] px-1"
+                        style={{ width: 110 }}
+                        numberOfLines={2}
+                      >
+                        {levelLabel || "—"}
+                      </Text>
+                      <View
+                        className="flex-row gap-[6px] justify-center"
+                        style={{ width: 110 }}
+                      >
+                        <TouchableOpacity
+                          className="w-[34px] h-[34px] rounded-lg bg-[#fff4e0] items-center justify-center"
+                          onPress={() => openEdit(entry)}
+                          activeOpacity={0.8}
+                        >
+                          <Ionicons
+                            name="create-outline"
+                            size={17}
+                            color="#a8631a"
+                          />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          className="w-[34px] h-[34px] rounded-lg bg-[#fde7e7] items-center justify-center"
+                          onPress={() => handleDelete(entry)}
+                          activeOpacity={0.8}
+                        >
+                          <Ionicons
+                            name="trash-outline"
+                            size={17}
+                            color="#df4c4b"
+                          />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  );
+                })}
+              </View>
+            </ScrollView>
+          )}
         </View>
 
         {/* Form */}
-        <View className="bg-white rounded-2xl border border-[#e8ecf0] overflow-hidden">
-          <Text className="text-[15px] font-bold text-[#1a1a2e] text-center p-4 border-b border-[#f0f4f7]">
-            {editingItem ? t("research.researchForm.editForm") : t("research.researchForm.addForm")}
-          </Text>
-          <InlineDropdown label={`${t("research.common.year")}:`} value={form.year} options={YEAR_OPTIONS} onSelect={(v) => setField("year", v)} required />
-          <View className="h-px bg-[#f0f4f7]" />
-          <View className="px-4 py-3">
-            <Text className="text-[13px] font-semibold text-brand mb-[6px]">{t("research.researchForm.fieldTitle")} <Text className="text-[#e74c3c]">*</Text></Text>
-            <TextInput className="bg-[#f8fafb] border border-[#e8ecf0] rounded-[10px] px-3 py-[10px] text-[13px] text-[#1a1a2e]" style={{ minHeight: 110, textAlignVertical: "top", paddingTop: 10 }} placeholder={t("research.researchForm.placeholderTitle")} placeholderTextColor="#bbb" value={form.title} onChangeText={(v) => setField("title", v)} multiline numberOfLines={3} textAlignVertical="top" />
+        <View
+          className="bg-white border border-[#eef1f4] rounded-2xl pb-[18px]"
+          style={{ elevation: 1 }}
+        >
+          <View className="flex-row items-center justify-between border-b border-[#eef1f4] px-4 py-3 mb-2">
+            <View className="flex-row items-center">
+              <Ionicons
+                name={editingItem ? "create" : "add-circle"}
+                size={18}
+                color="#007a5a"
+              />
+              <Text className="text-[16px] font-black text-[#3f4d50] ml-2">
+                {editingItem
+                  ? t("research.researchForm.editForm")
+                  : t("research.researchForm.addForm")}
+              </Text>
+            </View>
+            {editingItem && (
+              <View className="flex-row items-center bg-[#fff4e0] rounded-full px-[10px] py-1">
+                <Ionicons name="create-outline" size={13} color="#a8631a" />
+                <Text className="text-[#a8631a] text-[11px] font-extrabold ml-1">
+                  {t("research.common.editing")}
+                </Text>
+              </View>
+            )}
           </View>
-          <View className="h-px bg-[#f0f4f7]" />
+          <InlineDropdown
+            label="ปี:"
+            value={form.year}
+            options={YEAR_OPTIONS}
+            onSelect={(v) => setField("year", v)}
+            required
+            searchable
+          />
+          <View className="px-4 py-2">
+            <Text className="text-[13px] font-extrabold text-[#3f4d50] mb-[6px]">
+              {t("research.researchForm.fieldTitle")}
+              <Text className="text-[#d83a36]"> *</Text>
+            </Text>
+            <TextInput
+              className="bg-white border border-[#e3e7eb] rounded-[10px] px-[14px] py-[12px] text-[14px] text-[#1f2a2e]"
+              placeholder={t("research.researchForm.placeholderTitle")}
+              placeholderTextColor="#9aa6b1"
+              value={form.title}
+              onChangeText={(v) => setField("title", v)}
+              maxLength={500}
+              returnKeyType="done"
+              blurOnSubmit
+            />
+          </View>
           {loadingTypes ? (
             <View className="flex-row items-center gap-[10px] px-4 py-[14px]">
-              <ActivityIndicator size="small" color="#0f7a55" />
-              <Text className="text-[13px] text-[#888]">{t("research.researchForm.loadingTypes")}</Text>
+              <ActivityIndicator size="small" color="#007a5a" />
+              <Text className="text-[13px] text-[#6b7a82]">
+                {t("research.researchForm.loadingTypes")}
+              </Text>
             </View>
           ) : (
-            <InlineDropdown label={t("research.researchForm.fieldType")} value={form.type} options={typeOptions} onSelect={(v) => setField("type", v)} />
+            <InlineDropdown
+              label={t("research.researchForm.fieldType")}
+              value={form.type}
+              options={typeOptions}
+              onSelect={(v) => setField("type", v)}
+            />
           )}
-          <View className="h-px bg-[#f0f4f7]" />
-          <InlineDropdown label={t("research.researchForm.fieldPmu")} value={form.pmu} options={pmuOptions} onSelect={(v) => setField("pmu", v)} />
-          <View className="h-px bg-[#f0f4f7]" />
-          <InlineDropdown label={t("research.researchForm.fieldLevel")} value={form.level} options={levelOptions} onSelect={(v) => setField("level", v)} />
-          <View className="flex-row gap-[10px] p-4">
-            <TouchableOpacity className="flex-1 bg-brand rounded-[10px] py-[14px] items-center justify-center" style={{ elevation: 3 }} onPress={handleSave} activeOpacity={0.85}>
-              <Text className="text-white text-[13px] font-bold">{editingItem ? t("research.common.saveEdit") : t("research.researchForm.addForm")}</Text>
+          <InlineDropdown
+            label={t("research.researchForm.fieldPmu")}
+            value={form.pmu}
+            options={pmuOptions}
+            onSelect={(v) => setField("pmu", v)}
+          />
+          <InlineDropdown
+            label={t("research.researchForm.fieldLevel")}
+            value={form.level}
+            options={levelOptions}
+            onSelect={(v) => setField("level", v)}
+          />
+          <View className="flex-row gap-[10px] px-4 pt-[14px]">
+            <TouchableOpacity
+              className="flex-1 flex-row items-center justify-center gap-2 bg-[#007a5a] rounded-xl py-[13px]"
+              style={{ elevation: 2, opacity: saving ? 0.6 : 1 }}
+              onPress={handleSave}
+              disabled={saving}
+              activeOpacity={0.85}
+            >
+              {saving ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <>
+                  <Ionicons
+                    name={editingItem ? "checkmark-circle" : "add-circle"}
+                    size={18}
+                    color="#fff"
+                  />
+                  <Text className="text-white text-[14px] font-black">
+                    {editingItem
+                      ? t("research.common.save")
+                      : t("research.common.addData")}
+                  </Text>
+                </>
+              )}
             </TouchableOpacity>
-            <TouchableOpacity className="bg-[#fef2f2] border border-[#dc2626] rounded-[10px] px-5 py-[14px] flex-row items-center gap-[6px]" onPress={openNew} activeOpacity={0.8}>
-              <Ionicons name="refresh" size={16} color="#dc2626" />
-              <Text className="text-[#dc2626] text-[13px] font-bold">{t("research.common.reset")}</Text>
+            <TouchableOpacity
+              className="flex-row items-center gap-[6px] bg-[#fef2f2] border-[1.5px] border-[#dc2626] rounded-xl px-[18px]"
+              onPress={() =>
+                confirm({
+                  title: "รีเซ็ตฟอร์ม",
+                  message: "ต้องการเคลียร์ข้อมูลในฟอร์มหรือไม่?",
+                  icon: "refresh",
+                  onConfirm: openNew,
+                })
+              }
+              activeOpacity={0.85}
+            >
+              <Ionicons name="refresh" size={17} color="#dc2626" />
+              <Text className="text-[#dc2626] text-[14px] font-black">
+                {t("research.common.reset")}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
       </ScrollView>
-    </KeyboardAvoidingView>
+      <ConfirmDialog />
+    </FormContainer>
   );
 };
 

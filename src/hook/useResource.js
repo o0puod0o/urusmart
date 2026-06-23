@@ -26,8 +26,14 @@ const useResource = (endpoint, options = {}) => {
       if (mounted.current) { setLoading(true); setError(null); }
       const res = await api.get(endpoint, { params });
       const result = res.data?.data ?? res.data;
-      if (mounted.current) setItems(Array.isArray(result) ? result : []);
-      if (__DEV__ && Array.isArray(result) && result.length > 0) console.log(`[useResource] GET ${endpoint} fields:`, Object.keys(result[0]));
+      const sorted = Array.isArray(result)
+        ? [...result].sort((a, b) => Number(a.id ?? 0) - Number(b.id ?? 0))
+        : [];
+      if (mounted.current) setItems(sorted);
+      if (__DEV__ && sorted.length > 0) console.log(`[useResource] GET ${endpoint} fields:`, Object.keys(sorted[0]));
+      if (__DEV__ && endpoint === "/researches") {
+        console.log("[useResource] GET /researches response sample:", JSON.stringify(sorted[0] ?? null));
+      }
     } catch (err) {
       if (__DEV__) console.warn(`[useResource] GET ${endpoint} ล้มเหลว:`, err?.response?.status, err.message);
       if (mounted.current) setError(err.response?.data?.message ?? err.message ?? "โหลดข้อมูลไม่สำเร็จ");
@@ -38,14 +44,33 @@ const useResource = (endpoint, options = {}) => {
 
   useEffect(() => { refetch(); }, [refetch]);
 
+  const normalizePayload = (data) => {
+    if (!data || typeof data !== "object") return data;
+    const out = { ...data };
+    if (out.year !== undefined && out.year !== null) out.year = String(out.year);
+    return out;
+  };
+
+  const extractMessage = (err, fallback) => {
+    const d = err.response?.data;
+    if (!d) return err.message ?? fallback;
+    if (d.message) return d.message;
+    if (d.errors) {
+      const first = Object.values(d.errors).flat()[0];
+      if (first) return first;
+    }
+    return err.message ?? fallback;
+  };
+
   const create = useCallback(async (data) => {
     setSaving(true);
     try {
-      const res = await api.post(endpoint, data);
+      const res = await api.post(endpoint, normalizePayload(data));
       await refetch();
       return res.data?.data ?? res.data;
     } catch (err) {
-      throw new Error(err.response?.data?.message ?? err.message ?? "บันทึกไม่สำเร็จ");
+      if (__DEV__) console.warn(`[useResource] POST ${endpoint} body:`, JSON.stringify(err.response?.data));
+      throw new Error(extractMessage(err, "บันทึกไม่สำเร็จ"));
     } finally {
       if (mounted.current) setSaving(false);
     }
@@ -54,11 +79,12 @@ const useResource = (endpoint, options = {}) => {
   const update = useCallback(async (id, data) => {
     setSaving(true);
     try {
-      const res = await api.put(`${endpoint}/${id}`, data);
+      const res = await api.put(`${endpoint}/${id}`, normalizePayload(data));
       await refetch();
       return res.data?.data ?? res.data;
     } catch (err) {
-      throw new Error(err.response?.data?.message ?? err.message ?? "แก้ไขไม่สำเร็จ");
+      if (__DEV__) console.warn(`[useResource] PUT ${endpoint}/${id} body:`, JSON.stringify(err.response?.data));
+      throw new Error(extractMessage(err, "แก้ไขไม่สำเร็จ"));
     } finally {
       if (mounted.current) setSaving(false);
     }
@@ -70,7 +96,7 @@ const useResource = (endpoint, options = {}) => {
       await api.delete(`${endpoint}/${id}`);
       await refetch();
     } catch (err) {
-      throw new Error(err.response?.data?.message ?? err.message ?? "ลบไม่สำเร็จ");
+      throw new Error(extractMessage(err, "ลบไม่สำเร็จ"));
     } finally {
       if (mounted.current) setRemoving(false);
     }

@@ -1,6 +1,6 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-  ActivityIndicator, FlatList, KeyboardAvoidingView,
+  Animated, FlatList, KeyboardAvoidingView,
   Platform, StatusBar, Text, TextInput, TouchableOpacity, View,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
@@ -8,130 +8,160 @@ import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import HeaderBar from "../components/HeaderBar";
 import useCurrentUser from "../hook/useCurrentUser";
+import { sendChatMessage } from "../services/chatbot";
 
-const CHAT_API_URL = "";
 const makeId = () => `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
-const buildLocalReply = (message) => {
-  const text = message.trim().toLowerCase();
-  if (!text) return "พิมพ์คำถามมาได้เลยครับ";
-  if (text.includes("วิจัย") || text.includes("research"))
-    return "ถ้าต้องการจัดการผลงานวิจัย ให้ไปที่หน้าหลักแล้วเลือกเมนู e-Research จากนั้นเลือกเพิ่มหรือแก้ไขรายการที่ต้องการครับ";
-  if (text.includes("ตาราง") || text.includes("สอน") || text.includes("งาน"))
-    return "ตอนนี้หน้านี้ถูกเปลี่ยนเป็นแชทบอทแล้วครับ ถ้าต้องการให้บอทอ่านตารางจริง ให้ต่อ API ที่ส่งข้อมูลตารางของอาจารย์มาให้บอทสรุปได้";
-  if (text.includes("ออกจากระบบ") || text.includes("logout"))
-    return "กดไอคอนออกจากระบบด้านขวาบนของแถบสีฟ้าได้เลยครับ ระบบจะถามยืนยันก่อนออกจากบัญชี";
-  if (text.includes("ติดต่อ") || text.includes("support"))
-    return "ไปที่แท็บตั้งค่า แล้วเลือกเมนูติดต่อเรา เพื่อดูช่องทางติดต่อ IT Support หรือหน่วยงานที่เกี่ยวข้องครับ";
-  return "รับทราบครับ ตอนนี้ผมเป็นโหมดทดลองแบบไม่ใช้ API ถ้าคุณใส่ CHAT_API_URL ในไฟล์นี้ ผมจะส่งคำถามไปให้ AI API แล้วแสดงคำตอบจริงให้ทันที";
-};
-
-const askBot = async (message, history) => {
-  if (!CHAT_API_URL) {
-    await new Promise((resolve) => setTimeout(resolve, 550));
-    return buildLocalReply(message);
-  }
-  const response = await fetch(CHAT_API_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ message, history }),
-  });
-  if (!response.ok) throw new Error(`HTTP ${response.status}`);
-  const data = await response.json();
-  return data.reply ?? data.message ?? "API ตอบกลับมาแล้ว แต่ไม่พบ field reply";
-};
-
-const ChatBubble = ({ item }) => {
-  const isUser = item.role === "user";
+// ── Typing indicator (3 dots) ──────────────────────────────
+const TypingDot = ({ delay }) => {
+  const anim = useRef(new Animated.Value(0.3)).current;
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.delay(delay),
+        Animated.timing(anim, { toValue: 1, duration: 350, useNativeDriver: true }),
+        Animated.timing(anim, { toValue: 0.3, duration: 350, useNativeDriver: true }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [anim, delay]);
   return (
-    <View className={`flex-row items-end gap-2 ${isUser ? "justify-end" : ""}`}>
+    <Animated.View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: "#0f7a55", opacity: anim, marginHorizontal: 2 }} />
+  );
+};
+
+const TypingBubble = () => (
+  <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 8 }}>
+    <LinearGradient colors={["#0a6644", "#0f7a55"]} style={{ width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center" }}>
+      <Ionicons name="sparkles" size={15} color="rgba(255,255,255,0.95)" />
+    </LinearGradient>
+    <View style={{ backgroundColor: "#fff", borderRadius: 18, borderBottomLeftRadius: 6, paddingHorizontal: 14, paddingVertical: 13, borderWidth: 1, borderColor: "#e8ede9", flexDirection: "row", alignItems: "center" }}>
+      <TypingDot delay={0} />
+      <TypingDot delay={200} />
+      <TypingDot delay={400} />
+    </View>
+  </View>
+);
+
+// ── Chat bubble ────────────────────────────────────────────
+const ChatBubble = ({ item, onRetry }) => {
+  const { t } = useTranslation();
+  const isUser = item.role === "user";
+
+  if (item.error) {
+    return (
+      <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 8 }}>
+        <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: "#fef2f2", alignItems: "center", justifyContent: "center" }}>
+          <Ionicons name="alert-circle" size={18} color="#dc2626" />
+        </View>
+        <View style={{ maxWidth: "78%", backgroundColor: "#fff5f5", borderRadius: 18, borderBottomLeftRadius: 6, paddingHorizontal: 14, paddingVertical: 11, borderWidth: 1, borderColor: "#fecaca" }}>
+          <Text style={{ color: "#dc2626", fontSize: 13, fontWeight: "600", lineHeight: 20 }}>{t("chatbot.connectError")}</Text>
+          <TouchableOpacity onPress={() => onRetry(item.retryText)} activeOpacity={0.75} style={{ marginTop: 8, flexDirection: "row", alignItems: "center", gap: 4 }}>
+            <Ionicons name="refresh" size={13} color="#0f7a55" />
+            <Text style={{ color: "#0f7a55", fontSize: 12, fontWeight: "700" }}>{t("chatbot.retry")}</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
+  return (
+    <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 8, justifyContent: isUser ? "flex-end" : "flex-start" }}>
       {!isUser && (
-        <LinearGradient
-          colors={["#0a6644", "#0f7a55"]}
-          style={{ width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center" }}
-        >
+        <LinearGradient colors={["#0a6644", "#0f7a55"]} style={{ width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center" }}>
           <Ionicons name="sparkles" size={15} color="rgba(255,255,255,0.95)" />
         </LinearGradient>
       )}
       {isUser ? (
         <LinearGradient
           colors={["#0f7a55", "#1a9068"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
+          start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
           style={{ maxWidth: "78%", borderRadius: 18, borderBottomRightRadius: 6, paddingHorizontal: 14, paddingVertical: 11 }}
         >
-          <Text className="text-white text-[14px] leading-[21px] font-medium">{item.text}</Text>
+          <Text style={{ color: "#fff", fontSize: 14, lineHeight: 21, fontWeight: "500" }}>{item.text}</Text>
         </LinearGradient>
       ) : (
-        <View className="max-w-[78%] bg-white rounded-[18px] rounded-bl-[6px] px-[14px] py-[11px] border border-[#e8ede9]"
-          style={{ shadowColor: "#064e35", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 1 }}
-        >
-          <Text className="text-[#102019] text-[14px] leading-[21px] font-medium">{item.text}</Text>
+        <View style={{ maxWidth: "78%", backgroundColor: "#fff", borderRadius: 18, borderBottomLeftRadius: 6, paddingHorizontal: 14, paddingVertical: 11, borderWidth: 1, borderColor: "#e8ede9", elevation: 1, shadowColor: "#064e35", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4 }}>
+          <Text style={{ color: "#102019", fontSize: 14, lineHeight: 21, fontWeight: "500" }}>{item.text}</Text>
         </View>
       )}
     </View>
   );
 };
 
+// ── Main ───────────────────────────────────────────────────
 export default function ChatbotPage({ navigation }) {
   const { t } = useTranslation();
   const { user, logout } = useCurrentUser(navigation);
   const listRef = useRef(null);
 
-  const QUICK_PROMPTS = [t("chatbot.q1"), t("chatbot.q2"), t("chatbot.q3"), t("chatbot.q4")];
-  const INITIAL_MESSAGES = [{ id: "welcome", role: "bot", text: t("chatbot.welcome") }];
-
-  const [messages, setMessages] = useState(() => INITIAL_MESSAGES);
+  const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
 
+  // scroll to bottom on new message
   useEffect(() => {
     const timer = setTimeout(() => listRef.current?.scrollToEnd?.({ animated: true }), 80);
     return () => clearTimeout(timer);
   }, [messages, sending]);
 
-  const sendMessage = async (preset) => {
+  const sendMessage = useCallback(async (preset) => {
     const text = (preset ?? input).trim();
     if (!text || sending) return;
-    const userMessage = { id: makeId(), role: "user", text };
-    const nextMessages = [...messages, userMessage];
-    setMessages(nextMessages);
+    const userMsg = { id: makeId(), role: "user", text };
+    setMessages((cur) => [...cur, userMsg]);
     setInput("");
     setSending(true);
     try {
-      const reply = await askBot(text, nextMessages);
+      // แปลง messages → history format ที่ backend ต้องการ (สูงสุด 10 คู่ล่าสุด)
+      const history = messages
+        .filter((m) => !m.error)
+        .slice(-20)
+        .map((m) => ({ role: m.role === "bot" ? "assistant" : "user", content: m.text }));
+
+      const res = await sendChatMessage(text, history);
+      const reply = res.data?.data?.reply ?? res.data?.reply ?? "—";
       setMessages((cur) => [...cur, { id: makeId(), role: "bot", text: reply }]);
-    } catch (error) {
-      setMessages((cur) => [...cur, { id: makeId(), role: "bot", text: `${t("chatbot.connectError")} (${error.message})` }]);
+    } catch (e) {
+      const serverReply = e?.response?.data?.data?.reply ?? e?.response?.data?.reply;
+      if (serverReply) {
+        // backend ส่ง reply message กลับมาแม้ status 5xx → แสดงเป็น bot bubble ปกติ
+        setMessages((cur) => [...cur, { id: makeId(), role: "bot", text: serverReply }]);
+      } else {
+        setMessages((cur) => [...cur, { id: makeId(), role: "bot", error: true, retryText: text, text: "" }]);
+      }
     } finally {
       setSending(false);
     }
-  };
+  }, [input, sending, messages]);
+
+  const retryMessage = useCallback((text) => {
+    setMessages((cur) => cur.filter((m) => !m.error));
+    sendMessage(text);
+  }, [sendMessage]);
+
 
   return (
-    <View className="flex-1 bg-[#f0f6f2]">
+    <View style={{ flex: 1, backgroundColor: "#f0f6f2" }}>
       <StatusBar barStyle="light-content" backgroundColor="#064e35" />
       <HeaderBar name={user.name} photoUrl={user.photoUrl} onNotification={() => navigation.navigate("Notifications")} onLogout={logout} />
 
       <KeyboardAvoidingView
-        className="flex-1"
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 8 : 0}
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={
+          Platform.OS === "ios" ? 8 : (StatusBar.currentHeight ?? 0)
+        }
       >
         {/* Title bar */}
-        <View className="flex-row items-center gap-3 bg-white border-b border-[#dce8e2] px-4 py-[14px]">
-          <View className="w-11 h-11 rounded-[14px] bg-[#e6f5ef] items-center justify-center">
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: "#fff", borderBottomWidth: 1, borderBottomColor: "#dce8e2", paddingHorizontal: 16, paddingVertical: 14 }}>
+          <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: "#e6f5ef", alignItems: "center", justifyContent: "center" }}>
             <Ionicons name="chatbubble-ellipses" size={22} color="#0f7a55" />
           </View>
-          <View className="flex-1">
-            <Text className="text-[#102019] text-[17px] font-extrabold">{t("chatbot.title")}</Text>
-            <Text className="text-[#587066] text-[12px] font-semibold mt-[2px]">{t("chatbot.subtitle")}</Text>
-          </View>
-          <View className="flex-row items-center gap-[6px] bg-[#e6f5ef] rounded-[999px] px-[10px] py-[5px]">
-            <View className="w-[7px] h-[7px] rounded-[4px] bg-primary" />
-            <Text className="text-[#064e35] text-[11px] font-extrabold">
-              {CHAT_API_URL ? t("chatbot.api") : t("chatbot.demo")}
-            </Text>
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: "#102019", fontSize: 17, fontWeight: "800" }}>{t("chatbot.title")}</Text>
+            <Text style={{ color: "#587066", fontSize: 12, fontWeight: "600", marginTop: 2 }}>{t("chatbot.subtitle")}</Text>
           </View>
         </View>
 
@@ -139,57 +169,37 @@ export default function ChatbotPage({ navigation }) {
           ref={listRef}
           data={messages}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }) => <ChatBubble item={item} />}
+          renderItem={({ item }) => <ChatBubble item={item} onRetry={retryMessage} />}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
           contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 12, gap: 12 }}
-          ListFooterComponent={
-            sending ? (
-              <View className="flex-row items-center gap-2 pl-10 py-1">
-                <ActivityIndicator size="small" color="#0f7a55" />
-                <Text className="text-[#8fa89f] text-[12px] font-bold">{t("chatbot.typing")}</Text>
+          ListEmptyComponent={
+            <View style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingTop: 60, gap: 12 }}>
+              <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: "#e6f5ef", alignItems: "center", justifyContent: "center" }}>
+                <Ionicons name="chatbubbles-outline" size={34} color="#0f7a55" />
               </View>
-            ) : null
+              <Text style={{ color: "#587066", fontSize: 14, fontWeight: "600", textAlign: "center" }}>{t("chatbot.emptyHint")}</Text>
+            </View>
           }
+          ListFooterComponent={sending ? <TypingBubble /> : null}
         />
 
-        {/* Quick prompts */}
-        <View className="border-t border-[#dce8e2] bg-white">
-          <FlatList
-            horizontal
-            data={QUICK_PROMPTS}
-            keyExtractor={(item) => item}
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 10, gap: 8 }}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                className="bg-[#e6f5ef] rounded-[999px] px-[13px] py-2 border border-[#c7eadb]"
-                onPress={() => sendMessage(item)}
-                activeOpacity={0.8}
-                disabled={sending}
-              >
-                <Text className="text-[#064e35] text-[12px] font-bold">{item}</Text>
-              </TouchableOpacity>
-            )}
-          />
-        </View>
-
         {/* Composer */}
-        <View
-          className="flex-row items-end gap-[10px] bg-white px-4 pt-[10px]"
-          style={{ paddingBottom: Platform.OS === "ios" ? 18 : 12 }}
-        >
+        <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 10, backgroundColor: "#fff", paddingHorizontal: 16, paddingTop: 10, paddingBottom: Platform.OS === "ios" ? 18 : 14 }}>
           <TextInput
-            className="flex-1 min-h-[44px] max-h-[110px] rounded-[16px] border border-[#dce8e2] bg-[#f8fbf9] text-[#102019] px-[14px] pt-[11px] pb-[10px] text-[14px] font-medium"
+            style={{ flex: 1, minHeight: 44, maxHeight: 110, borderRadius: 16, borderWidth: 1, borderColor: "#dce8e2", backgroundColor: "#f8fbf9", color: "#102019", paddingHorizontal: 14, paddingTop: 11, paddingBottom: 10, fontSize: 14, fontWeight: "500" }}
             value={input}
             onChangeText={setInput}
             placeholder={t("chatbot.placeholder")}
             placeholderTextColor="#8fa89f"
             multiline
-            maxLength={800}
+            maxLength={2000}
             editable={!sending}
+            onSubmitEditing={() => sendMessage()}
           />
           <TouchableOpacity
-            className={`w-11 h-11 rounded-[15px] items-center justify-center ${!input.trim() || sending ? "bg-[#8fa89f]" : "bg-primary"}`}
+            style={{ width: 44, height: 44, borderRadius: 15, alignItems: "center", justifyContent: "center", backgroundColor: !input.trim() || sending ? "#8fa89f" : "#0f7a55" }}
             onPress={() => sendMessage()}
             activeOpacity={0.85}
             disabled={!input.trim() || sending}

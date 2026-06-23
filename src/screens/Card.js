@@ -6,29 +6,50 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import QRCode from "react-native-qrcode-svg";
-import Barcode from "react-native-barcode-svg";
 import { useTranslation } from "react-i18next";
 import HeaderBar from "../components/HeaderBar";
 import useCurrentUser from "../hook/useCurrentUser";
 import api from "../services/api";
+import { stripNamePrefix } from "../utils/name";
+import { fixPhotoUrl } from "../utils/image";
 
 const logo = require("../assets/urusmartlogo.png");
 
+const str = (v) => (typeof v === "string" && v.trim() ? v.trim() : "");
+
+
+const buildVCard = ({ name, position, faculty, department, email, phoneWork, profileId }) => [
+  "BEGIN:VCARD",
+  "VERSION:3.0",
+  `FN:${name}`,
+  position        ? `TITLE:${position}` : "",
+  `ORG:Uttaradit Rajabhat University;${[faculty, department].filter(Boolean).join(" ")}`,
+  email           ? `EMAIL;TYPE=WORK:${email}` : "",
+  phoneWork       ? `TEL;TYPE=WORK:${phoneWork}` : "",
+  profileId       ? `URL:https://urusmart.uru.ac.th/profile/${profileId}` : "",
+  "END:VCARD",
+].filter(Boolean).join("\r\n");
+
 const normalize = (d) => {
-  const firstName = d.firstname_th ?? d.firstname_en ?? "";
-  const lastName  = d.lastname_th  ?? d.lastname_en  ?? "";
-  const fullName  = d.name ?? d.full_name ?? d.teacher_name ??
-    (firstName ? `${firstName} ${lastName}`.trim() : "");
+  const firstName = str(d.firstname_th) || str(d.firstname_en) || str(d.first_name_th) || str(d.first_name_en);
+  const lastName  = str(d.lastname_th)  || str(d.lastname_en)  || str(d.last_name_th)  || str(d.last_name_en);
+  const fullName  =
+    str(d.full_name_th) || str(d.full_name_en) ||
+    str(d.name) || str(d.full_name) || str(d.teacher_name) ||
+    (firstName && lastName ? `${firstName} ${lastName}` : firstName || lastName);
+
+  if (__DEV__) console.log("[Card /me keys]", Object.keys(d), "→ name:", fullName);
 
   return {
     name:       fullName,
-    position:   d.position_name ?? d.position_label ?? d.position ?? d.academic_position ?? "",
-    faculty:    d.faculty ?? d.faculty_name ?? d.main_unit_name ?? d.main_unit ?? "",
-    department: d.department ?? d.program ?? d.major ?? d.sub_unit_name ?? d.sub_unit ?? d.branch ?? "",
-    email:      d.email ?? d.teacher_email ?? "",
-    phone:      d.phone ?? d.tel ?? d.mobile ?? d.phone_work ?? d.phone_mobile ?? "",
-    employeeId: d.employeeId ?? d.employee_id ?? d.staff_id ?? d.id_card ?? "",
-    photoUrl:   d.photoUrl ?? d.photo_url ?? d.avatar ?? d.picture ?? d.profile_image ?? "",
+    position:   str(d.position_name) || str(d.position_label) || str(d.position) || str(d.academic_position),
+    faculty:    str(d.faculty_name_th) || str(d.faculty_name_en) || str(d.faculty_name) || str(d.main_unit_name) || str(d.faculty),
+    department: str(d.department_name_th) || str(d.department_name_en) || str(d.department_name) || str(d.program) || str(d.major) || str(d.sub_unit_name) || str(d.department),
+    email:      str(d.email) || str(d.teacher_email),
+    phone:      str(d.phone) || str(d.tel) || str(d.mobile) || str(d.phone_work) || str(d.phone_mobile),
+    phoneWork:  str(d.phone_work) || str(d.phone) || str(d.tel),
+    profileId:  String(d.id ?? d.user_id ?? d.profile_id ?? ""),
+    photoUrl:   fixPhotoUrl(str(d.picture) || str(d.photo_url) || str(d.photoUrl) || str(d.avatar) || str(d.profile_image)),
   };
 };
 
@@ -61,9 +82,8 @@ const InfoRow = ({ icon, label, value }) => (
 const Divider = () => <View className="h-px bg-[#eef4f0] mx-1" />;
 
 const TAB_KEYS = [
-  { key: "info",    icon: "person-circle-outline", tKey: "card.tabInfo" },
-  { key: "qr",     icon: "qr-code-outline",        tKey: "card.tabQr" },
-  { key: "barcode", icon: "barcode-outline",        tKey: "card.tabBarcode" },
+  { key: "info", icon: "person-circle-outline", tKey: "card.tabInfo" },
+  { key: "qr",   icon: "qr-code-outline",       tKey: "card.tabQr" },
 ];
 
 const cardShadow = {
@@ -129,21 +149,27 @@ export default function Cardpage({ navigation }) {
     return () => { cancelled = true; pulse.stop(); };
   }, []);
 
-  // merge: API data > user data > empty
+  // merge: API data > cached user > empty (ไม่ fallback ชื่อปลอม)
   const raw = teacher ?? {};
   const tc = {
-    name:       raw.name       || user.name       || t("card.defaultName"),
+    name:       raw.name       || user.name       || "",
     position:   raw.position   || "",
     faculty:    raw.faculty    || user.faculty     || "",
     department: raw.department || "",
     email:      raw.email      || "",
     phone:      raw.phone      || "",
-    employeeId: raw.employeeId || "",
-    photoUrl:   raw.photoUrl   || user.photoUrl   || "",
+    phoneWork:  raw.phoneWork  || "",
+    profileId:  raw.profileId  || "",
+    photoUrl:   user.photoUrl  || raw.photoUrl    || "",
   };
+
+  const displayName = stripNamePrefix(tc.name);
+
   const ini = initial(tc.name);
-  const affiliation = [tc.faculty, tc.department].filter(Boolean).join(" · ");
-  const qrValue = `URUSMART:${tc.employeeId || "000"}:${tc.email || ""}`;
+  const affiliation = [tc.faculty, tc.department].filter(Boolean).join(" ");
+  const qrValue = tc.email
+    ? buildVCard({ name: displayName, position: tc.position, faculty: tc.faculty, department: tc.department, email: tc.email, phoneWork: tc.phoneWork, profileId: tc.profileId })
+    : "URUSMART:no-email";
 
   const handleShare = async () => {
     try {
@@ -151,11 +177,12 @@ export default function Cardpage({ navigation }) {
         title: "Digital Staff Card – URUSmart",
         message: [
           t("card.shareMsg"),
-          tc.name, tc.position,
+          displayName,
+          tc.position,
           affiliation,
-          `Email: ${tc.email}`,
-          `โทร: ${tc.phone}`,
-        ].join("\n"),
+          tc.email ? `Email: ${tc.email}` : "",
+          tc.phone ? `โทร: ${tc.phone}` : "",
+        ].filter(Boolean).join("\n"),
       });
     } catch {}
   };
@@ -213,12 +240,6 @@ export default function Cardpage({ navigation }) {
                 <Text className="text-white text-[20px] font-black mt-5 tracking-[0.2px]">{t("card.title")}</Text>
                 <Text className="text-white/60 text-[11px] font-semibold mt-[4px]">Uttaradit Rajabhat University</Text>
 
-                {!!tc.employeeId && (
-                  <View className="flex-row items-center gap-[5px] mt-3 self-start bg-white/10 rounded-full px-3 py-[5px]">
-                    <Ionicons name="id-card-outline" size={12} color="rgba(255,255,255,0.8)" />
-                    <Text className="text-white/80 text-[11px] font-bold">{tc.employeeId}</Text>
-                  </View>
-                )}
               </LinearGradient>
 
               {/* ── Photo (sits on band seam) ── */}
@@ -237,10 +258,16 @@ export default function Cardpage({ navigation }) {
 
               {/* ── Name & position ── */}
               <View className="items-center px-5 pt-3 pb-[2px]">
-                <Text className="text-[#111c18] text-[20px] font-black text-center leading-7 tracking-[-0.3px]">
-                  {tc.name}
-                </Text>
-                {!!tc.position && (
+                {apiLoading && !tc.name ? (
+                  <Animated.View className="h-[22px] w-[180px] rounded-full bg-[#d4e8de]" style={{ opacity: pulseAnim }} />
+                ) : (
+                  <Text className="text-[#111c18] text-[20px] font-black text-center leading-7 tracking-[-0.3px]">
+                    {displayName || "—"}
+                  </Text>
+                )}
+                {apiLoading && !tc.position ? (
+                  <Animated.View className="h-[28px] w-[140px] rounded-full bg-[#e0ebe6] mt-[8px]" style={{ opacity: pulseAnim }} />
+                ) : !!tc.position && (
                   <View className="flex-row items-center gap-[5px] mt-[8px] bg-[#eef8f3] border border-[#d4efe5] rounded-full px-4 py-[6px]">
                     <Ionicons name="ribbon-outline" size={13} color="#0f7a55" />
                     <Text className="text-[#0a6644] text-[12px] font-bold">{tc.position}</Text>
@@ -296,8 +323,6 @@ export default function Cardpage({ navigation }) {
                         <InfoRow icon="mail-outline" label={t("card.email")} value={tc.email} />
                         <Divider />
                         <InfoRow icon="call-outline" label={t("card.phone")} value={tc.phone} />
-                        <Divider />
-                        <InfoRow icon="id-card-outline" label={t("card.employeeId")} value={tc.employeeId} />
                       </>
                     )}
                   </View>
@@ -309,37 +334,13 @@ export default function Cardpage({ navigation }) {
                       className="bg-white rounded-[20px] p-5 border border-[#dce8e2]"
                       style={{ shadowColor: "#064e35", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 4 }}
                     >
-                      <QRCode value={qrValue} size={180} color="#064e35" backgroundColor="#ffffff" />
+                      <QRCode value={qrValue} size={210} color="#064e35" backgroundColor="#ffffff" />
                     </View>
-                    <Text className="text-[#111c18] text-[13px] font-extrabold mt-4 text-center">{t("card.scanQr")}</Text>
-                    <Text className="text-[#8fa89f] text-[11px] font-semibold mt-1">{tc.employeeId || "—"}</Text>
+                    <Text className="text-[#111c18] text-[13px] font-extrabold mt-4 text-center">{t("card.scanToView")}</Text>
+                    <Text className="text-[#8fa89f] text-[11px] font-semibold mt-1">{tc.email || "—"}</Text>
                   </View>
                 )}
 
-                {activeTab === "barcode" && (
-                  <View className="items-center py-4">
-                    {tc.employeeId ? (
-                      <View
-                        className="bg-white rounded-[20px] p-5 border border-[#dce8e2]"
-                        style={{ shadowColor: "#064e35", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 4 }}
-                      >
-                        <Barcode value={tc.employeeId} format="CODE128" width={1.8} height={80} lineColor="#064e35" background="#ffffff" />
-                      </View>
-                    ) : (
-                      <View
-                        className="bg-white rounded-[20px] p-5 border border-[#dce8e2] items-center justify-center"
-                        style={{ width: 200, height: 110, shadowColor: "#064e35", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 4 }}
-                      >
-                        <Ionicons name="barcode-outline" size={36} color="#c4d4cc" />
-                        <Text className="text-[12px] text-[#c4d4cc] font-semibold mt-2">{t("card.noEmployeeId")}</Text>
-                      </View>
-                    )}
-                    <Text className="text-[#111c18] text-[13px] font-extrabold mt-4 text-center tracking-[2px]">
-                      {tc.employeeId || "—"}
-                    </Text>
-                    <Text className="text-[#8fa89f] text-[11px] font-semibold mt-1">{t("card.employeeBarcode")}</Text>
-                  </View>
-                )}
               </View>
             </View>
           </View>

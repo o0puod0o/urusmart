@@ -4,8 +4,9 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import LoginScreen from "../screens/login";
+import LoginScreen from "../screens/Login";
 import Homepage from "../screens/Homepage";
 import Cardpage from "../screens/Card";
 import ChatbotPage from "../screens/Chatbot";
@@ -37,6 +38,7 @@ import HumanSubjectsForm from "../screens/expert/forms/HumanSubjectsForm";
 import NotificationsScreen from "../screens/notifications/Notifications";
 import InAppBrowser from "../screens/shared/InAppBrowser";
 import EResearch from "../screens/e-research/EResearch";
+import ProfileDetail from "../screens/expert/ProfileDetail";
 
 const RootStack = createNativeStackNavigator();
 const SettingStackNav = createNativeStackNavigator();
@@ -135,6 +137,7 @@ function SettingStack() {
 
 function MainTabs() {
   const { t } = useTranslation();
+  const { bottom } = useSafeAreaInsets();
   return (
     <Tabs.Navigator
       screenOptions={({ route }) => ({
@@ -143,8 +146,8 @@ function MainTabs() {
           backgroundColor: "#fff",
           borderTopWidth: 1,
           borderTopColor: "#e8ecf0",
-          height: 68,
-          paddingBottom: 10,
+          height: 68 + bottom,
+          paddingBottom: 10 + bottom,
           paddingTop: 6,
           elevation: 8,
           shadowColor: "#064e35",
@@ -236,6 +239,7 @@ export default function AppNavigator() {
       />
       <RootStack.Screen name="InAppBrowser" component={InAppBrowser} />
       <RootStack.Screen name="EResearch" component={EResearch} />
+      <RootStack.Screen name="ProfileDetail" component={ProfileDetail} />
     </RootStack.Navigator>
   );
 }
