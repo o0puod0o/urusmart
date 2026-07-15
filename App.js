@@ -1,15 +1,28 @@
 import "./global.css";
-import React, { useEffect, useState } from 'react';
-import { Platform } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { AppState, Platform } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import Constants from 'expo-constants';
 import AppNavigator from './src/navigation/AppNavigator';
-import { navigationRef } from './src/navigation/navigationRef';
-import { handleNotificationResponse } from './src/services/notificationService';
+import { flushPendingNavigation, navigate, navigationRef } from './src/navigation/navigationRef';
+import {
+  handleNotificationResponse,
+  handlePushTokenChange,
+  saveNotificationToInbox,
+  syncNotificationInboxFromBackend,
+} from './src/services/notificationService';
 import { initI18n } from './src/i18n/i18n';
+import { isExpoGo } from './src/utils/runtime';
+import NotificationToast, { showToast } from './src/components/NotificationToast';
 
-const isExpoGo = Constants.appOwnership === 'expo';
+const handleToastPress = (notification) => {
+  const data = notification?.request?.content?.data ?? {};
+  if (data.type === "announcement") {
+    navigate("Announcements", { highlightId: data.announcement_id });
+    return;
+  }
+  navigate("Notifications");
+};
 
 export default function App() {
   const [ready, setReady] = useState(false);
@@ -19,11 +32,24 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    if (!ready) return;
+    syncNotificationInboxFromBackend().catch(() => {});
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') {
+        syncNotificationInboxFromBackend().catch(() => {});
+      }
+    });
+    return () => subscription.remove();
+  }, [ready]);
+
+  useEffect(() => {
     // expo-notifications ไม่รองรับบน web
     if (Platform.OS === 'web') return;
     if (isExpoGo) return;
 
-    let subscription;
+    let responseSubscription;
+    let receivedSubscription;
+    let tokenSubscription;
 
     try {
       const Notifications = require('expo-notifications');
@@ -40,8 +66,19 @@ export default function App() {
         });
 
       // ผู้ใช้แตะ notification ขณะ app อยู่ background
-      subscription = Notifications.addNotificationResponseReceivedListener(
+      responseSubscription = Notifications.addNotificationResponseReceivedListener(
         handleNotificationResponse,
+      );
+
+      receivedSubscription = Notifications.addNotificationReceivedListener(
+        (notification) => {
+          saveNotificationToInbox(notification);
+          showToast(notification);
+        },
+      );
+
+      tokenSubscription = Notifications.addPushTokenListener(
+        handlePushTokenChange,
       );
     } catch (error) {
       if (__DEV__) {
@@ -49,16 +86,21 @@ export default function App() {
       }
     }
 
-    return () => subscription?.remove?.();
+    return () => {
+      responseSubscription?.remove?.();
+      receivedSubscription?.remove?.();
+      tokenSubscription?.remove?.();
+    };
   }, []);
 
   if (!ready) return null;
 
   return (
     <SafeAreaProvider>
-      <NavigationContainer ref={navigationRef}>
+      <NavigationContainer ref={navigationRef} onReady={flushPendingNavigation}>
         <AppNavigator />
       </NavigationContainer>
+      <NotificationToast onPress={handleToastPress} />
     </SafeAreaProvider>
   );
 }

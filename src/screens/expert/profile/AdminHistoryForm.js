@@ -4,6 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import AppHeader from "../../../components/AppHeader";
 import FormContainer from "../../../components/expert/FormContainer";
+import KeyboardAwareScrollView from "../../../components/expert/KeyboardAwareScrollView";
 import InlineDropdown from "../../../components/expert/InlineDropdown";
 import FormField from "../../../components/expert/FormField";
 import useResource from "../../../hook/useResource";
@@ -54,7 +55,7 @@ const AdminHistoryForm = ({ navigation, route }) => {
   return (
     <FormContainer className="flex-1 bg-[#f5f7f8]">
       <AppHeader title={t("research.adminHistory.title")} onBack={() => navigation.goBack()} />
-      <ScrollView
+      <KeyboardAwareScrollView
         contentContainerStyle={{ paddingHorizontal: 14, paddingTop: 18, paddingBottom: 60 }}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
@@ -91,32 +92,83 @@ const AdminHistoryForm = ({ navigation, route }) => {
               <Text className="text-[14px] font-bold text-[#1f2a2e] mt-[10px]">ยังไม่มีข้อมูล{t("research.adminHistory.title")}</Text>
               <Text className="text-[12px] text-[#6b7a82] mt-1">{t("research.common.addBelow")}</Text>
             </View>
-          ) : sortedItems.map((entry, index) => (
-            <View key={entry.id} className="p-[14px] flex-row justify-between items-center border-b border-[#eef1f4]" style={index % 2 === 1 ? { backgroundColor: "#fafbfc" } : {}}>
-              <View className="flex-1 pr-3">
-                <Text className="text-[14px] font-bold text-[#1a1a2e] mb-1">{entry.position}</Text>
-                <Text className="text-[12px] text-[#4b5563] mb-[6px]">{entry.workplace}</Text>
-                <View className="flex-row items-center gap-[10px] mt-2">
-                  <View className="bg-[#e6f4ef] rounded-full px-[10px] py-1">
-                    <Text className="text-[#00614a] text-[12px] font-extrabold">{entry.year_start || "-"} - {entry.year_end || "-"}</Text>
-                  </View>
-                  {!!entry.status && (
-                    <View className="bg-[#d1fae5] rounded-full px-[10px] py-1">
-                      <Text className="text-[#065f46] text-[11px] font-bold">{entry.status}</Text>
-                    </View>
-                  )}
+          ) : (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View>
+                <View className="flex-row items-center bg-white border-b border-[#e3e7eb] px-3 py-3">
+                  {[
+                    { w: 40, l: t("research.common.no") },
+                    { w: 130, l: "ช่วงปี" },
+                    { w: 220, l: t("research.workHistory.colPosition") },
+                    { w: 220, l: t("research.workHistory.colPlace") },
+                    { w: 120, l: "สถานะ" },
+                    { w: 92, l: t("research.common.manage") },
+                  ].map((c, i, columns) => (
+                    <Text
+                      key={i}
+                      className="text-[11px] font-extrabold text-[#6b7a82] uppercase tracking-[0.5px] px-1"
+                      style={{ width: c.w, textAlign: i === columns.length - 1 ? "center" : "left" }}
+                    >
+                      {c.l}
+                    </Text>
+                  ))}
                 </View>
+                {sortedItems.map((entry, index) => (
+                  <View
+                    key={entry.id ?? index}
+                    className="flex-row items-center px-3 py-3 border-b border-[#eef1f4]"
+                    style={[
+                      editingItem?.id === entry.id ? { backgroundColor: "#dff4ec" } : {},
+                    ]}
+                  >
+                    <Text className="text-[14px] font-bold text-[#1f2a2e] text-left px-1" style={{ width: 40 }}>
+                      {index + 1}
+                    </Text>
+                    <View className="px-1" style={{ width: 130 }}>
+                      <View className="self-start bg-[#e6f4ef] rounded-full px-[10px] py-[3px]">
+                        <Text className="text-[#00614a] text-[12px] font-extrabold">
+                          {entry.year_start || "-"} - {entry.year_end || "-"}
+                        </Text>
+                      </View>
+                    </View>
+                    <Text
+                      className="text-[13px] font-semibold text-[#1f2a2e] leading-5 px-3"
+                      style={{ width: 220, borderLeftWidth: 1, borderLeftColor: "#eef1f4" }}
+                      numberOfLines={3}
+                    >
+                      {entry.position || "-"}
+                    </Text>
+                    <Text
+                      className="text-[12px] text-[#3f4d50] leading-5 px-3"
+                      style={{ width: 220, borderLeftWidth: 1, borderLeftColor: "#eef1f4" }}
+                      numberOfLines={3}
+                    >
+                      {entry.workplace || "-"}
+                    </Text>
+                    <View className="px-3" style={{ width: 120, borderLeftWidth: 1, borderLeftColor: "#eef1f4" }}>
+                      {!!entry.status ? (
+                        <View className="self-start bg-[#d1fae5] rounded-full px-[10px] py-[3px]">
+                          <Text className="text-[#065f46] text-[11px] font-bold" numberOfLines={1}>
+                            {entry.status}
+                          </Text>
+                        </View>
+                      ) : (
+                        <Text className="text-[12px] text-[#9aa6b1]">-</Text>
+                      )}
+                    </View>
+                    <View className="flex-row gap-[6px] justify-center px-1" style={{ width: 92 }}>
+                      <TouchableOpacity className="w-[34px] h-[34px] rounded-lg bg-[#fff4e0] items-center justify-center" onPress={() => openEdit(entry)}>
+                        <Ionicons name="create-outline" size={17} color="#a8631a" />
+                      </TouchableOpacity>
+                      <TouchableOpacity className="w-[34px] h-[34px] rounded-lg bg-[#fde7e7] items-center justify-center" onPress={() => handleDelete(entry)}>
+                        <Ionicons name="trash-outline" size={17} color="#df4c4b" />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ))}
               </View>
-              <View className="flex-row gap-2">
-                <TouchableOpacity className="w-[34px] h-[34px] rounded-lg bg-[#fff4e0] items-center justify-center" onPress={() => openEdit(entry)}>
-                  <Ionicons name="create-outline" size={17} color="#a8631a" />
-                </TouchableOpacity>
-                <TouchableOpacity className="w-[34px] h-[34px] rounded-lg bg-[#fde7e7] items-center justify-center" onPress={() => handleDelete(entry)}>
-                  <Ionicons name="trash-outline" size={17} color="#df4c4b" />
-                </TouchableOpacity>
-              </View>
-            </View>
-          ))}
+            </ScrollView>
+          )}
         </View>
 
         {/* Form */}
@@ -158,7 +210,7 @@ const AdminHistoryForm = ({ navigation, route }) => {
             </TouchableOpacity>
           </View>
         </View>
-      </ScrollView>
+      </KeyboardAwareScrollView>
       <ConfirmDialog />
     </FormContainer>
   );

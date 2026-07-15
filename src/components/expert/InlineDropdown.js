@@ -2,7 +2,7 @@ import React, { useRef, useState, useMemo, useEffect } from "react";
 import {
   Animated,
   ActivityIndicator,
-  Dimensions,
+  Keyboard,
   Modal,
   Platform,
   ScrollView,
@@ -11,11 +11,11 @@ import {
   TouchableOpacity,
   TouchableWithoutFeedback,
   View,
+  useWindowDimensions,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 
-const SCREEN_HEIGHT = Dimensions.get("window").height;
 const MAX_LIST_H = 300;
 
 const InlineDropdown = ({
@@ -28,9 +28,11 @@ const InlineDropdown = ({
   loading = false,
 }) => {
   const { t } = useTranslation();
+  const { height: screenHeight } = useWindowDimensions();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [dropPos, setDropPos] = useState(null);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
   const triggerRef = useRef(null);
 
   // animations
@@ -70,12 +72,13 @@ const InlineDropdown = ({
   const handleOpen = () => {
     if (loading) return;
     triggerRef.current?.measure((x, y, width, height, pageX, pageY) => {
-      const spaceBelow = SCREEN_HEIGHT - (pageY + height);
+      const usable = screenHeight - keyboardHeight;
+      const spaceBelow = usable - (pageY + height);
       const spaceAbove = pageY;
-      const flipUp = spaceBelow < 200;
+      const flipUp = spaceBelow < 220;
       const listH = flipUp
         ? Math.max(120, Math.min(MAX_LIST_H, spaceAbove - 24))
-        : Math.max(120, Math.min(MAX_LIST_H, spaceBelow - 20));
+        : Math.max(120, Math.min(MAX_LIST_H, spaceBelow - 16));
       const top = flipUp
         ? Math.max(16, pageY - listH - 4)
         : pageY + height + 4;
@@ -85,6 +88,31 @@ const InlineDropdown = ({
       animateIn();
     });
   };
+
+  // ปรับ dropdown ให้ขึ้นเมื่อ keyboard โผล่
+  useEffect(() => {
+    if (!open) return;
+    const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+    const onShow = (e) => {
+      const kbH = e.endCoordinates.height;
+      setKeyboardHeight(kbH);
+      setDropPos((prev) => {
+        if (!prev) return prev;
+        const usable = screenHeight - kbH - 8;
+        if (prev.top + prev.maxHeight > usable) {
+          const newMaxH = Math.max(120, usable - prev.top);
+          const newTop = newMaxH < 120 ? Math.max(16, usable - 120 - 4) : prev.top;
+          return { ...prev, top: newTop, maxHeight: Math.max(120, usable - newTop) };
+        }
+        return prev;
+      });
+    };
+    const onHide = () => setKeyboardHeight(0);
+    const s1 = Keyboard.addListener(showEvent, onShow);
+    const s2 = Keyboard.addListener(hideEvent, onHide);
+    return () => { s1.remove(); s2.remove(); };
+  }, [open, screenHeight]);
 
   const handleClose = () => {
     animateOut(() => {

@@ -1,12 +1,25 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Image, Text, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  loadNotificationInbox,
+  subscribeNotificationInbox,
+} from "../services/notificationService";
 
 const logo = require("../assets/urusmartlogo.png");
 
 const HeaderBar = ({ name, photoUrl, onNotification, onLogout }) => {
   const { top } = useSafeAreaInsets();
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    const updateCount = (items) => {
+      setUnreadCount(items.filter((item) => !item.read).length);
+    };
+    loadNotificationInbox().then(updateCount);
+    return subscribeNotificationInbox(updateCount);
+  }, []);
 
   const initials = name
     ? name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()
@@ -26,12 +39,18 @@ const HeaderBar = ({ name, photoUrl, onNotification, onLogout }) => {
 
         {/* Logo — absolute center ทำให้อยู่กลางจริงๆ ไม่ขึ้นกับความกว้างซ้าย-ขวา */}
         <View
-          style={{ position: "absolute", left: 0, right: 0, alignItems: "center" }}
-          pointerEvents="none"
+          style={{
+            position: "absolute",
+            left: 0,
+            right: 0,
+            alignItems: "center",
+            pointerEvents: "none",
+          }}
         >
           <Image
             source={logo}
-            style={{ width: 120, height: 40, tintColor: "#fff" }}
+            style={{ width: 120, height: 40 }}
+            tintColor="#fff"
             resizeMode="contain"
           />
         </View>
@@ -44,6 +63,13 @@ const HeaderBar = ({ name, photoUrl, onNotification, onLogout }) => {
             activeOpacity={0.75}
           >
             <Ionicons name="notifications-outline" size={22} color="#fff" />
+            {unreadCount > 0 && (
+              <View className="absolute -right-1 -top-1 min-w-[17px] h-[17px] rounded-full bg-[#ef4444] items-center justify-center px-1 border border-primary">
+                <Text className="text-white text-[9px] font-extrabold">
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </Text>
+              </View>
+            )}
           </TouchableOpacity>
           <TouchableOpacity
             className="w-[32px] h-[32px] items-center justify-center rounded-full bg-white/10"

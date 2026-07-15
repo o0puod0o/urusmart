@@ -15,7 +15,7 @@ export default function AnnouncementCarousel({ items = [], onViewAll, onPressIte
   const count = announcements.length;
 
   const scrollRef = useRef(null);
-  const indexRef = useRef(count);
+  const scrollXRef = useRef(0);
   const isUserScrolling = useRef(false);
   const [dotIndex, setDotIndex] = useState(0);
 
@@ -31,32 +31,39 @@ export default function AnnouncementCarousel({ items = [], onViewAll, onPressIte
     return [...announcements, ...announcements, ...announcements];
   }, [announcements, count]);
 
-  const scrollToIndex = (index, animated = true) => {
-    scrollRef.current?.scrollTo({ x: index * (cardWidth + CARD_GAP), animated });
+  const snapUnit = cardWidth + CARD_GAP;
+
+  const scrollToX = (x, animated = true) => {
+    scrollRef.current?.scrollTo({ x, animated });
   };
 
   // เริ่มต้นที่ชุดกลาง (index = count)
   useEffect(() => {
     if (count <= 1 || cardWidth === 0) return;
-    const t = setTimeout(() => scrollToIndex(count, false), 80);
+    const initialX = count * snapUnit;
+    const t = setTimeout(() => {
+      scrollToX(initialX, false);
+      scrollXRef.current = initialX;
+    }, 80);
     return () => clearTimeout(t);
   }, [count, cardWidth]);
 
-  // Auto-scroll ไปข้างหน้าต่อเนื่อง — หยุดรอถ้า user กำลัง scroll อยู่
+  // Auto-scroll — อ่านตำแหน่งจริงจาก scrollXRef ทุกครั้ง ไม่ใช้ index ที่แคชไว้
   useEffect(() => {
     if (!autoPlayMs || count <= 1) return;
     const interval = setInterval(() => {
       if (isUserScrolling.current) return;
-      const next = indexRef.current + 1;
-      scrollToIndex(next, true);
-      indexRef.current = next;
+      const currentIndex = Math.round(scrollXRef.current / snapUnit);
+      const next = currentIndex + 1;
+      const nextX = next * snapUnit;
+      scrollToX(nextX, true);
       setDotIndex(next % count);
 
       if (next >= count * 2) {
         setTimeout(() => {
-          const reset = next - count;
-          scrollToIndex(reset, false);
-          indexRef.current = reset;
+          const resetX = (next - count) * snapUnit;
+          scrollToX(resetX, false);
+          scrollXRef.current = resetX;
         }, SCROLL_ANIM_MS);
       }
     }, autoPlayMs);
@@ -67,21 +74,20 @@ export default function AnnouncementCarousel({ items = [], onViewAll, onPressIte
     if (count <= 1) return;
     isUserScrolling.current = false;
     const x = e.nativeEvent.contentOffset.x;
-    const index = Math.round(x / (cardWidth + CARD_GAP));
-    indexRef.current = index;
+    const index = Math.round(x / snapUnit);
     setDotIndex(index % count);
 
     if (index < count) {
       setTimeout(() => {
-        const reset = index + count;
-        scrollToIndex(reset, false);
-        indexRef.current = reset;
+        const resetX = (index + count) * snapUnit;
+        scrollToX(resetX, false);
+        scrollXRef.current = resetX;
       }, 50);
     } else if (index >= count * 2) {
       setTimeout(() => {
-        const reset = index - count;
-        scrollToIndex(reset, false);
-        indexRef.current = reset;
+        const resetX = (index - count) * snapUnit;
+        scrollToX(resetX, false);
+        scrollXRef.current = resetX;
       }, 50);
     }
   };
@@ -127,6 +133,7 @@ export default function AnnouncementCarousel({ items = [], onViewAll, onPressIte
             decelerationRate="fast"
             snapToInterval={cardWidth + CARD_GAP}
             snapToAlignment="start"
+            onScroll={(e) => { scrollXRef.current = e.nativeEvent.contentOffset.x; }}
             onScrollBeginDrag={() => { isUserScrolling.current = true; }}
             onMomentumScrollEnd={handleScrollEnd}
             scrollEventThrottle={16}

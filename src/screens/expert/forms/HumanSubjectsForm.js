@@ -13,9 +13,11 @@ import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import AppHeader from "../../../components/AppHeader";
 import FormContainer from "../../../components/expert/FormContainer";
+import KeyboardAwareScrollView from "../../../components/expert/KeyboardAwareScrollView";
 import InlineDropdown from "../../../components/expert/InlineDropdown";
 import useResource from "../../../hook/useResource";
 import useConfirm from "../../../hook/useConfirm";
+import { getExpertLink, getExpertTitle, getExpertYear } from "../../../utils/expertFields";
 
 const BASE_YEAR_LIST = Array.from({ length: 2569 - 2533 + 1 }, (_, i) => ({
   id: String(2569 - i),
@@ -46,7 +48,11 @@ const HumanSubjectsForm = ({ navigation }) => {
   const setField = (k, v) => setForm((p) => ({ ...p, [k]: v }));
   const openEdit = (e) => {
     setEditingItem(e);
-    setForm({ year: e.year, title: e.name ?? "", evidenceUrl: e.link ?? "" });
+    setForm({
+      year: getExpertYear(e),
+      title: getExpertTitle(e),
+      evidenceUrl: getExpertLink(e),
+    });
   };
   const openNew = () => {
     setEditingItem(null);
@@ -111,7 +117,7 @@ const HumanSubjectsForm = ({ navigation }) => {
   return (
     <FormContainer className="flex-1 bg-[#f5f7f8]">
       <AppHeader title={COURSE_TITLE} onBack={() => navigation.goBack()} />
-      <ScrollView
+      <KeyboardAwareScrollView
         contentContainerStyle={{
           paddingHorizontal: 14,
           paddingTop: 20,
@@ -174,19 +180,22 @@ const HumanSubjectsForm = ({ navigation }) => {
             </View>
           ) : (
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <View style={{ minWidth: 820 }}>
+              <View>
                 <View className="flex-row items-center bg-white border-b border-[#e3e7eb] px-3 py-3">
                   {[
                     { w: 40, l: t("research.common.no") },
-                    { w: 80, l: t("research.common.year") },
-                    { w: 460, l: t("research.human.colTitle") },
-                    { w: 130, l: t("research.human.colLink") },
-                    { w: 110, l: t("research.common.manage") },
-                  ].map((c, i) => (
+                    { w: 86, l: t("research.common.year") },
+                    { w: 220, l: t("research.human.colTitle") },
+                    { w: 160, l: t("research.human.colLink") },
+                    { w: 92, l: t("research.common.manage") },
+                  ].map((c, i, columns) => (
                     <Text
                       key={i}
                       className="text-[12px] font-extrabold text-[#6b7a82] uppercase tracking-[0.5px] px-1"
-                      style={{ width: c.w }}
+                      style={{
+                        width: c.w,
+                        textAlign: i === columns.length - 1 ? "center" : "left",
+                      }}
                     >
                       {c.l}
                     </Text>
@@ -197,59 +206,67 @@ const HumanSubjectsForm = ({ navigation }) => {
                     key={entry.id}
                     className="flex-row items-center px-3 py-3 border-b border-[#eef1f4]"
                     style={[
-                      index % 2 === 1 ? { backgroundColor: "#fafbfc" } : {},
                       editingItem?.id === entry.id
-                        ? { backgroundColor: "#fff4e0" }
+                        ? { backgroundColor: "#dff4ec" }
                         : {},
                     ]}
                   >
                     <Text
-                      className="text-[14px] font-bold text-[#1f2a2e] text-center px-1"
+                      className="text-[14px] font-bold text-[#1f2a2e] text-left px-1"
                       style={{ width: 40 }}
                     >
                       {index + 1}
                     </Text>
-                    <View style={{ width: 80 }}>
+                    <View className="px-1" style={{ width: 86 }}>
                       <View className="self-start bg-[#e6f4ef] rounded-full px-[10px] py-[3px]">
                         <Text className="text-[#00614a] text-[12px] font-extrabold">
-                          {entry.year}
+                          {getExpertYear(entry)}
                         </Text>
                       </View>
                     </View>
                     <Text
-                      className="text-[14px] font-semibold text-[#1f2a2e] leading-5 px-1"
-                      style={{ width: 460 }}
+                      className="text-[13px] font-semibold text-[#1f2a2e] leading-5 px-3"
+                      style={{
+                        width: 220,
+                        borderLeftWidth: 1,
+                        borderLeftColor: "#eef1f4",
+                      }}
+                      numberOfLines={3}
                     >
-                      {entry.name}
+                      {getExpertTitle(entry)}
                     </Text>
                     <Text
-                      className="text-[13px] font-bold text-[#00614a] leading-5 px-1"
-                      style={{ width: 130 }}
+                      className="text-[12px] font-semibold text-[#007a5a] leading-5 px-3"
+                      style={{
+                        width: 160,
+                        borderLeftWidth: 1,
+                        borderLeftColor: "#eef1f4",
+                      }}
                       numberOfLines={2}
                     >
-                      {entry.link}
+                      {getExpertLink(entry)}
                     </Text>
                     <View
                       className="flex-row gap-[6px] justify-center"
-                      style={{ width: 110 }}
+                      style={{ width: 92 }}
                     >
                       <TouchableOpacity
-                        className="w-[34px] h-[34px] rounded-lg bg-[#f7a23b] items-center justify-center"
+                        className="w-[34px] h-[34px] rounded-lg bg-[#fff4e0] items-center justify-center"
                         onPress={() => openEdit(entry)}
                         activeOpacity={0.85}
                       >
                         <Ionicons
                           name="create-outline"
                           size={16}
-                          color="#fff"
+                          color="#a8631a"
                         />
                       </TouchableOpacity>
                       <TouchableOpacity
-                        className="w-[34px] h-[34px] rounded-lg bg-[#df4c4b] items-center justify-center"
+                        className="w-[34px] h-[34px] rounded-lg bg-[#fde7e7] items-center justify-center"
                         onPress={() => handleDelete(entry)}
                         activeOpacity={0.85}
                       >
-                        <Ionicons name="trash-outline" size={16} color="#fff" />
+                        <Ionicons name="trash-outline" size={16} color="#df4c4b" />
                       </TouchableOpacity>
                     </View>
                   </View>
@@ -378,7 +395,7 @@ const HumanSubjectsForm = ({ navigation }) => {
             </TouchableOpacity>
           </View>
         </View>
-      </ScrollView>
+      </KeyboardAwareScrollView>
       <ConfirmDialog />
     </FormContainer>
   );

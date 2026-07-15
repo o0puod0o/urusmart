@@ -13,9 +13,11 @@ import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import AppHeader from "../../../components/AppHeader";
 import FormContainer from "../../../components/expert/FormContainer";
+import KeyboardAwareScrollView from "../../../components/expert/KeyboardAwareScrollView";
 import InlineDropdown from "../../../components/expert/InlineDropdown";
 import useResource from "../../../hook/useResource";
 import useConfirm from "../../../hook/useConfirm";
+import { getExpertLink, getExpertTitle, getExpertYear } from "../../../utils/expertFields";
 
 const BASE_YEAR_LIST = Array.from({ length: 2569 - 2533 + 1 }, (_, i) => ({
   id: String(2569 - i),
@@ -45,7 +47,11 @@ const ProceedingForm = ({ navigation }) => {
   const setField = (k, v) => setForm((p) => ({ ...p, [k]: v }));
   const openEdit = (e) => {
     setEditingItem(e);
-    setForm({ year: e.year, reference: e.name ?? "", url: e.url ?? "" });
+    setForm({
+      year: getExpertYear(e),
+      reference: getExpertTitle(e),
+      url: getExpertLink(e),
+    });
   };
   const openNew = () => {
     setEditingItem(null);
@@ -60,9 +66,12 @@ const ProceedingForm = ({ navigation }) => {
       );
       return;
     }
+    const reference = form.reference.trim();
     const payload = {
       year: form.year,
-      name: form.reference.trim(),
+      name: reference,
+      reference,
+      title: reference,
       url: form.url.trim(),
     };
     try {
@@ -113,7 +122,7 @@ const ProceedingForm = ({ navigation }) => {
   return (
     <FormContainer className="flex-1 bg-[#f5f7f8]">
       <AppHeader title="Proceeding" onBack={() => navigation.goBack()} />
-      <ScrollView
+      <KeyboardAwareScrollView
         contentContainerStyle={{
           paddingHorizontal: 14,
           paddingTop: 18,
@@ -176,18 +185,21 @@ const ProceedingForm = ({ navigation }) => {
           ) : (
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               <View>
-                <View className="flex-row bg-white py-[10px] px-[10px] border-b border-[#e3e7eb]">
+                <View className="flex-row items-center bg-white px-3 py-3 border-b border-[#e3e7eb]">
                   {[
-                    { w: 32, l: t("research.common.no") },
-                    { w: 52, l: t("research.common.year") },
-                    { w: 360, l: t("research.journal.colRef") },
-                    { w: 72, l: t("research.common.editBtn") },
-                    { w: 72, l: t("research.common.deleteBtn") },
+                    { w: 40, l: t("research.common.no"), align: "left" },
+                    { w: 86, l: t("research.common.year"), align: "left" },
+                    { w: 220, l: t("research.journal.colRef"), align: "left" },
+                    { w: 160, l: "URL", align: "left" },
+                    { w: 92, l: t("research.common.manage"), align: "center" },
                   ].map((c, i) => (
                     <Text
                       key={i}
-                      className="text-[11px] font-extrabold text-[#6b7a82] uppercase tracking-[0.5px]"
-                      style={{ width: c.w, textAlign: "center" }}
+                      className="text-[11px] font-extrabold text-[#6b7a82] uppercase tracking-[0.5px] px-1"
+                      style={{
+                        width: c.w,
+                        textAlign: c.align,
+                      }}
                     >
                       {c.l}
                     </Text>
@@ -195,53 +207,74 @@ const ProceedingForm = ({ navigation }) => {
                 </View>
                 {tableItems.map((entry, index) => (
                   <View
-                    key={entry.id}
-                    className="flex-row py-3 px-[10px] items-start border-b border-[#f0f4f7]"
-                    style={
-                      index % 2 === 1 ? { backgroundColor: "#fafbfc" } : {}
-                    }
+                    key={entry.id ?? index}
+                    className="flex-row items-center px-3 py-3 border-b border-[#eef1f4]"
+                    style={[
+                      editingItem?.id === entry.id
+                        ? { backgroundColor: "#dff4ec" }
+                        : {},
+                    ]}
                   >
                     <Text
-                      className="text-[13px] text-[#1a1a2e] text-center leading-5"
-                      style={{ width: 32 }}
+                      className="text-[13px] font-bold text-[#1f2a2e] text-left px-1"
+                      style={{ width: 40 }}
                     >
                       {index + 1}
                     </Text>
+                    <View className="px-1" style={{ width: 86 }}>
+                      <View className="self-start bg-[#e6f4ef] rounded-full px-[10px] py-[3px]">
+                        <Text className="text-[#00614a] text-[12px] font-extrabold">
+                          {getExpertYear(entry)}
+                        </Text>
+                      </View>
+                    </View>
                     <Text
-                      className="text-[13px] text-[#1a1a2e] text-center leading-5"
-                      style={{ width: 52 }}
+                      className="text-[13px] font-semibold text-[#1f2a2e] leading-5 px-3"
+                      style={{
+                        width: 220,
+                        borderLeftWidth: 1,
+                        borderLeftColor: "#eef1f4",
+                      }}
+                      numberOfLines={3}
                     >
-                      {entry.year}
+                      {getExpertTitle(entry)}
                     </Text>
                     <Text
-                      className="text-[13px] text-[#1a1a2e] leading-5 px-2"
-                      style={{ width: 360 }}
-                      numberOfLines={4}
+                      className="text-[12px] font-semibold text-[#007a5a] leading-5 px-3"
+                      style={{
+                        width: 160,
+                        borderLeftWidth: 1,
+                        borderLeftColor: "#eef1f4",
+                      }}
+                      numberOfLines={2}
                     >
-                      {entry.name}
+                      {getExpertLink(entry)}
                     </Text>
                     <View
-                      className="items-center justify-center"
-                      style={{ width: 72 }}
+                      className="flex-row gap-[6px] justify-center px-1"
+                      style={{ width: 92 }}
                     >
                       <TouchableOpacity
                         className="w-[34px] h-[34px] rounded-lg bg-[#fff4e0] items-center justify-center"
                         onPress={() => openEdit(entry)}
                         activeOpacity={0.8}
                       >
-                        <Ionicons name="create-outline" size={17} color="#a8631a" />
+                        <Ionicons
+                          name="create-outline"
+                          size={17}
+                          color="#a8631a"
+                        />
                       </TouchableOpacity>
-                    </View>
-                    <View
-                      className="items-center justify-center"
-                      style={{ width: 72 }}
-                    >
                       <TouchableOpacity
                         className="w-[34px] h-[34px] rounded-lg bg-[#fde7e7] items-center justify-center"
                         onPress={() => handleDelete(entry)}
                         activeOpacity={0.8}
                       >
-                        <Ionicons name="trash-outline" size={17} color="#df4c4b" />
+                        <Ionicons
+                          name="trash-outline"
+                          size={17}
+                          color="#df4c4b"
+                        />
                       </TouchableOpacity>
                     </View>
                   </View>
@@ -357,7 +390,7 @@ const ProceedingForm = ({ navigation }) => {
             </TouchableOpacity>
           </View>
         </View>
-      </ScrollView>
+      </KeyboardAwareScrollView>
       <ConfirmDialog />
     </FormContainer>
   );

@@ -152,6 +152,25 @@ function checkConflictMarkers(files) {
   return failures;
 }
 
+function checkInsecureTokenStorage(files) {
+  const failures = [];
+  const allowedMigrationFile = "src/services/authStorage.js";
+  const directTokenAccess =
+    /AsyncStorage\.(?:getItem|setItem|multiGet|multiSet)\([\s\S]{0,120}?STORAGE_KEYS\.(?:TOKEN|TOKEN_TYPE)/;
+
+  for (const file of files) {
+    const relative = toRelative(file);
+    if (relative === allowedMigrationFile) continue;
+    if (directTokenAccess.test(fs.readFileSync(file, "utf8"))) {
+      failures.push(
+        `${relative} accesses auth tokens through AsyncStorage; use authStorage instead`,
+      );
+    }
+  }
+
+  return failures;
+}
+
 const files = walk(ROOT);
 const appFiles = files.filter((file) => {
   const rel = toRelative(file);
@@ -164,6 +183,7 @@ const failures = [
   ...checkAppAssets(),
   ...checkNavigationTargets(appFiles),
   ...checkConflictMarkers(appFiles),
+  ...checkInsecureTokenStorage(appFiles),
 ];
 
 if (failures.length > 0) {

@@ -12,8 +12,10 @@ import { useTranslation } from "react-i18next";
 import AppHeader from "../../components/AppHeader";
 import { stripNamePrefix } from "../../utils/name";
 import { fixPhotoUrl } from "../../utils/image";
+import { getExpertLink, getExpertTitle, getExpertYear } from "../../utils/expertFields";
 import api from "../../services/api";
 import { API_BASE_URL, STORAGE_KEYS } from "../../config";
+import { getAuthToken } from "../../services/authStorage";
 import useRefs from "../../hook/useRefs";
 
 const DEGREE_KEYS = {
@@ -128,7 +130,7 @@ const enhanceProfilePdfHtml = (html) => {
 };
 
 const downloadProfilePdfWeb = async (userId) => {
-  const token = await AsyncStorage.getItem(STORAGE_KEYS.TOKEN);
+  const token = await getAuthToken();
   const response = await fetch(`${API_BASE_URL}/profile/${userId}/pdf`, {
     cache: "no-store",
     headers: token ? { Authorization: `Bearer ${token}` } : undefined,
@@ -177,6 +179,177 @@ const downloadProfilePdfWeb = async (userId) => {
     document.body.removeChild(element);
   }
 };
+
+const escapeHtml = (value) =>
+  String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+
+const renderPdfRows = (cols, rows) => `
+  <table>
+    <thead>
+      <tr>
+        ${cols.map((col) => `<th>${escapeHtml(col.label)}</th>`).join("")}
+      </tr>
+    </thead>
+    <tbody>
+      ${rows.map((row) => `
+        <tr>
+          ${row.map((cell) => `<td>${escapeHtml(cell || "-")}</td>`).join("")}
+        </tr>
+      `).join("")}
+    </tbody>
+  </table>
+`;
+
+const renderPdfSection = ({ title, cols, rows }) => {
+  if (!rows?.length) return "";
+  return `
+    <section>
+      <h2>${escapeHtml(title)}</h2>
+      ${renderPdfRows(cols, rows)}
+    </section>
+  `;
+};
+
+const renderPdfTags = (title, values) => {
+  if (!values?.length) return "";
+  return `
+    <section>
+      <h2>${escapeHtml(title)}</h2>
+      <p class="tag-line">${values.map(escapeHtml).join(", ")}</p>
+    </section>
+  `;
+};
+
+const buildProfilePdfHtml = ({
+  title,
+  name,
+  position,
+  faculty,
+  dept,
+  email,
+  phone,
+  photoUrl,
+  expertises,
+  interests,
+  sections,
+}) => `
+  <!doctype html>
+  <html>
+    <head>
+      <meta charset="utf-8" />
+      <style>
+        @page { margin: 14mm 10mm; }
+        body {
+          font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+          color: #111827;
+          font-size: 11px;
+          line-height: 1.45;
+        }
+        h1 {
+          text-align: center;
+          font-size: 17px;
+          margin: 0 0 14px;
+        }
+        h2 {
+          font-size: 12px;
+          margin: 14px 0 7px;
+          color: #222;
+        }
+        .profile {
+          display: table;
+          width: 100%;
+          margin-bottom: 12px;
+        }
+        .photo-wrap {
+          display: table-cell;
+          width: 178px;
+          vertical-align: top;
+        }
+        .photo {
+          width: 160px;
+          height: 120px;
+          object-fit: cover;
+          border: 1px solid #d1d5db;
+        }
+        .info {
+          display: table-cell;
+          vertical-align: top;
+          padding-left: 12px;
+        }
+        .info-title {
+          font-size: 13px;
+          font-weight: 700;
+          margin-bottom: 6px;
+        }
+        .row {
+          display: table-row;
+        }
+        .label,
+        .value {
+          display: table-cell;
+          padding: 2px 0;
+        }
+        .label {
+          width: 90px;
+          font-weight: 700;
+        }
+        table {
+          width: 100%;
+          border-collapse: collapse;
+          table-layout: fixed;
+          margin-bottom: 7px;
+          page-break-inside: auto;
+        }
+        tr {
+          page-break-inside: avoid;
+          page-break-after: auto;
+        }
+        th,
+        td {
+          border: 1px solid #666;
+          padding: 5px 6px;
+          vertical-align: top;
+          word-break: break-word;
+        }
+        th {
+          font-weight: 700;
+          text-align: center;
+          background: #f7f7f7;
+        }
+        section {
+          page-break-inside: auto;
+        }
+        .tag-line {
+          margin: 0 0 8px;
+        }
+      </style>
+    </head>
+    <body>
+      <h1>${escapeHtml(title)}</h1>
+      <div class="profile">
+        <div class="photo-wrap">
+          ${photoUrl ? `<img class="photo" src="${escapeHtml(photoUrl)}" />` : ""}
+        </div>
+        <div class="info">
+          <div class="info-title">${escapeHtml(name || "-")}</div>
+          <div class="row"><div class="label">ตำแหน่ง:</div><div class="value">${escapeHtml(position || "-")}</div></div>
+          <div class="row"><div class="label">คณะ:</div><div class="value">${escapeHtml(faculty || "-")}</div></div>
+          <div class="row"><div class="label">สาขา:</div><div class="value">${escapeHtml(dept || "-")}</div></div>
+          <div class="row"><div class="label">อีเมล:</div><div class="value">${escapeHtml(email || "-")}</div></div>
+          <div class="row"><div class="label">โทรศัพท์:</div><div class="value">${escapeHtml(phone || "-")}</div></div>
+        </div>
+      </div>
+      ${renderPdfTags("ความเชี่ยวชาญ", expertises)}
+      ${renderPdfTags("ความสนใจ", interests)}
+      ${sections.map(renderPdfSection).join("")}
+    </body>
+  </html>
+`;
 
 // ── Chip ───────────────────────────────────────────────────
 const Tag = ({ label, bg = "#e8f5ee", border = "#9fd4bc", color = "#007a5a" }) => (
@@ -351,56 +524,6 @@ export default function ProfileDetail({ navigation, route }) {
 
   useEffect(() => { fetchProfile(); }, [fetchProfile]);
 
-  const handleDownloadPdf = useCallback(async () => {
-    if (!id || pdfLoading) return;
-    setPdfLoading(true);
-    try {
-      if (Platform.OS === "web") {
-        await downloadProfilePdfWeb(id);
-        return;
-      }
-
-      const res = await api.get(`/profile/${id}/pdf`, { responseType: "arraybuffer" });
-      const contentType = (res.headers?.["content-type"] ?? "").toLowerCase();
-      const bytes = new Uint8Array(res.data);
-
-      // ตรวจ 200 bytes แรกเพื่อ debug
-      const peek = new TextDecoder("utf-8").decode(bytes.slice(0, 200));
-      if (__DEV__) {
-        console.log("[PDF] status:", res.status, "| type:", contentType, "| size:", bytes.byteLength);
-        console.log("[PDF] peek:", peek);
-      }
-
-      const isPdf  = peek.startsWith("%PDF");
-      const isHtml = contentType.includes("text/html") || peek.trimStart().startsWith("<!") || peek.trimStart().startsWith("<html");
-
-      // ถ้าไม่ใช่ทั้ง PDF และ HTML → backend ส่ง error มา
-      if (!isPdf && !isHtml) {
-        throw new Error(`Backend returned unexpected content (${contentType}): ${peek.slice(0, 80)}`);
-      }
-
-      if (isHtml && !isPdf) {
-        // Mobile + HTML → แปลง HTML เป็น PDF ด้วย expo-print
-        const html = enhanceProfilePdfHtml(new TextDecoder("utf-8").decode(bytes));
-        const { uri } = await Print.printToFileAsync({ html });
-        const fileUri = FileSystem.cacheDirectory + "profile.pdf";
-        await FileSystem.copyAsync({ from: uri, to: fileUri });
-        await Sharing.shareAsync(fileUri, { mimeType: "application/pdf", UTI: "com.adobe.pdf" });
-      } else {
-        // Mobile + binary PDF → บันทึกไฟล์แล้วแชร์
-        const base64 = uint8ToBase64(bytes);
-        const fileUri = FileSystem.cacheDirectory + "profile.pdf";
-        await FileSystem.writeAsStringAsync(fileUri, base64, { encoding: FileSystem.EncodingType.Base64 });
-        await Sharing.shareAsync(fileUri, { mimeType: "application/pdf", UTI: "com.adobe.pdf" });
-      }
-    } catch (e) {
-      console.warn("[ProfileDetail] PDF error:", e?.message);
-      Alert.alert(t("research.profileDetail.downloadPdf"), t("research.profileDetail.pdfError"));
-    } finally {
-      setPdfLoading(false);
-    }
-  }, [id, pdfLoading, t]);
-
   if (loading) return (
     <View style={{ flex: 1, backgroundColor: "#f5f7f8" }}>
       <AppHeader title={t("research.profileDetail.title")} onBack={() => navigation.goBack()} />
@@ -557,18 +680,66 @@ export default function ProfileDetail({ navigation, route }) {
   ]);
   const rJournal = journals.map((j, i) => [
     i + 1,
-    j.year ?? "",
-    j.name ?? j.title ?? "",
+    getExpertYear(j),
+    getExpertTitle(j),
     j.journal_type?.name ?? j.journal_type_name ?? j.database_name ?? "",
   ]);
-  const rProceeding = proceedings.map((p, i) => [i + 1, p.year ?? "", p.name ?? p.title ?? ""]);
-  const rHsp = hsps.map((h, i) => [i + 1, h.year ?? "", h.name ?? h.title ?? "", h.link ?? h.url ?? ""]);
-  const rBook = books.map((b, i) => [i + 1, b.year ?? "", b.name ?? b.title ?? ""]);
-  const rPatent = patents.map((p, i) => [i + 1, p.year ?? "", p.name ?? p.title ?? "", p.link ?? p.url ?? ""]);
-  const rAward = awards.map((a, i) => [i + 1, a.year ?? "", a.name ?? a.title ?? ""]);
-  const rLecturer = lecturers.map((l, i) => [i + 1, l.year ?? "", l.name ?? l.title ?? ""]);
-  const rTraining = trainings.map((tr, i) => [i + 1, tr.year ?? "", tr.name ?? tr.title ?? ""]);
-  const rAcademic = academics.map((a, i) => [i + 1, a.year ?? "", a.name ?? a.title ?? "", a.link ?? a.url ?? ""]);
+  const rProceeding = proceedings.map((p, i) => [i + 1, getExpertYear(p), getExpertTitle(p)]);
+  const rHsp = hsps.map((h, i) => [i + 1, getExpertYear(h), getExpertTitle(h), getExpertLink(h)]);
+  const rBook = books.map((b, i) => [i + 1, getExpertYear(b), getExpertTitle(b)]);
+  const rPatent = patents.map((p, i) => [i + 1, getExpertYear(p), getExpertTitle(p), getExpertLink(p)]);
+  const rAward = awards.map((a, i) => [i + 1, getExpertYear(a), getExpertTitle(a)]);
+  const rLecturer = lecturers.map((l, i) => [i + 1, getExpertYear(l), getExpertTitle(l)]);
+  const rTraining = trainings.map((tr, i) => [i + 1, getExpertYear(tr), getExpertTitle(tr)]);
+  const rAcademic = academics.map((a, i) => [i + 1, getExpertYear(a), getExpertTitle(a), getExpertLink(a)]);
+
+  const handleDownloadPdf = async () => {
+    if (!id || pdfLoading) return;
+    setPdfLoading(true);
+    try {
+      if (Platform.OS === "web") {
+        await downloadProfilePdfWeb(id);
+        return;
+      }
+
+      const html = buildProfilePdfHtml({
+        title: t(`${p}.title`),
+        name,
+        position,
+        faculty,
+        dept,
+        email,
+        phone,
+        photoUrl,
+        expertises: expertises.map((e) => e.name ?? e.label ?? String(e)).filter(Boolean),
+        interests: interests.map((e) => e.name ?? e.label ?? String(e)).filter(Boolean),
+        sections: [
+          { title: t(`${p}.secEducation`), cols: cEdu, rows: rEdu },
+          { title: t(`${p}.secWork`), cols: cWork, rows: rWork },
+          { title: t(`${p}.secAdmin`), cols: cAdmin, rows: rAdmin },
+          { title: t(`${p}.secResearch`), cols: cResearch, rows: rResearch },
+          { title: t(`${p}.secJournal`), cols: cJournal, rows: rJournal },
+          { title: t(`${p}.secProceeding`), cols: cProceeding, rows: rProceeding },
+          { title: t(`${p}.secHumanSubjects`), cols: cHsp, rows: rHsp },
+          { title: t(`${p}.secBooks`), cols: cBook, rows: rBook },
+          { title: t(`${p}.secPatents`), cols: cPatent, rows: rPatent },
+          { title: t(`${p}.secAwards`), cols: cAward, rows: rAward },
+          { title: t(`${p}.secSpeakers`), cols: cLecturer, rows: rLecturer },
+          { title: t(`${p}.secTrainings`), cols: cTraining, rows: rTraining },
+          { title: t(`${p}.secServices`), cols: cAcademic, rows: rAcademic },
+        ],
+      });
+      const { uri } = await Print.printToFileAsync({ html });
+      const fileUri = FileSystem.cacheDirectory + "profile.pdf";
+      await FileSystem.copyAsync({ from: uri, to: fileUri });
+      await Sharing.shareAsync(fileUri, { mimeType: "application/pdf", UTI: "com.adobe.pdf" });
+    } catch (e) {
+      console.warn("[ProfileDetail] PDF error:", e?.message);
+      Alert.alert(t("research.profileDetail.downloadPdf"), t("research.profileDetail.pdfError"));
+    } finally {
+      setPdfLoading(false);
+    }
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: "#f0f5f2" }}>

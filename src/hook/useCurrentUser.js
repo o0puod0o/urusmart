@@ -4,6 +4,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useTranslation } from "react-i18next";
 import { STORAGE_KEYS } from "../config";
 import { clearBiometricToken, setBiometricEnabled } from "../services/biometricService";
+import { clearAuthSession } from "../services/authStorage";
+import { removeTokenFromBackend } from "../services/notificationService";
 import api from "../services/api";
 import { stripNamePrefix } from "../utils/name";
 import { fixPhotoUrl } from "../utils/image";
@@ -73,12 +75,14 @@ export default function useCurrentUser(navigation) {
         text: t("settings.logoutConfirm"),
         style: "destructive",
         onPress: async () => {
+          const pushToken = await AsyncStorage.getItem(STORAGE_KEYS.PUSH_TOKEN);
+          await removeTokenFromBackend(pushToken);
           try { await api.post("/auth/logout"); } catch (_) {}
+          await clearAuthSession();
           await AsyncStorage.multiRemove([
-            STORAGE_KEYS.TOKEN,
-            STORAGE_KEYS.TOKEN_TYPE,
             STORAGE_KEYS.USER,
             STORAGE_KEYS.PUSH_TOKEN,
+            STORAGE_KEYS.NOTIFICATION_INBOX,
           ]);
           // ลบ biometric token ด้วย เพื่อป้องกัน Face ID เข้าบัญชีเก่าหลัง logout
           await clearBiometricToken();

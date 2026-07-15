@@ -3,6 +3,7 @@ import { ActivityIndicator, Alert, Platform, ScrollView, Text, TouchableOpacity,
 import { Ionicons } from "@expo/vector-icons";
 import AppHeader from "../../../components/AppHeader";
 import FormContainer from "../../../components/expert/FormContainer";
+import KeyboardAwareScrollView from "../../../components/expert/KeyboardAwareScrollView";
 import FormField from "../../../components/expert/FormField";
 import InlineDropdown from "../../../components/expert/InlineDropdown";
 import useResource from "../../../hook/useResource";
@@ -78,7 +79,7 @@ const EducationForm = ({ navigation }) => {
   return (
     <FormContainer className="flex-1 bg-[#f5f7f8]">
       <AppHeader title="ประวัติการศึกษา" onBack={() => navigation.goBack()} />
-      <ScrollView
+      <KeyboardAwareScrollView
         contentContainerStyle={{ paddingHorizontal: 14, paddingTop: 18, paddingBottom: 60 }}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
@@ -115,28 +116,77 @@ const EducationForm = ({ navigation }) => {
               <Text className="text-[14px] font-bold text-[#1f2a2e] mt-[10px]">ยังไม่มีข้อมูลประวัติการศึกษา</Text>
               <Text className="text-[12px] text-[#6b7a82] mt-1">เพิ่มข้อมูลใหม่ในแบบฟอร์มด้านล่าง</Text>
             </View>
-          ) : sortedItems.map((item, index) => (
-            <View key={item.id} className="p-[14px] flex-row justify-between items-center border-b border-[#eef1f4]" style={index % 2 === 1 ? { backgroundColor: "#fafbfc" } : {}}>
-              <View className="flex-1 pr-3">
-                <Text className="text-[14px] font-bold text-[#1a1a2e] mb-1">{item.course}</Text>
-                <Text className="text-[12px] text-[#4b5563] mb-[6px]">{item.university}</Text>
-                <View className="flex-row items-center gap-2 flex-wrap">
-                  <View className="bg-[#e6f4ef] rounded-full px-[10px] py-1">
-                    <Text className="text-[#00614a] text-[12px] font-extrabold">{item.year || "-"}</Text>
-                  </View>
-                  {!!getDegreeLabel(item) && <Text className="text-[12px] text-[#6b7280]">{getDegreeLabel(item)}</Text>}
+          ) : (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View>
+                <View className="flex-row items-center bg-white border-b border-[#e3e7eb] px-3 py-3">
+                  {[
+                    { w: 40, l: "ที่" },
+                    { w: 86, l: "ปี" },
+                    { w: 160, l: "ระดับ" },
+                    { w: 220, l: "สาขา" },
+                    { w: 220, l: "สถาบัน" },
+                    { w: 92, l: "จัดการ" },
+                  ].map((c, i, columns) => (
+                    <Text
+                      key={i}
+                      className="text-[11px] font-extrabold text-[#6b7a82] uppercase tracking-[0.5px] px-1"
+                      style={{ width: c.w, textAlign: i === columns.length - 1 ? "center" : "left" }}
+                    >
+                      {c.l}
+                    </Text>
+                  ))}
                 </View>
+                {sortedItems.map((item, index) => (
+                  <View
+                    key={item.id ?? index}
+                    className="flex-row items-center px-3 py-3 border-b border-[#eef1f4]"
+                    style={[
+                      editingItem?.id === item.id ? { backgroundColor: "#dff4ec" } : {},
+                    ]}
+                  >
+                    <Text className="text-[14px] font-bold text-[#1f2a2e] text-left px-1" style={{ width: 40 }}>
+                      {index + 1}
+                    </Text>
+                    <View className="px-1" style={{ width: 86 }}>
+                      <View className="self-start bg-[#e6f4ef] rounded-full px-[10px] py-[3px]">
+                        <Text className="text-[#00614a] text-[12px] font-extrabold">{item.year || "-"}</Text>
+                      </View>
+                    </View>
+                    <Text
+                      className="text-[12px] text-[#3f4d50] px-3"
+                      style={{ width: 160, borderLeftWidth: 1, borderLeftColor: "#eef1f4" }}
+                      numberOfLines={2}
+                    >
+                      {getDegreeLabel(item) || "-"}
+                    </Text>
+                    <Text
+                      className="text-[13px] font-semibold text-[#1f2a2e] leading-5 px-3"
+                      style={{ width: 220, borderLeftWidth: 1, borderLeftColor: "#eef1f4" }}
+                      numberOfLines={3}
+                    >
+                      {item.course || "-"}
+                    </Text>
+                    <Text
+                      className="text-[12px] text-[#3f4d50] leading-5 px-3"
+                      style={{ width: 220, borderLeftWidth: 1, borderLeftColor: "#eef1f4" }}
+                      numberOfLines={3}
+                    >
+                      {item.university || "-"}
+                    </Text>
+                    <View className="flex-row gap-[6px] justify-center px-1" style={{ width: 92 }}>
+                      <TouchableOpacity className="w-[34px] h-[34px] rounded-lg bg-[#fff4e0] items-center justify-center" onPress={() => openEditForm(item)}>
+                        <Ionicons name="create-outline" size={17} color="#a8631a" />
+                      </TouchableOpacity>
+                      <TouchableOpacity className="w-[34px] h-[34px] rounded-lg bg-[#fde7e7] items-center justify-center" onPress={() => handleDelete(item)}>
+                        <Ionicons name="trash-outline" size={17} color="#df4c4b" />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ))}
               </View>
-              <View className="flex-row gap-2">
-                <TouchableOpacity className="w-[34px] h-[34px] rounded-lg bg-[#fff4e0] items-center justify-center" onPress={() => openEditForm(item)}>
-                  <Ionicons name="create-outline" size={17} color="#a8631a" />
-                </TouchableOpacity>
-                <TouchableOpacity className="w-[34px] h-[34px] rounded-lg bg-[#fde7e7] items-center justify-center" onPress={() => handleDelete(item)}>
-                  <Ionicons name="trash-outline" size={17} color="#df4c4b" />
-                </TouchableOpacity>
-              </View>
-            </View>
-          ))}
+            </ScrollView>
+          )}
         </View>
 
         {/* Form */}
@@ -183,7 +233,7 @@ const EducationForm = ({ navigation }) => {
             </TouchableOpacity>
           </View>
         </View>
-      </ScrollView>
+      </KeyboardAwareScrollView>
       <ConfirmDialog />
     </FormContainer>
   );

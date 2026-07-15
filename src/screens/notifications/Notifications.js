@@ -1,10 +1,17 @@
-import React, { useState } from "react";
-import { FlatList, StatusBar, Text, TouchableOpacity, View } from "react-native";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { FlatList, RefreshControl, StatusBar, Text, TouchableOpacity, View } from "react-native";
 import Animated, { FadeInRight, FadeInDown } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  loadNotificationInbox,
+  markAllNotificationsRead,
+  markNotificationRead,
+  subscribeNotificationInbox,
+  syncNotificationInboxFromBackend,
+} from "../../services/notificationService";
 
 const NotifItem = ({ item, onPress, index }) => (
   <Animated.View entering={FadeInRight.delay(index * 50).springify().damping(16)}>
@@ -55,16 +62,76 @@ const NotifItem = ({ item, onPress, index }) => (
 );
 
 export default function NotificationsScreen({ navigation }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { top } = useSafeAreaInsets();
   const [notifications, setNotifications] = useState([]);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const refreshInbox = useCallback(async (showIndicator = false) => {
+    if (showIndicator) setRefreshing(true);
+    try {
+      await syncNotificationInboxFromBackend();
+    } finally {
+      if (showIndicator) setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    loadNotificationInbox().then((items) => {
+      if (active) setNotifications(items);
+    });
+    const unsubscribe = subscribeNotificationInbox(setNotifications);
+    refreshInbox();
+    return () => {
+      active = false;
+      unsubscribe();
+    };
+  }, [refreshInbox]);
+
+  useEffect(
+    () => navigation.addListener("focus", () => refreshInbox()),
+    [navigation, refreshInbox],
+  );
 
   const unreadCount = notifications.filter((n) => !n.read).length;
-  const markAllRead = () => setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-  const markRead    = (id) => setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
+  const markAllRead = () => markAllNotificationsRead();
+  const openNotification = (item) => {
+    markNotificationRead(item.id);
+    if (item.data?.type === "announcement") {
+      navigation.navigate("Announcements", {
+        highlightId: item.data.announcement_id,
+      });
+    }
+  };
 
-  const todayItems   = notifications.filter((n) => n.group === "today");
-  const earlierItems = notifications.filter((n) => n.group === "earlier");
+  const displayItems = useMemo(() => {
+    const today = new Date();
+    return notifications.map((item) => {
+      const receivedAt = new Date(item.receivedAt);
+      const isToday =
+        receivedAt.getFullYear() === today.getFullYear() &&
+        receivedAt.getMonth() === today.getMonth() &&
+        receivedAt.getDate() === today.getDate();
+      return {
+        ...item,
+        group: isToday ? "today" : "earlier",
+        time: receivedAt.toLocaleString(
+          i18n.language === "th" ? "th-TH" : "en-US",
+          {
+            hour: "2-digit",
+            minute: "2-digit",
+            ...(isToday
+              ? {}
+              : { day: "2-digit", month: "short", year: "numeric" }),
+          },
+        ),
+      };
+    });
+  }, [i18n.language, notifications]);
+
+  const todayItems   = displayItems.filter((n) => n.group === "today");
+  const earlierItems = displayItems.filter((n) => n.group === "earlier");
   const sections = [
     ...(todayItems.length   > 0 ? [{ type: "label", id: "l-today",   text: t("notifications.today")   }, ...todayItems]   : []),
     ...(earlierItems.length > 0 ? [{ type: "label", id: "l-earlier", text: t("notifications.earlier") }, ...earlierItems] : []),
@@ -107,34 +174,47 @@ export default function NotificationsScreen({ navigation }) {
       </LinearGradient>
 
       {/* Body */}
-      {notifications.length === 0 ? (
-        <Animated.View entering={FadeInDown.springify()} className="flex-1 items-center justify-center gap-3">
-          <View className="w-[90px] h-[90px] rounded-full bg-white border border-[#dce8e2] items-center justify-center mb-1"
-            style={{ elevation: 2 }}
-          >
-            <Ionicons name="notifications-off-outline" size={44} color="#8fa89f" />
-          </View>
-          <Text className="text-[17px] font-extrabold text-[#0d1f18]">{t("notifications.empty")}</Text>
-          <Text className="text-[13px] text-[#8fa89f] font-medium">{t("notifications.emptySub")}</Text>
-        </Animated.View>
-      ) : (
-        <FlatList
-          data={sections}
-          keyExtractor={(item) => item.id}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 40 }}
-          renderItem={({ item, index }) => {
-            if (item.type === "label") {
-              return (
-                <Text className="text-[11px] font-extrabold text-[#8fa89f] tracking-[0.8px] uppercase mt-4 mb-2 ml-[2px]">
-                  {item.text}
-                </Text>
-              );
-            }
-            return <NotifItem item={item} onPress={() => markRead(item.id)} index={index} />;
-          }}
-        />
-      )}
+      <FlatList
+        data={sections}
+        keyExtractor={(item) => item.id}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{
+          flexGrow: 1,
+          paddingHorizontal: 16,
+          paddingTop: notifications.length === 0 ? 0 : 16,
+          paddingBottom: 40,
+        }}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => refreshInbox(true)}
+            tintColor="#0f7a55"
+            colors={["#0f7a55"]}
+          />
+        }
+        ListEmptyComponent={
+          <Animated.View entering={FadeInDown.springify()} className="flex-1 items-center justify-center gap-3">
+            <View
+              className="w-[90px] h-[90px] rounded-full bg-white border border-[#dce8e2] items-center justify-center mb-1"
+              style={{ elevation: 2 }}
+            >
+              <Ionicons name="notifications-off-outline" size={44} color="#8fa89f" />
+            </View>
+            <Text className="text-[17px] font-extrabold text-[#0d1f18]">{t("notifications.empty")}</Text>
+            <Text className="text-[13px] text-[#8fa89f] font-medium">{t("notifications.emptySub")}</Text>
+          </Animated.View>
+        }
+        renderItem={({ item, index }) => {
+          if (item.type === "label") {
+            return (
+              <Text className="text-[11px] font-extrabold text-[#8fa89f] tracking-[0.8px] uppercase mt-4 mb-2 ml-[2px]">
+                {item.text}
+              </Text>
+            );
+          }
+          return <NotifItem item={item} onPress={() => openNotification(item)} index={index} />;
+        }}
+      />
     </View>
   );
 }

@@ -3,7 +3,6 @@ import React, { useEffect, useState } from "react";
 import {
   Alert,
   Platform,
-  ScrollView,
   Text,
   TextInput,
   TouchableOpacity,
@@ -13,10 +12,12 @@ import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import AppHeader from "../../../components/AppHeader";
 import FormContainer from "../../../components/expert/FormContainer";
+import KeyboardAwareScrollView from "../../../components/expert/KeyboardAwareScrollView";
 import InlineDropdown from "../../../components/expert/InlineDropdown";
 import useResource from "../../../hook/useResource";
 import apiService from "../../../services/api";
 import useConfirm from "../../../hook/useConfirm";
+import { getExpertTitle } from "../../../utils/expertFields";
 
 const InterestForm = ({ navigation }) => {
   const { t } = useTranslation();
@@ -53,7 +54,7 @@ const InterestForm = ({ navigation }) => {
     }
     if (
       items.some(
-        (item) => (item.name ?? "").toLowerCase() === title.toLowerCase(),
+        (item) => getExpertTitle(item).toLowerCase() === title.toLowerCase(),
       )
     ) {
       Alert.alert(t("research.interest.duplicate"));
@@ -103,7 +104,7 @@ const InterestForm = ({ navigation }) => {
         title={t("research.interest.title")}
         onBack={() => navigation.goBack()}
       />
-      <ScrollView
+      <KeyboardAwareScrollView
         contentContainerStyle={{
           paddingHorizontal: 14,
           paddingTop: 18,
@@ -178,7 +179,6 @@ const InterestForm = ({ navigation }) => {
               <View
                 key={entry.id}
                 className="flex-row items-center px-4 py-3 border-b border-[#f0f4f7]"
-                style={index % 2 === 1 ? { backgroundColor: "#fafbfc" } : {}}
               >
                 <Text
                   className="text-[14px] font-bold text-[#1f2a2e] text-center leading-5"
@@ -187,7 +187,7 @@ const InterestForm = ({ navigation }) => {
                   {index + 1}
                 </Text>
                 <Text className="text-[14px] font-semibold text-[#1f2a2e] leading-5 flex-1">
-                  {entry.name}
+                  {getExpertTitle(entry)}
                 </Text>
                 <View className="items-center" style={{ width: 60 }}>
                   <TouchableOpacity
@@ -291,7 +291,7 @@ const InterestForm = ({ navigation }) => {
             </TouchableOpacity>
           </View>
         </View>
-      </ScrollView>
+      </KeyboardAwareScrollView>
       <ConfirmDialog />
     </FormContainer>
   );

@@ -13,9 +13,11 @@ import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import AppHeader from "../../../components/AppHeader";
 import FormContainer from "../../../components/expert/FormContainer";
+import KeyboardAwareScrollView from "../../../components/expert/KeyboardAwareScrollView";
 import InlineDropdown from "../../../components/expert/InlineDropdown";
 import useResource from "../../../hook/useResource";
 import useConfirm from "../../../hook/useConfirm";
+import { getExpertLink, getExpertTitle, getExpertYear } from "../../../utils/expertFields";
 
 const BASE_YEAR_LIST = Array.from({ length: 2569 - 2533 + 1 }, (_, i) => ({
   id: String(2569 - i),
@@ -45,7 +47,11 @@ const PatentForm = ({ navigation }) => {
   const setField = (key, val) => setForm((p) => ({ ...p, [key]: val }));
   const openEdit = (e) => {
     setEditingItem(e);
-    setForm({ year: e.year, title: e.name ?? "", fileUrl: e.link ?? "" });
+    setForm({
+      year: getExpertYear(e),
+      title: getExpertTitle(e),
+      fileUrl: getExpertLink(e),
+    });
   };
   const openNew = () => {
     setEditingItem(null);
@@ -116,7 +122,7 @@ const PatentForm = ({ navigation }) => {
         title={t("research.patent.title")}
         onBack={() => navigation.goBack()}
       />
-      <ScrollView
+      <KeyboardAwareScrollView
         contentContainerStyle={{
           paddingHorizontal: 14,
           paddingTop: 18,
@@ -179,19 +185,22 @@ const PatentForm = ({ navigation }) => {
             </View>
           ) : (
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <View style={{ minWidth: 820 }}>
+              <View>
                 <View className="flex-row items-center bg-white border-b border-[#e3e7eb] px-3 py-3">
                   {[
                     { w: 40, l: t("research.common.no") },
-                    { w: 80, l: t("research.common.year") },
-                    { w: 360, l: t("research.patent.colTitle") },
-                    { w: 200, l: t("research.patent.colLink") },
-                    { w: 110, l: t("research.common.manage") },
-                  ].map((col, i) => (
+                    { w: 86, l: t("research.common.year") },
+                    { w: 220, l: t("research.patent.colTitle") },
+                    { w: 160, l: t("research.patent.colLink") },
+                    { w: 92, l: t("research.common.manage") },
+                  ].map((col, i, columns) => (
                     <Text
                       key={i}
                       className="text-[11px] font-extrabold text-[#6b7a82] uppercase tracking-[0.5px] px-1"
-                      style={{ width: col.w }}
+                      style={{
+                        width: col.w,
+                        textAlign: i === columns.length - 1 ? "center" : "left",
+                      }}
                     >
                       {col.l}
                     </Text>
@@ -201,39 +210,50 @@ const PatentForm = ({ navigation }) => {
                   <View
                     key={entry.id}
                     className="flex-row items-center px-3 py-3 border-b border-[#eef1f4]"
-                    style={
-                      index % 2 === 1 ? { backgroundColor: "#fafbfc" } : {}
-                    }
+                    style={[
+                      editingItem?.id === entry.id
+                        ? { backgroundColor: "#dff4ec" }
+                        : {},
+                    ]}
                   >
                     <Text
-                      className="text-[14px] font-bold text-[#1f2a2e] text-center px-1"
+                      className="text-[14px] font-bold text-[#1f2a2e] text-left px-1"
                       style={{ width: 40 }}
                     >
                       {index + 1}
                     </Text>
-                    <View style={{ width: 80 }}>
-                      <View className="self-start bg-[#e6f4ef] rounded-full px-[10px] py-1">
+                    <View className="px-1" style={{ width: 86 }}>
+                      <View className="self-start bg-[#e6f4ef] rounded-full px-[10px] py-[3px]">
                         <Text className="text-[#00614a] text-[12px] font-extrabold">
-                          {entry.year}
+                          {getExpertYear(entry)}
                         </Text>
                       </View>
                     </View>
                     <Text
-                      className="text-[14px] font-semibold text-[#1f2a2e] leading-5 px-1"
-                      style={{ width: 360 }}
+                      className="text-[13px] font-semibold text-[#1f2a2e] leading-5 px-3"
+                      style={{
+                        width: 220,
+                        borderLeftWidth: 1,
+                        borderLeftColor: "#eef1f4",
+                      }}
+                      numberOfLines={3}
                     >
-                      {entry.name}
+                      {getExpertTitle(entry)}
                     </Text>
                     <Text
-                      className="text-[12px] font-bold text-[#00614a] leading-[18px] px-1"
-                      style={{ width: 200 }}
+                      className="text-[12px] font-semibold text-[#007a5a] leading-5 px-3"
+                      style={{
+                        width: 160,
+                        borderLeftWidth: 1,
+                        borderLeftColor: "#eef1f4",
+                      }}
                       numberOfLines={2}
                     >
-                      {entry.link}
+                      {getExpertLink(entry)}
                     </Text>
                     <View
                       className="flex-row gap-[6px] justify-center"
-                      style={{ width: 110 }}
+                      style={{ width: 92 }}
                     >
                       <TouchableOpacity
                         className="w-[34px] h-[34px] rounded-lg bg-[#fff4e0] items-center justify-center"
@@ -242,7 +262,7 @@ const PatentForm = ({ navigation }) => {
                         <Ionicons
                           name="create-outline"
                           size={16}
-                          color="#f7a23b"
+                          color="#a8631a"
                         />
                       </TouchableOpacity>
                       <TouchableOpacity
@@ -376,7 +396,7 @@ const PatentForm = ({ navigation }) => {
             </TouchableOpacity>
           </View>
         </View>
-      </ScrollView>
+      </KeyboardAwareScrollView>
       <ConfirmDialog />
     </FormContainer>
   );

@@ -13,6 +13,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import AppHeader from "../../../components/AppHeader";
 import FormContainer from "../../../components/expert/FormContainer";
+import KeyboardAwareScrollView from "../../../components/expert/KeyboardAwareScrollView";
 import InlineDropdown from "../../../components/expert/InlineDropdown";
 import useResource from "../../../hook/useResource";
 import useConfirm from "../../../hook/useConfirm";
@@ -260,7 +261,7 @@ const ResearchForm = ({ navigation }) => {
         title={t("research.researchForm.title")}
         onBack={() => navigation.goBack()}
       />
-      <ScrollView
+      <KeyboardAwareScrollView
         contentContainerStyle={{
           paddingHorizontal: 14,
           paddingTop: 18,
@@ -324,21 +325,24 @@ const ResearchForm = ({ navigation }) => {
             </View>
           ) : (
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <View style={{ minWidth: 880 }}>
+              <View>
                 <View className="flex-row items-center bg-white border-b border-[#e3e7eb] px-3 py-3">
                   {[
                     { w: 40, label: "ที่" },
-                    { w: 80, label: "ปี" },
-                    { w: 280, label: "ชื่องานวิจัย" },
-                    { w: 130, label: "ประเภท" },
-                    { w: 130, label: "แหล่งทุน" },
-                    { w: 110, label: "ระดับ" },
-                    { w: 110, label: t("research.common.manage") },
-                  ].map((col, i) => (
+                    { w: 86, label: "ปี" },
+                    { w: 240, label: "ชื่องานวิจัย" },
+                    { w: 120, label: "ประเภท" },
+                    { w: 120, label: "แหล่งทุน" },
+                    { w: 100, label: "ระดับ" },
+                    { w: 92, label: t("research.common.manage") },
+                  ].map((col, i, columns) => (
                     <Text
                       key={i}
                       className="text-[11px] font-extrabold text-[#6b7a82] uppercase tracking-[0.5px] px-1"
-                      style={{ width: col.w }}
+                      style={{
+                        width: col.w,
+                        textAlign: i === columns.length - 1 ? "center" : "left",
+                      }}
                     >
                       {col.label}
                     </Text>
@@ -354,54 +358,72 @@ const ResearchForm = ({ navigation }) => {
                     <View
                       key={entry.id ?? index}
                       className="flex-row items-center px-3 py-3 border-b border-[#eef1f4]"
-                      style={
-                        index % 2 === 1 ? { backgroundColor: "#fafbfc" } : {}
-                      }
+                      style={[
+                        editingItem?.id === entry.id
+                          ? { backgroundColor: "#dff4ec" }
+                          : {},
+                      ]}
                     >
                       <Text
-                        className="text-[14px] font-bold text-[#1f2a2e] text-center px-1"
+                        className="text-[14px] font-bold text-[#1f2a2e] text-left px-1"
                         style={{ width: 40 }}
                       >
                         {index + 1}
                       </Text>
-                      <View style={{ width: 80 }}>
-                        <View className="self-start bg-[#e6f4ef] rounded-full px-[10px] py-1">
+                      <View className="px-1" style={{ width: 86 }}>
+                        <View className="self-start bg-[#e6f4ef] rounded-full px-[10px] py-[3px]">
                           <Text className="text-[#00614a] text-[12px] font-extrabold">
                             {year || "—"}
                           </Text>
                         </View>
                       </View>
                       <Text
-                        className="text-[14px] font-semibold text-[#1f2a2e] leading-5 px-1"
-                        style={{ width: 280 }}
-                        numberOfLines={2}
+                        className="text-[13px] font-semibold text-[#1f2a2e] leading-5 px-3"
+                        style={{
+                          width: 240,
+                          borderLeftWidth: 1,
+                          borderLeftColor: "#eef1f4",
+                        }}
+                        numberOfLines={3}
                       >
                         {title || "—"}
                       </Text>
                       <Text
-                        className="text-[13px] text-[#3f4d50] px-1"
-                        style={{ width: 130 }}
+                        className="text-[12px] text-[#3f4d50] px-3"
+                        style={{
+                          width: 120,
+                          borderLeftWidth: 1,
+                          borderLeftColor: "#eef1f4",
+                        }}
                         numberOfLines={2}
                       >
                         {typeLabel || "—"}
                       </Text>
                       <Text
-                        className="text-[13px] text-[#3f4d50] px-1"
-                        style={{ width: 130 }}
+                        className="text-[12px] text-[#3f4d50] px-3"
+                        style={{
+                          width: 120,
+                          borderLeftWidth: 1,
+                          borderLeftColor: "#eef1f4",
+                        }}
                         numberOfLines={2}
                       >
                         {pmuLabel || "—"}
                       </Text>
                       <Text
-                        className="text-[13px] text-[#3f4d50] px-1"
-                        style={{ width: 110 }}
+                        className="text-[12px] text-[#3f4d50] px-3"
+                        style={{
+                          width: 100,
+                          borderLeftWidth: 1,
+                          borderLeftColor: "#eef1f4",
+                        }}
                         numberOfLines={2}
                       >
                         {levelLabel || "—"}
                       </Text>
                       <View
                         className="flex-row gap-[6px] justify-center"
-                        style={{ width: 110 }}
+                        style={{ width: 92 }}
                       >
                         <TouchableOpacity
                           className="w-[34px] h-[34px] rounded-lg bg-[#fff4e0] items-center justify-center"
@@ -556,7 +578,7 @@ const ResearchForm = ({ navigation }) => {
             </TouchableOpacity>
           </View>
         </View>
-      </ScrollView>
+      </KeyboardAwareScrollView>
       <ConfirmDialog />
     </FormContainer>
   );

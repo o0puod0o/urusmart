@@ -25,18 +25,42 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTranslation } from "react-i18next";
 import { onLoginSuccess } from "../services/notificationService";
 import { API_BASE_URL, STORAGE_KEYS } from "../config";
+import { clearAuthSession, saveAuthSession } from "../services/authStorage";
 import {
   checkSupport,
-  authenticate,
   isBiometricEnabled,
   getBiometricToken,
   saveBiometricToken,
   setBiometricEnabled,
+  clearBiometricToken,
 } from "../services/biometricService";
 
 const API_URL = API_BASE_URL;
+
+// ⚠️ ถ้าเพิ่ม URL scheme ใน app.json ในอนาคต ต้องเพิ่ม origin validation ก่อน
+// เพื่อป้องกัน external deep link inject SSO token
+const getSsoAccessTokenFromRoute = (route) =>
+  route?.params?.access_token ??
+  route?.params?.accessToken ??
+  route?.params?.ssoToken ??
+  route?.params?.passportToken ??
+  "";
+
+const getLoginErrorMessage = (message, t) => {
+  const normalized = String(message || "").trim().toLowerCase();
+  if (
+    normalized.includes("invalid email or password") ||
+    normalized.includes("invalid username or password") ||
+    normalized.includes("invalid credentials")
+  ) {
+    return t("login.invalidCredentials");
+  }
+
+  return t("login.genericLoginError");
+};
 
 // ── Field ปกติ ไม่ใช้ Reanimated (ป้องกัน crash) ──────────────
 const Field = ({ label, icon, children, focused }) => (
@@ -59,7 +83,8 @@ const Field = ({ label, icon, children, focused }) => (
   </View>
 );
 
-const Login = ({ navigation }) => {
+const Login = ({ navigation, route }) => {
+  const { t } = useTranslation();
   const { top } = useSafeAreaInsets();
   const PT = top + 16;
   const PB = Platform.OS === "ios" ? 48 : 32;
@@ -78,6 +103,7 @@ const Login = ({ navigation }) => {
   const scrollRef = useRef(null);
   const focusedFieldRef = useRef(null);
   const passwordRef = useRef(null);
+  const ssoAccessToken = getSsoAccessTokenFromRoute(route);
 
   // ── Entrance animations ──
   const logoScale = useSharedValue(0.3);
@@ -109,14 +135,14 @@ const Login = ({ navigation }) => {
       ]);
       if (enabled && support.supported) {
         setBiometricAvailable(true);
-        setBiometricLabel(support.hasFaceId ? "Face ID" : "ลายนิ้วมือ");
+        setBiometricLabel(getBiometricLabel(support));
         setBiometricIcon(
           support.hasFaceId ? "scan-outline" : "finger-print-outline",
         );
         setBiometricReady(true);
       }
     })();
-  }, []);
+  }, [t]);
 
   // ── Auto-trigger biometric ───────────────────────────────────
   useEffect(() => {
@@ -182,6 +208,127 @@ const Login = ({ navigation }) => {
     transform: [{ scale: btnScale.value }],
   }));
 
+  const getBiometricLabel = (support) =>
+    support?.hasFaceId ? t("login.faceId") : t("login.fingerprint");
+
+  const navigateToMain = () => {
+    navigation.reset({ index: 0, routes: [{ name: "MainTabs" }] });
+  };
+
+  const disableBiometricLogin = async () => {
+    setBiometricAvailable(false);
+    setBiometricReady(false);
+    await setBiometricEnabled(false);
+    await clearBiometricToken();
+  };
+
+  const promptEnableBiometric = async (token) => {
+    const support = await checkSupport();
+    if (!support.supported) {
+      navigateToMain();
+      return;
+    }
+    const biometricLabelText = getBiometricLabel(support);
+
+    Alert.alert(
+      t("login.enableBiometricTitle", { label: biometricLabelText }),
+      t("login.enableBiometricMsg", { label: biometricLabelText }),
+      [
+        {
+          text: t("login.notNow"),
+          style: "cancel",
+          onPress: async () => {
+            await setBiometricEnabled(false);
+            await clearBiometricToken();
+            navigateToMain();
+          },
+        },
+        {
+          text: t("login.enable"),
+          onPress: async () => {
+            try {
+              await saveBiometricToken(
+                String(token),
+                t("login.enableBiometricPrompt", {
+                  label: biometricLabelText,
+                }),
+              );
+              await setBiometricEnabled(true);
+            } catch (_) {
+              Alert.alert(
+                t("login.enableFailedTitle"),
+                t("login.enableFailedMsg"),
+              );
+            } finally {
+              navigateToMain();
+            }
+          },
+        },
+      ],
+      { cancelable: false },
+    );
+  };
+
+  const completeBackendLogin = async (data) => {
+    if (!data?.token) {
+      Alert.alert(
+        t("login.signInFailedTitle"),
+        t("login.missingToken"),
+      );
+      return;
+    }
+
+    await saveAuthSession(data.token);
+    await AsyncStorage.setItem(
+      STORAGE_KEYS.USER,
+      JSON.stringify(data.user || {}),
+    );
+    try {
+      await onLoginSuccess();
+    } catch (error) {
+      console.error("POST-LOGIN NOTIFICATION ERROR:", error);
+    }
+    await promptEnableBiometric(data.token);
+  };
+
+  const loginWithSsoToken = async (accessToken) => {
+    const token = String(accessToken || "").trim();
+    if (!token || loading) return;
+
+    Keyboard.dismiss();
+    setLoading(true);
+    try {
+      const response = await fetch(`${API_URL}/auth/sso-token`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({ access_token: token }),
+      });
+      const data = await response.json();
+      if (response.ok) {
+        await completeBackendLogin(data);
+      } else {
+        Alert.alert(
+          t("login.signInFailedTitle"),
+          t("login.ssoFailed"),
+        );
+      }
+    } catch (_) {
+      Alert.alert(
+        t("login.errorTitle"),
+        t("login.ssoNetworkError"),
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (ssoAccessToken) loginWithSsoToken(ssoAccessToken);
+  }, [ssoAccessToken]);
+
   const handleLogin = async () => {
     Keyboard.dismiss();
     const trimmedEmail = email.trim();
@@ -194,11 +341,7 @@ const Login = ({ navigation }) => {
         withTiming(4, { duration: 60 }),
         withSpring(0),
       );
-      Alert.alert("แจ้งเตือน", "กรุณากรอก email และรหัสผ่าน");
-      return;
-    }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
-      Alert.alert("แจ้งเตือน", "รูปแบบ email ไม่ถูกต้อง");
+      Alert.alert(t("login.alertTitle"), t("login.missingFields"));
       return;
     }
     setLoading(true);
@@ -216,32 +359,17 @@ const Login = ({ navigation }) => {
       });
       const data = await response.json();
       if (response.ok) {
-        await AsyncStorage.multiSet([
-          [STORAGE_KEYS.TOKEN, String(data.token || "")],
-          [STORAGE_KEYS.TOKEN_TYPE, String(data.token_type || "")],
-          [STORAGE_KEYS.USER, JSON.stringify(data.user || {})],
-        ]);
-        if (data.token) {
-          await saveBiometricToken(String(data.token));
-          // auto-restore biometric ถ้าอุปกรณ์รองรับ ไม่ต้องไปเปิดในหน้า Settings อีกครั้ง
-          const support = await checkSupport();
-          if (support.supported) await setBiometricEnabled(true);
-        }
-        try {
-          await onLoginSuccess();
-        } catch (_) {}
-        setLoading(false);
-        navigation.reset({ index: 0, routes: [{ name: "MainTabs" }] });
+        await completeBackendLogin(data);
       } else {
         Alert.alert(
-          "เข้าสู่ระบบไม่สำเร็จ",
-          data.message || "username หรือรหัสผ่านไม่ถูกต้อง",
+          t("login.signInFailedTitle"),
+          getLoginErrorMessage(data.message, t),
         );
       }
     } catch (_) {
       Alert.alert(
-        "เกิดข้อผิดพลาด",
-        "ไม่สามารถเข้าสู่ระบบได้ กรุณาตรวจสอบ API Server และเครือข่าย",
+        t("login.errorTitle"),
+        t("login.networkError"),
       );
     } finally {
       setLoading(false);
@@ -249,18 +377,45 @@ const Login = ({ navigation }) => {
   };
 
   const triggerBiometric = async () => {
-    const result = await authenticate("ยืนยันตัวตนเพื่อเข้าสู่ระบบ URUSmart");
-    if (!result.success) return;
-    const token = await getBiometricToken();
+    let token;
+    try {
+      token = await getBiometricToken(t("login.biometricPrompt"));
+    } catch (_) {
+      // ผู้ใช้ยกเลิกหรือระบบยืนยันตัวตนไม่สำเร็จ ยังให้ลองใหม่ได้
+      return;
+    }
     if (!token) {
+      await disableBiometricLogin();
       Alert.alert(
-        "ไม่พบข้อมูล",
-        "กรุณาเข้าสู่ระบบด้วย email และรหัสผ่านก่อน 1 ครั้ง",
+        t("login.noBiometricTokenTitle"),
+        t("login.noBiometricTokenMsg"),
       );
       return;
     }
-    await AsyncStorage.setItem(STORAGE_KEYS.TOKEN, token);
-    navigation.reset({ index: 0, routes: [{ name: "MainTabs" }] });
+    let response;
+    try {
+      response = await fetch(`${API_URL}/me`, {
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+    } catch (_) {
+      Alert.alert(t("login.errorTitle"), t("login.networkError"));
+      return;
+    }
+    if (!response.ok) {
+      await clearAuthSession();
+      await disableBiometricLogin();
+      Alert.alert(
+        t("login.sessionExpiredTitle"),
+        t("login.sessionExpiredMsg"),
+      );
+      return;
+    }
+    await saveAuthSession(token);
+    await onLoginSuccess();
+    navigateToMain();
   };
 
   const onPressIn = () => {
@@ -355,10 +510,10 @@ const Login = ({ navigation }) => {
         {/* Title */}
         <Animated.View className="items-center mb-7" style={textStyle}>
           <Text className="text-[24px] font-black text-[#064e35] text-center tracking-[-0.3px]">
-            Welcome to URUSmart
+            {t("login.title")}
           </Text>
           <Text className="text-[13px] text-[#56706a] text-center font-medium mt-[6px]">
-            ลงชื่อเข้าใช้บัญชีของคุณ
+            {t("login.subtitle")}
           </Text>
         </Animated.View>
 
@@ -376,14 +531,14 @@ const Login = ({ navigation }) => {
           >
             {/* Email */}
             <Field
-              label="Username / Email"
+              label={t("login.usernameLabel")}
               icon="person-outline"
               focused={emailFocused}
             >
               <TextInput
                 className="flex-1 text-[15px] text-[#1f2937] font-medium"
                 style={{ height: 54, paddingVertical: 0 }}
-                placeholder="Enter your email"
+                placeholder={t("login.usernamePlaceholder")}
                 placeholderTextColor="#9ca3af"
                 value={email}
                 onChangeText={setEmail}
@@ -395,18 +550,18 @@ const Login = ({ navigation }) => {
                 autoCapitalize="none"
                 autoCorrect={false}
                 spellCheck={false}
-                keyboardType="email-address"
+                keyboardType="default"
                 returnKeyType="next"
                 onSubmitEditing={() => passwordRef.current?.focus()}
                 blurOnSubmit={false}
                 underlineColorAndroid="transparent"
-                textContentType="none"
+                textContentType="username"
               />
             </Field>
 
             {/* Password */}
             <Field
-              label="Password"
+              label={t("login.passwordLabel")}
               icon="lock-closed-outline"
               focused={passFocused}
             >
@@ -414,7 +569,7 @@ const Login = ({ navigation }) => {
                 ref={passwordRef}
                 className="flex-1 text-[15px] text-[#1f2937] font-medium"
                 style={{ height: 54, paddingVertical: 0 }}
-                placeholder="Enter your password"
+                placeholder={t("login.passwordPlaceholder")}
                 placeholderTextColor="#9ca3af"
                 value={password}
                 onChangeText={setPassword}
@@ -476,7 +631,7 @@ const Login = ({ navigation }) => {
                   ) : (
                     <View className="flex-row items-center gap-2">
                       <Text className="text-white text-[16px] font-extrabold tracking-[0.8px]">
-                        Sign in
+                        {t("login.signIn")}
                       </Text>
                       <Ionicons
                         name="arrow-forward"
@@ -499,23 +654,13 @@ const Login = ({ navigation }) => {
               >
                 <Ionicons name={biometricIcon} size={22} color="#0f7a55" />
                 <Text className="text-primary text-[14px] font-bold">
-                  เข้าสู่ระบบด้วย {biometricLabel}
+                  {t("login.biometricSignIn", { label: biometricLabel })}
                 </Text>
               </TouchableOpacity>
             )}
           </View>
         </Animated.View>
 
-        {/* Footer */}
-        <Animated.View
-          className="flex-row items-center gap-[5px] mt-6"
-          style={[textStyle, { opacity: 0.4 }]}
-        >
-          <Ionicons name="shield-checkmark-outline" size={12} color="#0a6644" />
-          <Text className="text-[10px] text-[#0a6644] font-semibold">
-            Secured by URUSmart · Uttaradit Rajabhat University
-          </Text>
-        </Animated.View>
       </ScrollView>
     </KeyboardAvoidingView>
   );

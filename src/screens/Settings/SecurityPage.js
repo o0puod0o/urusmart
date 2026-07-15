@@ -4,11 +4,9 @@ import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { STORAGE_KEYS } from "../../config";
+import { getAuthToken } from "../../services/authStorage";
 import {
   checkSupport,
-  authenticate,
   setBiometricEnabled,
   isBiometricEnabled,
   saveBiometricToken,
@@ -30,7 +28,7 @@ export default function SecurityPage() {
         isBiometricEnabled(),
         checkSupport(),
       ]);
-      setBiometric(enabled);
+      setBiometric(enabled && support.supported);
       setBiometricInfo(support);
       setChecking(false);
     })();
@@ -40,34 +38,42 @@ export default function SecurityPage() {
     if (!biometricInfo?.supported) {
       Alert.alert(
         t("security.notSupportedTitle"),
-        biometricInfo?.reason ?? t("security.biometricSub"),
+        t(
+          `security.reason.${biometricInfo?.reasonCode ?? "unknown"}`,
+          { defaultValue: t("security.biometricSub") },
+        ),
       );
       return;
     }
 
     if (val) {
-      const result = await authenticate(
-        `ยืนยันเพื่อเปิดใช้ ${biometricInfo.label ?? "Biometric"}`
-      );
-
-      if (!result.success) {
+      const token = await getAuthToken();
+      if (!token) {
         Alert.alert(
           t("security.verifyFailTitle"),
-          result.error === "user_cancel"
-            ? t("security.verifyCancelled")
-            : t("security.verifyFailMsg"),
+          t("security.verifyFailMsg"),
         );
         return;
       }
 
-      const token = await AsyncStorage.getItem(STORAGE_KEYS.TOKEN);
-      if (token) await saveBiometricToken(token);
+      try {
+        await saveBiometricToken(
+          token,
+          t("security.enablePrompt", { label: biometricLabel }),
+        );
+      } catch (_) {
+        Alert.alert(
+          t("security.verifyFailTitle"),
+          t("security.verifyFailMsg"),
+        );
+        return;
+      }
 
       setBiometric(true);
       await setBiometricEnabled(true);
       Alert.alert(
         t("security.enabledTitle"),
-        t("security.enabledMsg", { label: biometricInfo.label ?? "Biometric" }),
+        t("security.enabledMsg", { label: biometricLabel }),
       );
     } else {
       Alert.alert(

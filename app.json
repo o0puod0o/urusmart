@@ -13,24 +13,31 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
+      "bundleIdentifier": "com.focusvc.urusmart",
+      "buildNumber": "1",
       "supportsTablet": true,
       "infoPlist": {
         "NSUserNotificationsUsageDescription": "URU Smart ต้องการส่งการแจ้งเตือนข่าวสารและประกาศจากมหาวิทยาลัย",
-        "NSFaceIDUsageDescription": "ใช้ Face ID เพื่อเข้าสู่ระบบ URUSmart อย่างรวดเร็วและปลอดภัย"
+        "NSFaceIDUsageDescription": "ใช้ Face ID เพื่อเข้าสู่ระบบ URUSmart อย่างรวดเร็วและปลอดภัย",
+        "NSLocalNetworkUsageDescription": "URU Smart ต้องการเชื่อมต่อกับเซิร์ฟเวอร์สำหรับพัฒนาในเครือข่ายภายใน",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
+      "package": "com.focusvc.urusmart",
+      "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
       "softwareKeyboardLayoutMode": "pan",
-      "usesCleartextTraffic": true,
       "permissions": [
         "android.permission.RECEIVE_BOOT_COMPLETED",
         "android.permission.VIBRATE",
-        "android.permission.POST_NOTIFICATIONS"
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.USE_FINGERPRINT"
       ]
     },
     "web": {
@@ -55,7 +62,21 @@
           "microphonePermission": false
         }
       ],
-      "@react-native-community/datetimepicker"
-    ]
+      "@react-native-community/datetimepicker",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "c5f44903-f557-462e-8e07-2c85df8b3929"
+      }
+    },
+    "owner": "focusvc"
   }
 }

@@ -177,7 +177,7 @@ const AnnouncementDetailModal = ({ item, defaultTag, defaultTitle, onClose }) =>
       </TouchableWithoutFeedback>
 
       {/* Sheet positioned at bottom */}
-      <View style={{ flex: 1, justifyContent: "flex-end" }} pointerEvents="box-none">
+      <View style={{ flex: 1, justifyContent: "flex-end", pointerEvents: "box-none" }}>
         <Animated.View
           style={{
             height: SHEET_H,

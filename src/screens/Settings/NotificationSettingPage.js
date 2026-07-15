@@ -1,12 +1,17 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { ScrollView, StatusBar, Switch, Text, TouchableOpacity, View } from "react-native";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { AppState, ScrollView, StatusBar, Switch, Text, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { STORAGE_KEYS } from "../../config";
-const DEFAULT = { beforeClass: true, holiday: true, gradeDeadline: true, announcement: false };
+import {
+  DEFAULT_NOTIFICATION_SETTINGS,
+  getNotificationPermissionStatus,
+  loadNotificationSettings,
+  openNotificationSystemSettings,
+  saveNotificationSettings,
+  syncNotificationSettingsToBackend,
+} from "../../services/notificationService";
 
 const ITEM_ICONS = {
   beforeClass:   { icon: "alarm-outline",         iconBg: "#2167b2" },
@@ -19,21 +24,27 @@ export default function NotificationSettingPage() {
   const navigation = useNavigation();
   const { t } = useTranslation();
   const { top } = useSafeAreaInsets();
-  const [settings, setSettings] = useState(DEFAULT);
+  const [settings, setSettings] = useState(DEFAULT_NOTIFICATION_SETTINGS);
+  const [permissionStatus, setPermissionStatus] = useState("unavailable");
+
+  const refreshPermission = useCallback(() => {
+    getNotificationPermissionStatus().then(setPermissionStatus).catch(() => {});
+  }, []);
 
   useEffect(() => {
-    AsyncStorage.getItem(STORAGE_KEYS.NOTIF_SETTINGS)
-      .then((raw) => {
-        if (!raw) return;
-        try { setSettings({ ...DEFAULT, ...JSON.parse(raw) }); } catch (_) {}
-      })
-      .catch(() => {});
-  }, []);
+    loadNotificationSettings().then(setSettings).catch(() => {});
+    refreshPermission();
+    const subscription = AppState.addEventListener("change", (state) => {
+      if (state === "active") refreshPermission();
+    });
+    return () => subscription.remove();
+  }, [refreshPermission]);
 
   const toggle = async (key) => {
     const next = { ...settings, [key]: !settings[key] };
     setSettings(next);
-    await AsyncStorage.setItem(STORAGE_KEYS.NOTIF_SETTINGS, JSON.stringify(next));
+    await saveNotificationSettings(next);
+    syncNotificationSettingsToBackend(next);
   };
 
   const ITEMS = useMemo(() => [
@@ -72,6 +83,28 @@ export default function NotificationSettingPage() {
             </View>
           ))}
         </View>
+
+        {permissionStatus !== "granted" && permissionStatus !== "unavailable" && (
+          <View className="bg-white rounded-2xl mx-4 mt-4 p-4 border border-[#e0ebe4]">
+            <View className="flex-row items-start gap-3">
+              <View className="w-10 h-10 rounded-xl bg-[#fff4e0] items-center justify-center">
+                <Ionicons name="notifications-off-outline" size={20} color="#a8631a" />
+              </View>
+              <View className="flex-1">
+                <Text className="text-[14px] font-bold text-[#101b17]">{t("notif.permissionOff")}</Text>
+                <Text className="text-[12px] text-[#5a6a60] mt-1 leading-[18px]">{t("notif.permissionOffSub")}</Text>
+              </View>
+            </View>
+            <TouchableOpacity
+              className="mt-3 min-h-11 flex-row items-center justify-center gap-2 rounded-xl bg-[#0f7a55] px-4"
+              onPress={openNotificationSystemSettings}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="settings-outline" size={18} color="#fff" />
+              <Text className="text-[14px] font-bold text-white">{t("notif.openSettings")}</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         <View className="flex-row items-start gap-2 bg-[#e8f5ee] rounded-[14px] mx-4 mt-4 p-[14px] border border-[#e0ebe4]">
           <Ionicons name="information-circle-outline" size={16} color="#1a6b3c" />

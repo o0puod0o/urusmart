@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
-  ScrollView,
   TouchableOpacity,
   Alert,
   ActivityIndicator,
@@ -11,6 +10,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import AppHeader from "../../../components/AppHeader";
 import FormContainer from "../../../components/expert/FormContainer";
+import KeyboardAwareScrollView from "../../../components/expert/KeyboardAwareScrollView";
 import InlineDropdown from "../../../components/expert/InlineDropdown";
 import useResource from "../../../hook/useResource";
 import useConfirm from "../../../hook/useConfirm";
@@ -111,7 +111,7 @@ const ExpertiseForm = ({ navigation, route }) => {
   return (
     <FormContainer className="flex-1 bg-[#f5f7f8]">
       <AppHeader title="ความเชี่ยวชาญ" onBack={() => navigation.goBack()} />
-      <ScrollView
+      <KeyboardAwareScrollView
         contentContainerStyle={{
           paddingHorizontal: 14,
           paddingTop: 18,
@@ -175,7 +175,11 @@ const ExpertiseForm = ({ navigation, route }) => {
               <View
                 key={entry.id ?? index}
                 className="flex-row items-center px-[14px] py-3 border-b border-[#eef1f4]"
-                style={index % 2 === 1 ? { backgroundColor: "#fafbfc" } : {}}
+                style={[
+                  editingItem?.id === entry.id
+                    ? { backgroundColor: "#dff4ec" }
+                    : {},
+                ]}
               >
                 <View className="flex-1 pr-2">
                   <Text className="text-[14px] font-semibold text-[#1f2a2e]">
@@ -285,7 +289,7 @@ const ExpertiseForm = ({ navigation, route }) => {
             </TouchableOpacity>
           </View>
         </View>
-      </ScrollView>
+      </KeyboardAwareScrollView>
       <ConfirmDialog />
     </FormContainer>
   );

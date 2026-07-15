@@ -13,9 +13,11 @@ import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import AppHeader from "../../../components/AppHeader";
 import FormContainer from "../../../components/expert/FormContainer";
+import KeyboardAwareScrollView from "../../../components/expert/KeyboardAwareScrollView";
 import InlineDropdown from "../../../components/expert/InlineDropdown";
 import useResource from "../../../hook/useResource";
 import useConfirm from "../../../hook/useConfirm";
+import { getExpertLink, getExpertTitle, getExpertYear } from "../../../utils/expertFields";
 
 const currentThaiYear = new Date().getFullYear() + 543;
 const BASE_YEAR_LIST = Array.from(
@@ -50,7 +52,11 @@ const ServiceForm = ({ navigation }) => {
   const setField = (k, v) => setForm((p) => ({ ...p, [k]: v }));
   const openEdit = (e) => {
     setEditingItem(e);
-    setForm({ year: e.year, name: e.name, link: e.link ?? "" });
+    setForm({
+      year: getExpertYear(e),
+      name: getExpertTitle(e),
+      link: getExpertLink(e),
+    });
   };
   const openNew = () => {
     setEditingItem(null);
@@ -121,7 +127,7 @@ const ServiceForm = ({ navigation }) => {
         title={t("research.service.heroTitle")}
         onBack={() => navigation.goBack()}
       />
-      <ScrollView
+      <KeyboardAwareScrollView
         contentContainerStyle={{
           paddingHorizontal: 14,
           paddingTop: 18,
@@ -184,20 +190,22 @@ const ServiceForm = ({ navigation }) => {
             </View>
           ) : (
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <View style={{ minWidth: 900 }}>
+              <View>
                 <View className="flex-row items-center bg-white border-b border-[#e3e7eb] px-3 py-3">
                   {[
                     { w: 40, l: t("research.common.no") },
-                    { w: 90, l: t("research.common.year") },
-                    { w: 440, l: t("research.service.colTitle") },
-                    { w: 100, l: t("research.service.colLink") },
-                    { w: 100, l: t("research.service.colFile") },
-                    { w: 90, l: t("research.common.manage") },
-                  ].map((c, i) => (
+                    { w: 86, l: t("research.common.year") },
+                    { w: 220, l: t("research.service.colTitle") },
+                    { w: 150, l: t("research.service.colLink") },
+                    { w: 92, l: t("research.common.manage") },
+                  ].map((c, i, columns) => (
                     <Text
                       key={i}
                       className="text-[11px] font-extrabold text-[#6b7a82] uppercase tracking-[0.5px] px-1"
-                      style={{ width: c.w }}
+                      style={{
+                        width: c.w,
+                        textAlign: i === columns.length - 1 ? "center" : "left",
+                      }}
                     >
                       {c.l}
                     </Text>
@@ -207,47 +215,50 @@ const ServiceForm = ({ navigation }) => {
                   <View
                     key={entry.id}
                     className="flex-row items-center px-3 py-3 border-b border-[#eef1f4]"
-                    style={
-                      index % 2 === 1 ? { backgroundColor: "#fafbfc" } : {}
-                    }
+                    style={[
+                      editingItem?.id === entry.id
+                        ? { backgroundColor: "#dff4ec" }
+                        : {},
+                    ]}
                   >
                     <Text
-                      className="text-[14px] font-bold text-[#1f2a2e] text-center px-1"
+                      className="text-[14px] font-bold text-[#1f2a2e] text-left px-1"
                       style={{ width: 40 }}
                     >
                       {index + 1}
                     </Text>
-                    <View style={{ width: 90 }}>
-                      <View className="self-start bg-[#e6f4ef] rounded-full px-[10px] py-1">
+                    <View className="px-1" style={{ width: 86 }}>
+                      <View className="self-start bg-[#e6f4ef] rounded-full px-[10px] py-[3px]">
                         <Text className="text-[#00614a] text-[12px] font-extrabold">
-                          {entry.year}
+                          {getExpertYear(entry)}
                         </Text>
                       </View>
                     </View>
                     <Text
-                      className="text-[14px] font-semibold text-[#1f2a2e] leading-5 px-1"
-                      style={{ width: 440 }}
+                      className="text-[13px] font-semibold text-[#1f2a2e] leading-5 px-3"
+                      style={{
+                        width: 220,
+                        borderLeftWidth: 1,
+                        borderLeftColor: "#eef1f4",
+                      }}
                       numberOfLines={3}
                     >
-                      {entry.name}
+                      {getExpertTitle(entry)}
                     </Text>
                     <Text
-                      className="text-[13px] font-bold text-[#00614a] leading-5 px-1"
-                      style={{ width: 100 }}
+                      className="text-[12px] font-semibold text-[#007a5a] leading-5 px-3"
+                      style={{
+                        width: 150,
+                        borderLeftWidth: 1,
+                        borderLeftColor: "#eef1f4",
+                      }}
                       numberOfLines={2}
                     >
-                      {entry.link}
-                    </Text>
-                    <Text
-                      className="text-[14px] font-bold text-[#1f2a2e] px-1"
-                      style={{ width: 100 }}
-                      numberOfLines={2}
-                    >
-                      {entry.picture}
+                      {getExpertLink(entry)}
                     </Text>
                     <View
                       className="flex-row gap-[6px] justify-center"
-                      style={{ width: 90 }}
+                      style={{ width: 92 }}
                     >
                       <TouchableOpacity
                         className="w-[34px] h-[34px] rounded-lg bg-[#fff4e0] items-center justify-center"
@@ -392,7 +403,7 @@ const ServiceForm = ({ navigation }) => {
             </TouchableOpacity>
           </View>
         </View>
-      </ScrollView>
+      </KeyboardAwareScrollView>
       <ConfirmDialog />
     </FormContainer>
   );

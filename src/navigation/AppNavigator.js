@@ -142,12 +142,13 @@ function MainTabs() {
     <Tabs.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
+        tabBarSafeAreaInsets: { bottom: 0 },
         tabBarStyle: {
           backgroundColor: "#fff",
           borderTopWidth: 1,
           borderTopColor: "#e8ecf0",
-          height: 68 + bottom,
-          paddingBottom: 10 + bottom,
+          height: 58 + bottom,
+          paddingBottom: bottom,
           paddingTop: 6,
           elevation: 8,
           shadowColor: "#064e35",
