@@ -4,12 +4,12 @@ import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 
 const SERVICES = [
+  { icon: "document-text-outline",  iconColor: "#1a6b3c", label: "Expert",      bgColor: "#e8f5ee", url: null },
   { icon: "journal-outline",        iconColor: "#0f7a55", label: "e-Research",  bgColor: "#d6f0e3", url: null },
   { icon: "book-outline",           iconColor: "#1a6b3c", label: "LMS",         bgColor: "#e8f5ee", url: "https://lms.uru.ac.th" },
   { icon: "videocam-outline",       iconColor: "#185fa5", label: "E-Meeting",   bgColor: "#e8f0fb", url: "https://meeting.uru.ac.th" },
   { icon: "people-outline",         iconColor: "#e65100", label: "HRMS",        bgColor: "#fff3e0", url: "https://hrms.uru.ac.th" },
   { icon: "document-outline",       iconColor: "#c62828", label: "e-Doc",       bgColor: "#fce4ec", url: "https://edoc.uru.ac.th" },
-  { icon: "document-text-outline",  iconColor: "#1a6b3c", label: "Expert",      bgColor: "#e8f5ee", url: null },
   { icon: "school-outline",         iconColor: "#7b1fa2", label: "Advisor",     bgColor: "#f3e5f5", url: "https://advisor.uru.ac.th" },
   { icon: "bar-chart-outline",      iconColor: "#00838f", label: "Workload",    bgColor: "#e0f7fa", url: "https://workload.uru.ac.th" },
   { icon: "calendar-number-outline",iconColor: "#f57f17", label: "ตารางสอน",   bgColor: "#fff8e1", url: "https://academic.uru.ac.th/addteacherNew/show_timetable_teacher.php" },

@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import AppHeader from "../../components/AppHeader";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import apiService from "../../services/api";
+import useMenuCounts from "../../hook/useMenuCounts";
 
 const getExpertGroups = (t) => [
   { id: "", label: t("research.screen.selectGroupPlaceholder") },
@@ -171,7 +172,27 @@ const SearchSection = ({ onSearch }) => {
   );
 };
 
-const MenuItem = ({ item, onPress, isLast }) => (
+const CountBadge = ({ count, color, bg, loading }) => {
+  if (loading) {
+    return (
+      <View style={{ width: 28, height: 20, borderRadius: 10, backgroundColor: "#f0f0f0", alignItems: "center", justifyContent: "center", marginRight: 8 }}>
+        <ActivityIndicator size="small" color="#ccc" style={{ transform: [{ scale: 0.6 }] }} />
+      </View>
+    );
+  }
+  const display = count === null ? "—" : count === 0 ? "0" : String(count);
+  return (
+    <View style={{
+      minWidth: 26, height: 20, borderRadius: 10,
+      backgroundColor: bg, paddingHorizontal: 6,
+      alignItems: "center", justifyContent: "center", marginRight: 8,
+    }}>
+      <Text style={{ fontSize: 11, fontWeight: "700", color, letterSpacing: 0.2 }}>{display}</Text>
+    </View>
+  );
+};
+
+const MenuItem = ({ item, onPress, isLast, count, countLoading }) => (
   <TouchableOpacity
     className={`flex-row items-center justify-between px-4 py-[14px] ${!isLast ? "border-b border-[#f4f6f8]" : ""}`}
     onPress={() => onPress(item)}
@@ -183,13 +204,18 @@ const MenuItem = ({ item, onPress, isLast }) => (
       </View>
       <Text className="text-[13px] font-semibold text-[#1a1a2e] flex-1 leading-5">{item.label}</Text>
     </View>
-    <View className="w-7 h-7 rounded-full bg-[#f4f6f8] items-center justify-center">
-      <Ionicons name="chevron-forward" size={14} color="#bbb" />
+    <View className="flex-row items-center">
+      {count !== undefined && (
+        <CountBadge count={count} color={item.color} bg={item.bg} loading={countLoading} />
+      )}
+      <View className="w-7 h-7 rounded-full bg-[#f4f6f8] items-center justify-center">
+        <Ionicons name="chevron-forward" size={14} color="#bbb" />
+      </View>
     </View>
   </TouchableOpacity>
 );
 
-const SectionCard = ({ title, sectionIcon, gradColors, items, onPress }) => (
+const SectionCard = ({ title, sectionIcon, gradColors, items, onPress, counts, countLoading }) => (
   <View className="bg-white rounded-2xl overflow-hidden border border-[#e8ecf0]">
     <LinearGradient colors={gradColors} style={{ paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: "#e8ecf0" }}>
       <View className="flex-row items-center gap-2">
@@ -203,7 +229,14 @@ const SectionCard = ({ title, sectionIcon, gradColors, items, onPress }) => (
       </View>
     </LinearGradient>
     {items.map((item, index) => (
-      <MenuItem key={item.id} item={item} onPress={onPress} isLast={index === items.length - 1} />
+      <MenuItem
+        key={item.id}
+        item={item}
+        onPress={onPress}
+        isLast={index === items.length - 1}
+        count={counts ? counts[item.id] : undefined}
+        countLoading={countLoading}
+      />
     ))}
   </View>
 );
@@ -213,6 +246,7 @@ const Research = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const PERSONAL_MENUS = getPersonalMenus(t);
   const EXPERT_MENUS = getExpertMenus(t);
+  const { counts, loading: countsLoading } = useMenuCounts();
 
   const handleMenuPress = (item) => {
     const routes = {
@@ -251,6 +285,8 @@ const Research = ({ navigation }) => {
           gradColors={["#1a9068", "#0f7a55"]}
           items={PERSONAL_MENUS}
           onPress={handleMenuPress}
+          counts={counts}
+          countLoading={countsLoading}
         />
         <SectionCard
           title={t("research.screen.expertManage")}
@@ -258,6 +294,8 @@ const Research = ({ navigation }) => {
           gradColors={["#064e35", "#0a6644"]}
           items={EXPERT_MENUS}
           onPress={handleMenuPress}
+          counts={counts}
+          countLoading={countsLoading}
         />
       </ScrollView>
     </View>
