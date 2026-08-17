@@ -207,7 +207,7 @@ const TrainingForm = ({ navigation }) => {
                     className="flex-row items-center px-3 py-3 border-b border-[#eef1f4]"
                     style={[
                       editingItem?.id === entry.id
-                        ? { backgroundColor: "#dff4ec" }
+                        ? { backgroundColor: "#ccf0e2" }
                         : {},
                     ]}
                   >
@@ -240,7 +240,7 @@ const TrainingForm = ({ navigation }) => {
                       style={{ width: 92 }}
                     >
                       <TouchableOpacity
-                        className="w-[34px] h-[34px] rounded-lg bg-[#fff4e0] items-center justify-center"
+                        className="w-[34px] h-[34px] rounded-lg bg-[#fff0d6] items-center justify-center"
                         onPress={() => openEdit(entry)}
                         activeOpacity={0.8}
                       >
@@ -288,7 +288,7 @@ const TrainingForm = ({ navigation }) => {
               </Text>
             </View>
             {editingItem && (
-              <View className="flex-row items-center bg-[#fff4e0] rounded-full px-[10px] py-1">
+              <View className="flex-row items-center bg-[#fff0d6] rounded-full px-[10px] py-1">
                 <Ionicons name="create-outline" size={13} color="#a8631a" />
                 <Text className="text-[#a8631a] text-[11px] font-extrabold ml-1">
                   {t("research.common.editing")}

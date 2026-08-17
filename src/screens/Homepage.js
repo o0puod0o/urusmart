@@ -10,11 +10,9 @@ import AnnouncementCarousel from "../components/AnnouncementCarousel";
 import useCurrentUser from "../hook/useCurrentUser";
 import useFetch from "../hook/useFetch";
 import useExpertStats from "../hook/useExpertStats";
+import { colors, shadows } from "../theme/tokens";
 
-const cardShadow = Platform.select({
-  ios: { shadowColor: "#064e35", shadowOpacity: 0.1, shadowRadius: 16, shadowOffset: { width: 0, height: 8 } },
-  android: { elevation: 5 },
-});
+const cardShadow = shadows.card;
 
 const StatItem = ({ item, value, loading }) => (
   <TouchableOpacity activeOpacity={0.85} className="flex-1 items-center">
@@ -57,8 +55,8 @@ const Homepage = ({ navigation }) => {
   });
 
   return (
-    <View className="flex-1 bg-[#eaf5ef]">
-      <StatusBar barStyle="light-content" backgroundColor="#064e35" />
+    <View className="flex-1" style={{ backgroundColor: colors.appBg }}>
+      <StatusBar barStyle="light-content" backgroundColor={colors.primaryDark} />
 
       <HeaderBar
         name={user.name}
@@ -69,7 +67,7 @@ const Homepage = ({ navigation }) => {
 
       <ScrollView
         className="flex-1"
-        contentContainerStyle={{ paddingBottom: 56, gap: 14 }}
+        contentContainerStyle={{ paddingBottom: 18, gap: 14 }}
         showsVerticalScrollIndicator={false}
       >
         {/* Announcement Carousel */}

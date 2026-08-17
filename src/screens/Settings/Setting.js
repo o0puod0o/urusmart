@@ -5,6 +5,7 @@ import { useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import useCurrentUser from "../../hook/useCurrentUser";
 import HeaderBar from "../../components/HeaderBar";
+import { colors, radius, shadows } from "../../theme/tokens";
 
 const getMenu = (t) => [
   { label: t("settings.notification"), sub: t("settings.notificationSub"), icon: "notifications-outline", route: "NotificationSetting", color: "#f59e0b", colorBg: "#fffbea" },
@@ -27,10 +28,10 @@ const MenuRow = ({ item, isLast, onPress }) => {
     Animated.timing(bgAnim, { toValue: 0, useNativeDriver: false, duration: 200 }),
   ]).start();
 
-  const bgColor = bgAnim.interpolate({ inputRange: [0, 1], outputRange: ["#ffffff", "#f6fcf9"] });
+  const bgColor = bgAnim.interpolate({ inputRange: [0, 1], outputRange: [colors.surface, colors.primarySoft] });
 
   return (
-    <Animated.View style={[{ transform: [{ scale }] }, !isLast && { borderBottomWidth: 0.5, borderBottomColor: "#dce8e2" }]}>
+    <Animated.View style={[{ transform: [{ scale }] }, !isLast && { borderBottomWidth: 0.5, borderBottomColor: colors.border }]}>
       <Animated.View style={{ backgroundColor: bgColor }}>
         <TouchableOpacity
           className="flex-row items-center px-4 py-[14px] gap-[14px]"
@@ -39,15 +40,15 @@ const MenuRow = ({ item, isLast, onPress }) => {
           onPressOut={onPressOut}
           activeOpacity={1}
         >
-          <View className="w-[44px] h-[44px] rounded-[14px] items-center justify-center" style={{ backgroundColor: item.colorBg }}>
+          <View className="w-[44px] h-[44px] items-center justify-center" style={{ backgroundColor: item.colorBg, borderRadius: radius.md }}>
             <Ionicons name={item.icon} size={22} color={item.color} />
           </View>
           <View className="flex-1 gap-[3px]">
-            <Text className="text-[15px] font-bold text-[#0d1f18]">{item.label}</Text>
-            {!!item.sub && <Text className="text-[12px] text-[#8fa89f]">{item.sub}</Text>}
+            <Text className="text-[15px] font-bold" style={{ color: colors.text }}>{item.label}</Text>
+            {!!item.sub && <Text className="text-[12px]" style={{ color: colors.textSoft }}>{item.sub}</Text>}
           </View>
-          <View className="w-8 h-8 rounded-full bg-[#f4f6f8] items-center justify-center">
-            <Ionicons name="chevron-forward" size={14} color="#bbb" />
+          <View className="w-8 h-8 rounded-full items-center justify-center" style={{ backgroundColor: colors.fieldBg }}>
+            <Ionicons name="chevron-forward" size={14} color={colors.textSoft} />
           </View>
         </TouchableOpacity>
       </Animated.View>
@@ -62,8 +63,8 @@ export default function SettingPage() {
   const MENU = useMemo(() => getMenu(t), [t]);
 
   return (
-    <View className="flex-1 bg-[#eaf5ef]">
-      <StatusBar barStyle="light-content" backgroundColor="#0f7a55" />
+    <View className="flex-1" style={{ backgroundColor: colors.appBg }}>
+      <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
 
       <HeaderBar
         name={user.name}
@@ -75,8 +76,8 @@ export default function SettingPage() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 20, paddingBottom: 40, gap: 12 }}>
         {/* Menu card */}
         <View
-          className="bg-white rounded-[20px] overflow-hidden border border-[#dce8e2]"
-          style={{ elevation: 3, shadowColor: "#043d2a", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.07, shadowRadius: 16 }}
+          className="overflow-hidden"
+          style={[{ backgroundColor: colors.surface, borderRadius: radius.xl, borderWidth: 1, borderColor: colors.border }, shadows.card]}
         >
           {MENU.map((item, i) => (
             <MenuRow
@@ -92,8 +93,8 @@ export default function SettingPage() {
         <TouchableOpacity
           onPress={logout}
           activeOpacity={0.8}
-          className="flex-row items-center justify-center gap-3 bg-white rounded-[20px] py-[16px] border border-[#fecaca]"
-          style={{ elevation: 2, shadowColor: "#dc2626", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.07, shadowRadius: 8 }}
+          className="flex-row items-center justify-center gap-3 py-[16px]"
+          style={[{ backgroundColor: colors.surface, borderRadius: radius.xl, borderWidth: 1, borderColor: "#fecaca" }, shadows.card]}
         >
           <View className="w-9 h-9 rounded-full bg-[#fef2f2] items-center justify-center">
             <Ionicons name="log-out-outline" size={20} color="#dc2626" />

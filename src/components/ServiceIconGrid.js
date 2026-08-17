@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { View, Text, TouchableOpacity, ScrollView, Platform } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
+import { colors, hitSlop, radius } from "../theme/tokens";
 
 const SERVICES = [
   { icon: "document-text-outline",  iconColor: "#1a6b3c", label: "Expert",      bgColor: "#e8f5ee", url: null },
@@ -55,7 +56,7 @@ const ServiceIconGrid = ({ navigation }) => {
 
   return (
     <View
-      className="pt-[6px] px-[2px]"
+      className="pt-[4px] px-[2px]"
       onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
     >
       {containerWidth > 0 && (
@@ -79,7 +80,7 @@ const ServiceIconGrid = ({ navigation }) => {
                     <View
                       key={rowIndex}
                       className="flex-row"
-                      style={rowIndex < rows.length - 1 ? { marginBottom: 18 } : {}}
+                      style={rowIndex < rows.length - 1 ? { marginBottom: 16 } : {}}
                     >
                       {row.map((item, colIndex) =>
                         item.spacer ? (
@@ -88,17 +89,30 @@ const ServiceIconGrid = ({ navigation }) => {
                           <TouchableOpacity
                             key={colIndex}
                             className="flex-1 items-center"
-                            style={webOutline}
+                            style={[{ minHeight: 86 }, webOutline]}
                             onPress={() => handlePress(item)}
-                            activeOpacity={0.75}
+                            activeOpacity={0.78}
+                            hitSlop={hitSlop}
                           >
                             <View
-                              className="w-[54px] h-[54px] rounded-[14px] items-center justify-center mb-[6px]"
-                              style={[{ backgroundColor: item.bgColor }, webOutline]}
+                              className="w-[56px] h-[56px] items-center justify-center mb-[7px]"
+                              style={[
+                                {
+                                  backgroundColor: item.bgColor,
+                                  borderRadius: radius.md,
+                                  borderWidth: 1,
+                                  borderColor: "rgba(15,122,85,0.08)",
+                                },
+                                webOutline,
+                              ]}
                             >
                               <Ionicons name={item.icon} size={24} color={item.iconColor} />
                             </View>
-                            <Text className="text-[11px] text-[#444] text-center leading-[14px]" numberOfLines={2}>
+                            <Text
+                              className="text-[11px] text-center leading-[15px]"
+                              style={{ color: colors.textMuted, fontWeight: "700" }}
+                              numberOfLines={2}
+                            >
                               {getLabel(item)}
                             </Text>
                           </TouchableOpacity>
@@ -119,7 +133,7 @@ const ServiceIconGrid = ({ navigation }) => {
                   className="h-[6px] rounded-[3px]"
                   style={{
                     width: i === currentPage ? 18 : 6,
-                    backgroundColor: i === currentPage ? "#0f7a55" : "#d1d5db",
+                    backgroundColor: i === currentPage ? colors.primary : colors.border,
                   }}
                 />
               ))}

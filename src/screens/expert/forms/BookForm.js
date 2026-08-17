@@ -199,7 +199,7 @@ const BookForm = ({ navigation }) => {
                     className="flex-row items-center px-3 py-3 border-b border-[#eef1f4]"
                     style={[
                       editingItem?.id === entry.id
-                        ? { backgroundColor: "#dff4ec" }
+                        ? { backgroundColor: "#ccf0e2" }
                         : {},
                     ]}
                   >
@@ -232,7 +232,7 @@ const BookForm = ({ navigation }) => {
                       style={{ width: 92 }}
                     >
                       <TouchableOpacity
-                        className="w-[34px] h-[34px] rounded-lg bg-[#fff4e0] items-center justify-center"
+                        className="w-[34px] h-[34px] rounded-lg bg-[#fff0d6] items-center justify-center"
                         onPress={() => openEdit(entry)}
                         activeOpacity={0.85}
                       >
@@ -276,7 +276,7 @@ const BookForm = ({ navigation }) => {
             </Text>
             </View>
             {editingItem && (
-              <View className="flex-row items-center gap-1 bg-[#fff4e0] rounded-full px-[10px] py-[3px] ml-auto">
+              <View className="flex-row items-center gap-1 bg-[#fff0d6] rounded-full px-[10px] py-[3px] ml-auto">
                 <Ionicons name="create-outline" size={12} color="#a16207" />
                 <Text className="text-[#a16207] text-[11px] font-extrabold">
                   {t("research.common.editing")}

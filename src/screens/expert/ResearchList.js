@@ -3,9 +3,12 @@ import { ActivityIndicator, FlatList, Image, Text, TouchableOpacity, View } from
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import AppHeader from "../../components/AppHeader";
+import StateView from "../../components/StateView";
 import { stripNamePrefix } from "../../utils/name";
 import { fixPhotoUrl } from "../../utils/image";
 import apiService from "../../services/api";
+import { colors, radius, shadows } from "../../theme/tokens";
+import { getExpertGroupLabel } from "../../constants/expertGroups";
 
 // ── Avatar ─────────────────────────────────────────────────
 const Avatar = ({ name, photoUrl, index }) => {
@@ -46,6 +49,97 @@ const Chip = ({ label, color = "#007a5a", bg = "#e6f4ef", border = "#9fd4bc" }) 
   </View>
 );
 
+const readRows = (response) => response.data?.data ?? response.data ?? [];
+
+const fetchProfileSearch = async (params) => {
+  const response = await apiService.get("/profile-search", { params });
+  return readRows(response);
+};
+
+const normalizeText = (value) =>
+  String(value ?? "")
+    .trim()
+    .replace(/^กลุ่ม/, "")
+    .replace(/\s+/g, " ")
+    .toLowerCase();
+
+const getExpertiseNames = (item) => {
+  const expertises = Array.isArray(item?.expertises) ? item.expertises : [];
+  return expertises
+    .map((e) => {
+      if (e?.name || e?.label || e?.expertise_name) {
+        return e.name ?? e.label ?? e.expertise_name;
+      }
+      if (e?.group_id) return getExpertGroupLabel(e.group_id);
+      return e;
+    })
+    .filter(Boolean);
+};
+
+const getExpertiseGroupIds = (item) => {
+  const expertises = Array.isArray(item?.expertises) ? item.expertises : [];
+  return expertises
+    .map((e) => e?.group_id ?? e?.expertise_group_id)
+    .filter((id) => id !== undefined && id !== null && id !== "");
+};
+
+const filterRowsByExpertise = (rows, expertise, groupId) => {
+  const groupTarget = groupId ? String(groupId) : "";
+  if (groupTarget) {
+    const matchedByGroupId = rows.filter((item) =>
+      getExpertiseGroupIds(item).some((id) => String(id) === groupTarget),
+    );
+    if (matchedByGroupId.length > 0) return matchedByGroupId;
+  }
+
+  const target = normalizeText(expertise);
+  if (!target) return rows;
+
+  return rows.filter((item) =>
+    getExpertiseNames(item).some((name) => normalizeText(name) === target),
+  );
+};
+
+const fetchProfileSearchWithFallback = async (searchParams) => {
+  const rows = await fetchProfileSearch(searchParams);
+  if (!searchParams?.expertise && !searchParams?.expertise_group_id) return rows;
+
+  const filteredRows = filterRowsByExpertise(
+    rows,
+    searchParams.expertise,
+    searchParams.expertise_group_id ?? searchParams.group_id,
+  );
+  if (filteredRows.length > 0) return filteredRows;
+
+  const keyword = searchParams.expertise;
+  const groupId = searchParams.expertise_group_id ?? searchParams.group_id;
+  const fallbacks = [
+    { expertise_group_id: groupId },
+    { group_id: groupId },
+    { search_by: "expertise", keyword },
+    { search_by: "expertise_group", keyword },
+    { expertise_group: keyword },
+    { expert_group: keyword },
+  ];
+
+  for (const params of fallbacks) {
+    const fallbackRows = await fetchProfileSearch(params);
+    const filteredFallbackRows = filterRowsByExpertise(fallbackRows, keyword, groupId);
+    if (__DEV__) {
+      console.log(
+        "[ResearchList] expertise fallback:",
+        params,
+        fallbackRows.length,
+        "→ filtered:",
+        filteredFallbackRows.length,
+      );
+    }
+    if (filteredFallbackRows.length > 0) return filteredFallbackRows;
+  }
+
+  return filteredRows;
+};
+
 // ── ExpertCard ─────────────────────────────────────────────
 const ExpertCard = ({ item, index, onPress }) => {
   const { t } = useTranslation();
@@ -62,15 +156,11 @@ const ExpertCard = ({ item, index, onPress }) => {
       onPress={onPress}
       activeOpacity={0.88}
       style={{
-        backgroundColor: "#fff",
-        borderRadius: 16,
+        backgroundColor: colors.surface,
+        borderRadius: radius.lg,
         marginBottom: 12,
         overflow: "hidden",
-        elevation: 3,
-        shadowColor: "#064e35",
-        shadowOpacity: 0.1,
-        shadowRadius: 10,
-        shadowOffset: { width: 0, height: 4 },
+        ...shadows.card,
       }}
     >
       {/* Green top border */}
@@ -122,7 +212,7 @@ const ExpertCard = ({ item, index, onPress }) => {
                   {expertises.slice(0, 4).map((tag, i) => <Chip key={i} label={tag} />)}
                   {expertises.length > 4 && <Chip label={`+${expertises.length - 4}`} color="#6b8f80" bg="#f0f8f4" border="#c4ddd5" />}
                 </View>
-              : <Text style={{ fontSize: 12, color: "#aabbB4", fontStyle: "italic", marginLeft: 2 }}>—</Text>
+              : <Text style={{ fontSize: 12, color: colors.textSoft, fontStyle: "italic", marginLeft: 2 }}>—</Text>
             }
           </View>
 
@@ -139,7 +229,7 @@ const ExpertCard = ({ item, index, onPress }) => {
                   {interests.slice(0, 4).map((tag, i) => <Chip key={i} label={tag} color="#92600a" bg="#fff8e7" border="#f5c842" />)}
                   {interests.length > 4 && <Chip label={`+${interests.length - 4}`} color="#b08050" bg="#fffaf0" border="#e8d0a0" />}
                 </View>
-              : <Text style={{ fontSize: 12, color: "#aabb4", fontStyle: "italic", marginLeft: 2 }}>—</Text>
+              : <Text style={{ fontSize: 12, color: colors.textSoft, fontStyle: "italic", marginLeft: 2 }}>—</Text>
             }
           </View>
         </View>
@@ -175,8 +265,8 @@ export default function ResearchList({ navigation, route }) {
       try {
         setLoading(true);
         setError(null);
-        const res = await apiService.get("/profile-search", { params: searchParams });
-        if (!cancelled) setResults(res.data?.data ?? res.data ?? []);
+        const rows = await fetchProfileSearchWithFallback(searchParams);
+        if (!cancelled) setResults(rows);
       } catch (e) {
         if (!cancelled) setError(e.message);
       } finally {
@@ -187,31 +277,16 @@ export default function ResearchList({ navigation, route }) {
   }, []);
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#f0f4f2" }}>
+    <View style={{ flex: 1, backgroundColor: colors.appBg }}>
       <AppHeader title={t("research.screen.expertList")} onBack={() => navigation.goBack()} />
 
       {/* Content */}
       {loading ? (
-        <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 12 }}>
-          <ActivityIndicator size="large" color="#007a5a" />
-          <Text style={{ fontSize: 13, color: "#8fa89f", fontWeight: "600" }}>{t("research.common.loading")}</Text>
-        </View>
+        <StateView type="loading" title={t("research.common.loading")} />
       ) : error ? (
-        <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 12, paddingHorizontal: 32 }}>
-          <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: "#fff", borderWidth: 1, borderColor: "#e4ede9", alignItems: "center", justifyContent: "center" }}>
-            <Ionicons name="cloud-offline-outline" size={38} color="#c4d4cc" />
-          </View>
-          <Text style={{ fontSize: 16, fontWeight: "700", color: "#0d1f18" }}>{t("research.list.errorTitle")}</Text>
-          <Text style={{ fontSize: 13, color: "#8fa89f", textAlign: "center" }}>{error}</Text>
-        </View>
+        <StateView type="error" title={t("research.list.errorTitle")} message={error} />
       ) : results.length === 0 ? (
-        <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 12, paddingHorizontal: 32 }}>
-          <View style={{ width: 88, height: 88, borderRadius: 44, backgroundColor: "#fff", borderWidth: 1, borderColor: "#e4ede9", alignItems: "center", justifyContent: "center" }}>
-            <Ionicons name="search-outline" size={40} color="#c4d4cc" />
-          </View>
-          <Text style={{ fontSize: 16, fontWeight: "700", color: "#0d1f18" }}>{t("research.list.noData")}</Text>
-          <Text style={{ fontSize: 13, color: "#8fa89f", textAlign: "center", fontWeight: "500" }}>{t("research.list.desc")}</Text>
-        </View>
+        <StateView icon="search-outline" title={t("research.list.noData")} message={t("research.list.desc")} />
       ) : (
         <FlatList
           data={results}

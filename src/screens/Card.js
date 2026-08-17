@@ -12,6 +12,7 @@ import useCurrentUser from "../hook/useCurrentUser";
 import api from "../services/api";
 import { stripNamePrefix } from "../utils/name";
 import { fixPhotoUrl } from "../utils/image";
+import { colors, radius, shadows } from "../theme/tokens";
 
 const logo = require("../assets/urusmartlogo.png");
 
@@ -69,35 +70,37 @@ const SkeletonRow = ({ pulse }) => (
 
 const InfoRow = ({ icon, label, value }) => (
   <View className="flex-row items-start py-[10px]">
-    <View className="w-[34px] h-[34px] rounded-xl bg-[#eef8f3] border border-[#d4efe5] items-center justify-center mr-3 mt-[1px]">
-      <Ionicons name={icon} size={16} color="#0f7a55" />
+    <View
+      className="w-[34px] h-[34px] items-center justify-center mr-3 mt-[1px]"
+      style={{
+        backgroundColor: colors.primarySoft,
+        borderColor: colors.borderStrong,
+        borderRadius: radius.sm,
+        borderWidth: 1,
+      }}
+    >
+      <Ionicons name={icon} size={16} color={colors.primary} />
     </View>
     <View className="flex-1">
-      <Text className="text-[#8fa89f] text-[10px] font-extrabold uppercase tracking-[0.6px] mb-[3px]">{label}</Text>
-      <Text className="text-[#111c18] text-[14px] font-bold leading-5">{value || "—"}</Text>
+      <Text className="text-[10px] font-extrabold uppercase tracking-[0.6px] mb-[3px]" style={{ color: colors.textSoft }}>{label}</Text>
+      <Text className="text-[14px] font-bold leading-5" style={{ color: colors.text }}>{value || "—"}</Text>
     </View>
   </View>
 );
 
-const Divider = () => <View className="h-px bg-[#eef4f0] mx-1" />;
+const Divider = () => <View className="h-px mx-1" style={{ backgroundColor: colors.border }} />;
 
 const TAB_KEYS = [
   { key: "info", icon: "person-circle-outline", tKey: "card.tabInfo" },
   { key: "qr",   icon: "qr-code-outline",       tKey: "card.tabQr" },
 ];
 
-const cardShadow = {
-  shadowColor: "#064e35", shadowOffset: { width: 0, height: 12 },
-  shadowOpacity: 0.14, shadowRadius: 22, elevation: 8,
-};
+const cardShadow = shadows.floating;
 const photoShadow = {
   shadowColor: "#064e35", shadowOffset: { width: 0, height: 8 },
   shadowOpacity: 0.18, shadowRadius: 16, elevation: 6,
 };
-const tabActiveShadow = {
-  shadowColor: "#064e35", shadowOffset: { width: 0, height: 2 },
-  shadowOpacity: 0.08, shadowRadius: 6, elevation: 2,
-};
+const tabActiveShadow = shadows.card;
 
 export default function Cardpage({ navigation }) {
   const { t } = useTranslation();
@@ -188,8 +191,8 @@ export default function Cardpage({ navigation }) {
   };
 
   return (
-    <View className="flex-1 bg-[#f0f6f2]">
-      <StatusBar barStyle="light-content" backgroundColor="#0a6644" />
+    <View className="flex-1" style={{ backgroundColor: colors.appBg }}>
+      <StatusBar barStyle="light-content" backgroundColor={colors.primaryDark} />
       <HeaderBar
         name={tc.name || user.name}
         photoUrl={tc.photoUrl || user.photoUrl}
@@ -198,9 +201,9 @@ export default function Cardpage({ navigation }) {
       />
 
       {error && (
-        <View className="flex-row items-center gap-[6px] bg-[#fffbea] border-b border-[#f5e09a] px-4 py-[7px]">
-          <Ionicons name="cloud-offline-outline" size={14} color="#c9a227" />
-          <Text className="text-[#7a5e00] text-[12px] font-bold">{t("card.offline")}</Text>
+        <View className="flex-row items-center gap-[6px] px-4 py-[7px]" style={{ backgroundColor: "#fffbea", borderBottomWidth: 1, borderBottomColor: "#f5e09a" }}>
+          <Ionicons name="cloud-offline-outline" size={14} color={colors.warning} />
+          <Text className="text-[12px] font-bold" style={{ color: "#7a5e00" }}>{t("card.offline")}</Text>
         </View>
       )}
 
@@ -214,11 +217,11 @@ export default function Cardpage({ navigation }) {
         >
           {/* ══ Card ══ */}
           <View className="w-full" style={cardShadow}>
-            <View className="bg-white rounded-[22px] overflow-hidden border border-[#dce8e2]">
+            <View className="overflow-hidden" style={{ backgroundColor: colors.surface, borderRadius: radius.xl, borderWidth: 1, borderColor: colors.border }}>
 
               {/* ── Header band with gradient ── */}
               <LinearGradient
-                colors={["#064e35", "#0a6644", "#0f7a55"]}
+                colors={[colors.primaryDark, "#0a6644", colors.primary]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 64, overflow: "hidden" }}
@@ -279,10 +282,10 @@ export default function Cardpage({ navigation }) {
               </View>
 
               {/* ── Divider line ── */}
-              <View className="h-px bg-[#f0f6f2] mx-5 mt-4" />
+              <View className="h-px mx-5 mt-4" style={{ backgroundColor: colors.border }} />
 
               {/* ── Tab bar ── */}
-              <View className="flex-row mx-4 mt-4 bg-[#f4fbf7] rounded-[14px] border border-[#dce8e2] p-1 gap-[3px]">
+              <View className="flex-row mx-4 mt-4 p-1 gap-[3px]" style={{ backgroundColor: colors.primarySoft, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border }}>
                 {TAB_KEYS.map((tab) => {
                   const active = activeTab === tab.key;
                   return (
@@ -293,8 +296,8 @@ export default function Cardpage({ navigation }) {
                       onPress={() => setActiveTab(tab.key)}
                       activeOpacity={0.75}
                     >
-                      <Ionicons name={tab.icon} size={16} color={active ? "#0f7a55" : "#a0b8ae"} />
-                      <Text className={`text-[11px] ${active ? "text-primary font-extrabold" : "text-[#a0b8ae] font-semibold"}`}>
+                      <Ionicons name={tab.icon} size={16} color={active ? colors.primary : colors.textSoft} />
+                      <Text className="text-[11px]" style={{ color: active ? colors.primary : colors.textSoft, fontWeight: active ? "800" : "700" }}>
                         {t(tab.tKey)}
                       </Text>
                     </TouchableOpacity>
@@ -331,10 +334,10 @@ export default function Cardpage({ navigation }) {
                 {activeTab === "qr" && (
                   <View className="items-center py-4">
                     <View
-                      className="bg-white rounded-[20px] p-5 border border-[#dce8e2]"
-                      style={{ shadowColor: "#064e35", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 4 }}
+                      className="p-5"
+                      style={[{ backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border }, shadows.card]}
                     >
-                      <QRCode value={qrValue} size={210} color="#064e35" backgroundColor="#ffffff" />
+                    <QRCode value={qrValue} size={210} color={colors.primaryDark} backgroundColor={colors.surface} />
                     </View>
                     <Text className="text-[#111c18] text-[13px] font-extrabold mt-4 text-center">{t("card.scanToView")}</Text>
                     <Text className="text-[#8fa89f] text-[11px] font-semibold mt-1">{tc.email || "—"}</Text>
@@ -347,15 +350,15 @@ export default function Cardpage({ navigation }) {
 
           {/* ══ Share Button ══ */}
           <TouchableOpacity
-            className="flex-row items-center justify-center gap-[10px] mt-4 w-full bg-white border border-[#d4efe5] rounded-[18px] py-4"
-            style={{ shadowColor: "#064e35", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 3 }}
+            className="flex-row items-center justify-center gap-[10px] mt-4 w-full py-4"
+            style={[{ backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.borderStrong, borderRadius: radius.lg }, shadows.card]}
             onPress={handleShare}
             activeOpacity={0.85}
           >
-            <View className="w-8 h-8 rounded-full bg-[#eef8f3] items-center justify-center">
-              <Ionicons name="share-social-outline" size={17} color="#0a6644" />
+            <View className="w-8 h-8 rounded-full items-center justify-center" style={{ backgroundColor: colors.primarySoft }}>
+              <Ionicons name="share-social-outline" size={17} color={colors.primaryDark} />
             </View>
-            <Text className="text-[#0a6644] text-[15px] font-extrabold">{t("card.share")}</Text>
+            <Text className="text-[15px] font-extrabold" style={{ color: colors.primaryDark }}>{t("card.share")}</Text>
           </TouchableOpacity>
 
           {/* ── Footer note ── */}

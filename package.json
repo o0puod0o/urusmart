@@ -12,6 +12,7 @@
     "web": "expo start --web",
     "lint": "node scripts/lint.js",
     "test": "node scripts/test.js",
+    "test:report": "node scripts/report-tests.js",
     "check": "npm run lint && npm test"
   },
   "dependencies": {

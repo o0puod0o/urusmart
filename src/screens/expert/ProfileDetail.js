@@ -10,6 +10,7 @@ import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import { useTranslation } from "react-i18next";
 import AppHeader from "../../components/AppHeader";
+import StateView from "../../components/StateView";
 import { stripNamePrefix } from "../../utils/name";
 import { fixPhotoUrl } from "../../utils/image";
 import { getExpertLink, getExpertTitle, getExpertYear } from "../../utils/expertFields";
@@ -17,6 +18,7 @@ import api from "../../services/api";
 import { API_BASE_URL, STORAGE_KEYS } from "../../config";
 import { getAuthToken } from "../../services/authStorage";
 import useRefs from "../../hook/useRefs";
+import { colors } from "../../theme/tokens";
 
 const DEGREE_KEYS = {
   "1": "research.profileDetail.degreeLow",
@@ -452,7 +454,7 @@ const DataTable = ({ cols, rows }) => (
       </View>
       {/* Rows */}
       {rows.map((row, ri) => (
-        <View key={ri} style={{ flexDirection: "row", paddingVertical: 9, paddingHorizontal: 4, borderTopWidth: 1, borderTopColor: "#eef3f0", backgroundColor: ri % 2 === 0 ? "#fff" : "#f6fbf8", alignItems: "flex-start" }}>
+        <View key={ri} style={{ flexDirection: "row", paddingVertical: 9, paddingHorizontal: 4, borderTopWidth: 1, borderTopColor: "#eef3f0", backgroundColor: colors.rowBg, alignItems: "flex-start" }}>
           {cols.map((c, ci) => {
             const val = row[ci] ?? "";
             if (c.isLink && val) {
@@ -525,28 +527,26 @@ export default function ProfileDetail({ navigation, route }) {
   useEffect(() => { fetchProfile(); }, [fetchProfile]);
 
   if (loading) return (
-    <View style={{ flex: 1, backgroundColor: "#f5f7f8" }}>
+    <View style={{ flex: 1, backgroundColor: colors.appBg }}>
       <AppHeader title={t("research.profileDetail.title")} onBack={() => navigation.goBack()} />
-      <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 12 }}>
-        <ActivityIndicator size="large" color="#007a5a" />
-        <Text style={{ fontSize: 13, color: "#8fa89f", fontWeight: "600" }}>{t("research.profileDetail.loading")}</Text>
-      </View>
+      <StateView type="loading" title={t("research.profileDetail.loading")} />
     </View>
   );
 
   if (error || !profile) return (
-    <View style={{ flex: 1, backgroundColor: "#f5f7f8" }}>
+    <View style={{ flex: 1, backgroundColor: colors.appBg }}>
       <AppHeader title={t("research.profileDetail.title")} onBack={() => navigation.goBack()} />
-      <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 14, paddingHorizontal: 36 }}>
-        <Ionicons name="person-circle-outline" size={72} color="#c4d4cc" />
-        <Text style={{ fontSize: 16, fontWeight: "800", color: "#1f2a2e", textAlign: "center" }}>{t("research.profileDetail.loadFail")}</Text>
-        <Text style={{ fontSize: 13, color: "#8fa89f", textAlign: "center", lineHeight: 20 }}>{error ?? t("research.profileDetail.genericError")}</Text>
-        <TouchableOpacity onPress={fetchProfile} style={{ flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: "#007a5a", borderRadius: 10, paddingHorizontal: 20, paddingVertical: 11 }}>
-          <Ionicons name="refresh" size={15} color="#fff" />
-          <Text style={{ color: "#fff", fontSize: 14, fontWeight: "700" }}>{t("research.profileDetail.retry")}</Text>
-        </TouchableOpacity>
+      <View style={{ flex: 1 }}>
+        <StateView
+          type="error"
+          icon="person-circle-outline"
+          title={t("research.profileDetail.loadFail")}
+          message={error ?? t("research.profileDetail.genericError")}
+          actionLabel={t("research.profileDetail.retry")}
+          onAction={fetchProfile}
+        />
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={{ fontSize: 13, color: "#9aa6b1", fontWeight: "600" }}>{t("research.profileDetail.back")}</Text>
+          <Text style={{ fontSize: 13, color: colors.textSoft, fontWeight: "600", textAlign: "center" }}>{t("research.profileDetail.back")}</Text>
         </TouchableOpacity>
       </View>
     </View>

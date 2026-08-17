@@ -212,7 +212,7 @@ const PatentForm = ({ navigation }) => {
                     className="flex-row items-center px-3 py-3 border-b border-[#eef1f4]"
                     style={[
                       editingItem?.id === entry.id
-                        ? { backgroundColor: "#dff4ec" }
+                        ? { backgroundColor: "#ccf0e2" }
                         : {},
                     ]}
                   >
@@ -256,7 +256,7 @@ const PatentForm = ({ navigation }) => {
                       style={{ width: 92 }}
                     >
                       <TouchableOpacity
-                        className="w-[34px] h-[34px] rounded-lg bg-[#fff4e0] items-center justify-center"
+                        className="w-[34px] h-[34px] rounded-lg bg-[#fff0d6] items-center justify-center"
                         onPress={() => openEdit(entry)}
                       >
                         <Ionicons
@@ -300,7 +300,7 @@ const PatentForm = ({ navigation }) => {
                 : t("research.patent.addForm")}
             </Text>
             {editingItem && (
-              <View className="flex-row items-center gap-1 bg-[#fff4e0] rounded-full px-[10px] py-1">
+              <View className="flex-row items-center gap-1 bg-[#fff0d6] rounded-full px-[10px] py-1">
                 <Ionicons name="create-outline" size={12} color="#a8651b" />
                 <Text className="text-[#a8651b] text-[11px] font-extrabold">
                   {t("research.common.editing")}

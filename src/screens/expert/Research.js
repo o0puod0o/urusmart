@@ -7,19 +7,11 @@ import AppHeader from "../../components/AppHeader";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import apiService from "../../services/api";
 import useMenuCounts from "../../hook/useMenuCounts";
-
-const getExpertGroups = (t) => [
-  { id: "", label: t("research.screen.selectGroupPlaceholder") },
-  { id: "กลุ่มครุศาสตร์ ศึกษาศาสตร์พลศึกษา และพลศึกษา",                           label: t("research.expertGroup.education") },
-  { id: "กลุ่มบริหาร พาณิชยศาสตร์ การบัญชี การท่องเที่ยวและโรงแรม เศรษฐศาสตร์", label: t("research.expertGroup.business") },
-  { id: "กลุ่มมนุษยศาสตร์และสังคมศาสตร์",                                           label: t("research.expertGroup.humanities") },
-  { id: "กลุ่มวิชาวิทยาศาสตร์กายภาพและชีวภาพ",                                     label: t("research.expertGroup.science") },
-  { id: "กลุ่มวิทยาศาสตร์สุขภาพ",                                                   label: t("research.expertGroup.health") },
-  { id: "กลุ่มวิศวกรรมศาสตร์",                                                       label: t("research.expertGroup.engineering") },
-  { id: "กลุ่มศิลปกรรมศาสตร์",                                                       label: t("research.expertGroup.finearts") },
-  { id: "กลุ่มสถาปัตยกรรมศาสตร์",                                                   label: t("research.expertGroup.architecture") },
-  { id: "กลุ่มเกษตรศาสตร์",                                                           label: t("research.expertGroup.agriculture") },
-];
+import { colors, radius } from "../../theme/tokens";
+import {
+  getExpertGroupSearchOptions,
+  normalizeExpertGroupRows,
+} from "../../constants/expertGroups";
 
 const getSearchByOptions = (t) => [
   { id: "", label: t("research.screen.from") },
@@ -54,42 +46,101 @@ const getExpertMenus = (t) => [
   { id: "human_subjects", label: t("research.screen.manageHuman"),     icon: "shield-checkmark-outline", color: "#bf360c", bg: "#fbe9e7" },
 ];
 
-const InlineDropdown = ({ value, options, placeholder, onSelect, loading, fullWidth }) => {
+const cleanParams = (params) =>
+  Object.fromEntries(
+    Object.entries(params).filter(([, value]) => value !== undefined && value !== null && String(value).trim() !== ""),
+  );
+
+const ResearchDropdown = ({
+  value,
+  options,
+  placeholder,
+  onSelect,
+  loading = false,
+}) => {
   const [open, setOpen] = useState(false);
-  const selected = options.find((o) => o.id === value);
+  const selected = options.find((o) => String(o.id) === String(value) && o.id !== "");
+
+  const handleSelect = (id) => {
+    onSelect(id);
+    setOpen(false);
+  };
+
   return (
-    <View style={fullWidth ? { width: "100%" } : {}}>
+    <View>
       <TouchableOpacity
-        className={`flex-row items-center rounded-xl px-[14px] py-3 gap-1 ${open ? "bg-[#e8f5ee] border-[1.5px] border-brand" : "bg-[#f4f6f8] border border-[#e8ecf0]"}`}
-        onPress={() => setOpen(!open)}
+        className={`flex-row items-center rounded-xl px-[14px] py-3 gap-1 ${
+          open
+            ? "bg-[#e8f5ee] border-[1.5px] border-brand"
+            : "bg-[#f4f6f8] border border-[#e8ecf0]"
+        }`}
+        onPress={() => {
+          if (!loading) setOpen((prev) => !prev);
+        }}
         activeOpacity={0.8}
       >
         {loading ? (
           <ActivityIndicator size="small" color="#888" style={{ flex: 1 }} />
         ) : (
-          <Text className="flex-1 text-[13px] text-[#1a1a2e]" style={!selected?.id ? { color: "#aaa" } : {}} numberOfLines={1}>
-            {selected?.id ? selected.label : placeholder}
+          <Text
+            className="flex-1 text-[13px] text-[#1a1a2e]"
+            style={!selected ? { color: "#aaa" } : {}}
+            numberOfLines={1}
+          >
+            {selected ? selected.label : placeholder}
           </Text>
         )}
-        <Ionicons name={open ? "chevron-up" : "chevron-down"} size={16} color="#888" />
+        <Ionicons
+          name={open ? "chevron-up" : "chevron-down"}
+          size={16}
+          color={open || selected ? colors.primary : "#888"}
+        />
       </TouchableOpacity>
+
       {open && (
-        <View className="bg-white border-[1.5px] border-t-0 border-brand rounded-bl-xl rounded-br-xl overflow-hidden max-h-[220px]">
-          <ScrollView nestedScrollEnabled showsVerticalScrollIndicator bounces={false}>
-            {options.map((opt) => (
-              <TouchableOpacity
-                key={opt.id}
-                className={`px-[14px] py-3 border-b border-[#f0f4f7] ${opt.id === value ? "bg-[#f0faf4]" : ""}`}
-                onPress={() => { onSelect(opt.id); setOpen(false); }}
-              >
-                <View className="flex-row items-center">
-                  <View className="w-5 items-center mr-[6px]">
-                    {opt.id === value && <Ionicons name="checkmark" size={14} color="#1a6b3c" />}
+        <View
+          className="bg-white border-[1.5px] border-t-0 border-brand rounded-bl-xl rounded-br-xl overflow-hidden"
+          style={{ maxHeight: 220 }}
+        >
+          <ScrollView
+            nestedScrollEnabled
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator
+            bounces={false}
+          >
+            {options.map((opt, index) => {
+              const isSelected = String(opt.id) === String(value);
+              const isPlaceholder = opt.id === "";
+              return (
+                <TouchableOpacity
+                  key={`${opt.id}-${index}`}
+                  className={`px-[14px] py-3 border-b border-[#f0f4f7] ${
+                    isSelected ? "bg-[#f0faf4]" : ""
+                  }`}
+                  onPress={() => handleSelect(opt.id)}
+                  activeOpacity={0.75}
+                >
+                  <View className="flex-row items-center">
+                    <View className="w-5 items-center mr-[6px]">
+                      {isSelected && (
+                        <Ionicons name="checkmark" size={14} color={colors.primary} />
+                      )}
+                    </View>
+                    <Text
+                      className={`flex-1 text-[13px] ${
+                        isSelected
+                          ? "text-brand font-semibold"
+                          : isPlaceholder
+                            ? "text-[#9aa6b1]"
+                            : "text-[#444]"
+                      }`}
+                    >
+                      {opt.label}
+                    </Text>
                   </View>
-                  <Text className={`flex-1 text-[13px] ${opt.id === value ? "text-brand font-semibold" : "text-[#444]"}`}>{opt.label}</Text>
-                </View>
-              </TouchableOpacity>
-            ))}
+                </TouchableOpacity>
+              );
+            })}
           </ScrollView>
         </View>
       )}
@@ -100,25 +151,87 @@ const InlineDropdown = ({ value, options, placeholder, onSelect, loading, fullWi
 const SearchSection = ({ onSearch }) => {
   const { t } = useTranslation();
   const SEARCH_BY_OPTIONS = getSearchByOptions(t);
-  const EXPERT_GROUPS = getExpertGroups(t);
+  const fallbackExpertGroups = getExpertGroupSearchOptions(
+    t("research.screen.selectGroupPlaceholder"),
+  );
   const [searchBy, setSearchBy] = useState("");
   const [keyword, setKeyword] = useState("");
   const [selectedGroup, setSelectedGroup] = useState("");
   const [selectedInterest, setSelectedInterest] = useState("");
+  const [expertGroups, setExpertGroups] = useState(fallbackExpertGroups);
   const [rawInterests, setRawInterests] = useState([]);
+  const [loadingExpertGroups, setLoadingExpertGroups] = useState(true);
   const [loadingInterests, setLoadingInterests] = useState(true);
   const interestOptions = [{ id: "", label: t("research.screen.selectInterestPlaceholder") }, ...rawInterests];
 
+  const submitSearch = (params) => {
+    const cleaned = cleanParams(params);
+    if (__DEV__) console.log("[Research] profile-search params:", cleaned);
+    onSearch(cleaned);
+  };
+
+  const runKeywordSearch = () => {
+    submitSearch({
+      search_by: searchBy,
+      keyword: keyword.trim(),
+    });
+  };
+
+  const runGroupSearch = () => {
+    if (selectedInterest) {
+      submitSearch({ interest: selectedInterest });
+      return;
+    }
+
+    const selectedGroupOption = expertGroups.find(
+      (group) => String(group.id) === String(selectedGroup),
+    );
+
+    submitSearch({
+      expertise_group_id: selectedGroup,
+      group_id: selectedGroup,
+      expertise: selectedGroupOption?.label ?? "",
+    });
+  };
+
   useEffect(() => {
-    apiService.get("/ref/search-options")
-      .then((r) => {
-        const rows = r.data?.interests ?? r.data?.data ?? [];
-        if (rows.length > 0) {
-          setRawInterests(rows.map((i) => ({ id: i.name ?? i.id, label: i.name })));
+    Promise.allSettled([
+      apiService.get("/ref/search-options"),
+      apiService.get("/ref/expertise-groups"),
+    ])
+      .then(([searchOptionsResult, expertiseGroupsResult]) => {
+        if (searchOptionsResult.status === "fulfilled") {
+          const r = searchOptionsResult.value;
+          const rows = r.data?.interests ?? r.data?.data ?? [];
+          if (rows.length > 0) {
+            setRawInterests(rows.map((i) => ({ id: i.name ?? i.id, label: i.name })));
+          }
+        }
+
+        if (expertiseGroupsResult.status === "fulfilled") {
+          const r = expertiseGroupsResult.value;
+          const rows =
+            r.data?.expertise_groups ??
+            r.data?.groups ??
+            r.data?.data ??
+            r.data ??
+            [];
+
+          if (Array.isArray(rows) && rows.length > 0) {
+            setExpertGroups(
+              normalizeExpertGroupRows(
+                rows,
+                t("research.screen.selectGroupPlaceholder"),
+              ),
+            );
+          }
         }
       })
       .catch(() => {})
-      .finally(() => setLoadingInterests(false));
+      .finally(() => {
+        setLoadingExpertGroups(false);
+        setLoadingInterests(false);
+      });
   }, []);
 
   return (
@@ -134,7 +247,12 @@ const SearchSection = ({ onSearch }) => {
       <View className="p-[14px] gap-[10px]">
         <View className="gap-2">
           <Text className="text-[11px] font-bold text-[#888] uppercase tracking-[0.5px]">{t("research.screen.searchByKeyword")}</Text>
-          <InlineDropdown value={searchBy} options={SEARCH_BY_OPTIONS} placeholder={t("research.screen.selectSearchType")} onSelect={setSearchBy} fullWidth />
+          <ResearchDropdown
+            value={searchBy}
+            options={SEARCH_BY_OPTIONS}
+            placeholder={t("research.screen.selectSearchType")}
+            onSelect={setSearchBy}
+          />
           <View className="flex-row items-center gap-2">
             <TextInput
               className="flex-1 bg-[#f4f6f8] border border-[#e8ecf0] rounded-xl px-3 py-3 text-[13px] text-[#1a1a2e]"
@@ -142,10 +260,14 @@ const SearchSection = ({ onSearch }) => {
               placeholderTextColor="#aaa"
               value={keyword}
               onChangeText={setKeyword}
-              onSubmitEditing={() => onSearch({ expertise_group: selectedGroup || "all", interest: selectedInterest || "all", keyword })}
+              onSubmitEditing={runKeywordSearch}
               returnKeyType="search"
             />
-            <TouchableOpacity className="bg-brand rounded-xl px-4 py-3" onPress={() => onSearch({ expertise_group: selectedGroup || "all", interest: selectedInterest || "all", keyword })}>
+            <TouchableOpacity
+              className="px-4 py-3"
+              style={{ backgroundColor: colors.primary, borderRadius: radius.md, minHeight: 48, justifyContent: "center" }}
+              onPress={runKeywordSearch}
+            >
               <Text className="text-white text-[13px] font-semibold">{t("research.screen.search")}</Text>
             </TouchableOpacity>
           </View>
@@ -157,11 +279,30 @@ const SearchSection = ({ onSearch }) => {
         </View>
         <View className="gap-2">
           <Text className="text-[11px] font-bold text-[#888] uppercase tracking-[0.5px]">{t("research.screen.searchByGroup")}</Text>
-          <InlineDropdown value={selectedGroup} options={EXPERT_GROUPS} placeholder={t("research.screen.selectGroupPlaceholder")} onSelect={setSelectedGroup} fullWidth />
-          <InlineDropdown value={selectedInterest} options={interestOptions} placeholder={t("research.screen.selectInterestPlaceholder")} onSelect={setSelectedInterest} loading={loadingInterests} fullWidth />
+          <ResearchDropdown
+            value={selectedGroup}
+            options={expertGroups}
+            placeholder={t("research.screen.selectGroupPlaceholder")}
+            onSelect={(value) => {
+              setSelectedGroup(value);
+              if (value) setSelectedInterest("");
+            }}
+            loading={loadingExpertGroups}
+          />
+          <ResearchDropdown
+            value={selectedInterest}
+            options={interestOptions}
+            placeholder={t("research.screen.selectInterestPlaceholder")}
+            onSelect={(value) => {
+              setSelectedInterest(value);
+              if (value) setSelectedGroup("");
+            }}
+            loading={loadingInterests}
+            searchable
+          />
           <TouchableOpacity
             className="flex-row items-center justify-center gap-2 bg-brand rounded-xl py-[13px]"
-            onPress={() => onSearch({ expertise_group: selectedGroup || "all", interest: selectedInterest || "all" })}
+            onPress={runGroupSearch}
           >
             <Ionicons name="search-outline" size={16} color="#fff" />
             <Text className="text-white text-[13px] font-semibold">{t("research.screen.search")}</Text>

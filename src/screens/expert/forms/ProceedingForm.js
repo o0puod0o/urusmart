@@ -211,7 +211,7 @@ const ProceedingForm = ({ navigation }) => {
                     className="flex-row items-center px-3 py-3 border-b border-[#eef1f4]"
                     style={[
                       editingItem?.id === entry.id
-                        ? { backgroundColor: "#dff4ec" }
+                        ? { backgroundColor: "#ccf0e2" }
                         : {},
                     ]}
                   >
@@ -255,7 +255,7 @@ const ProceedingForm = ({ navigation }) => {
                       style={{ width: 92 }}
                     >
                       <TouchableOpacity
-                        className="w-[34px] h-[34px] rounded-lg bg-[#fff4e0] items-center justify-center"
+                        className="w-[34px] h-[34px] rounded-lg bg-[#fff0d6] items-center justify-center"
                         onPress={() => openEdit(entry)}
                         activeOpacity={0.8}
                       >

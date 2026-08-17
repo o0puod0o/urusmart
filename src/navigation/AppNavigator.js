@@ -39,6 +39,7 @@ import NotificationsScreen from "../screens/notifications/Notifications";
 import InAppBrowser from "../screens/shared/InAppBrowser";
 import EResearch from "../screens/e-research/EResearch";
 import ProfileDetail from "../screens/expert/ProfileDetail";
+import { colors } from "../theme/tokens";
 
 const RootStack = createNativeStackNavigator();
 const SettingStackNav = createNativeStackNavigator();
@@ -144,25 +145,28 @@ function MainTabs() {
         headerShown: false,
         tabBarSafeAreaInsets: { bottom: 0 },
         tabBarStyle: {
-          backgroundColor: "#fff",
+          backgroundColor: colors.surface,
           borderTopWidth: 1,
-          borderTopColor: "#e8ecf0",
-          height: 58 + bottom,
-          paddingBottom: bottom,
-          paddingTop: 6,
+          borderTopColor: colors.border,
+          height: 52 + Math.max(bottom, 6),
+          paddingBottom: Math.max(bottom - 2, 6),
+          paddingTop: 4,
           elevation: 8,
-          shadowColor: "#064e35",
+          shadowColor: colors.primaryDark,
           shadowOpacity: 0.08,
           shadowOffset: { width: 0, height: -3 },
           shadowRadius: 8,
         },
-        tabBarActiveTintColor: "#0f7a55",
-        tabBarInactiveTintColor: "#9ca3af",
+        tabBarItemStyle: {
+          paddingTop: 1,
+        },
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textSoft,
         tabBarLabelStyle: {
           fontSize: 11,
           fontWeight: "700",
-          letterSpacing: -0.2,
-          marginTop: 2,
+          letterSpacing: 0,
+          marginTop: 0,
         },
         tabBarIcon: ({ focused, color }) => {
           const icons = {

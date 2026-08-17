@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Image, Text, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { colors, hitSlop, radius } from "../theme/tokens";
 import {
   loadNotificationInbox,
   subscribeNotificationInbox,
@@ -26,7 +27,7 @@ const HeaderBar = ({ name, photoUrl, onNotification, onLogout }) => {
     : "อ.";
 
   return (
-    <View className="bg-primary px-4 pb-3" style={{ paddingTop: top + 8 }}>
+    <View className="px-4 pb-3" style={{ paddingTop: top + 8, backgroundColor: colors.primary }}>
       <View className="flex-row items-center">
         {/* Avatar — fixed width */}
         <View className="w-[40px] h-[40px] rounded-full bg-white/10 border-2 border-white items-center justify-center overflow-hidden">
@@ -58,25 +59,32 @@ const HeaderBar = ({ name, photoUrl, onNotification, onLogout }) => {
         {/* Actions — push to right */}
         <View className="flex-row items-center gap-2 ml-auto">
           <TouchableOpacity
-            className="w-[36px] h-[36px] items-center justify-center rounded-full bg-white/10"
+            className="w-10 h-10 items-center justify-center"
+            style={{ borderRadius: radius.pill, backgroundColor: "rgba(255,255,255,0.14)" }}
             onPress={onNotification}
             activeOpacity={0.75}
+            hitSlop={hitSlop}
           >
             <Ionicons name="notifications-outline" size={22} color="#fff" />
             {unreadCount > 0 && (
-              <View className="absolute -right-1 -top-1 min-w-[17px] h-[17px] rounded-full bg-[#ef4444] items-center justify-center px-1 border border-primary">
-                <Text className="text-white text-[9px] font-extrabold">
+              <View
+                className="absolute -right-1 -top-1 min-w-[18px] h-[18px] rounded-full bg-[#ef4444] items-center justify-center px-1"
+                style={{ borderWidth: 1.5, borderColor: colors.primary }}
+              >
+                <Text className="text-white text-[10px] font-extrabold">
                   {unreadCount > 99 ? "99+" : unreadCount}
                 </Text>
               </View>
             )}
           </TouchableOpacity>
           <TouchableOpacity
-            className="w-[32px] h-[32px] items-center justify-center rounded-full bg-white/10"
+            className="w-10 h-10 items-center justify-center"
+            style={{ borderRadius: radius.pill, backgroundColor: "rgba(255,255,255,0.1)" }}
             onPress={onLogout}
             activeOpacity={0.75}
+            hitSlop={hitSlop}
           >
-            <Ionicons name="log-out-outline" size={18} color="rgba(255,255,255,0.7)" />
+            <Ionicons name="log-out-outline" size={19} color="rgba(255,255,255,0.78)" />
           </TouchableOpacity>
         </View>
       </View>

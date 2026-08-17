@@ -118,7 +118,7 @@ const AdminHistoryForm = ({ navigation, route }) => {
                     key={entry.id ?? index}
                     className="flex-row items-center px-3 py-3 border-b border-[#eef1f4]"
                     style={[
-                      editingItem?.id === entry.id ? { backgroundColor: "#dff4ec" } : {},
+                      editingItem?.id === entry.id ? { backgroundColor: "#ccf0e2" } : {},
                     ]}
                   >
                     <Text className="text-[14px] font-bold text-[#1f2a2e] text-left px-1" style={{ width: 40 }}>
@@ -157,7 +157,7 @@ const AdminHistoryForm = ({ navigation, route }) => {
                       )}
                     </View>
                     <View className="flex-row gap-[6px] justify-center px-1" style={{ width: 92 }}>
-                      <TouchableOpacity className="w-[34px] h-[34px] rounded-lg bg-[#fff4e0] items-center justify-center" onPress={() => openEdit(entry)}>
+                      <TouchableOpacity className="w-[34px] h-[34px] rounded-lg bg-[#fff0d6] items-center justify-center" onPress={() => openEdit(entry)}>
                         <Ionicons name="create-outline" size={17} color="#a8631a" />
                       </TouchableOpacity>
                       <TouchableOpacity className="w-[34px] h-[34px] rounded-lg bg-[#fde7e7] items-center justify-center" onPress={() => handleDelete(entry)}>

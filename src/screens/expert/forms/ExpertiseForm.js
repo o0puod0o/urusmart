@@ -14,26 +14,16 @@ import KeyboardAwareScrollView from "../../../components/expert/KeyboardAwareScr
 import InlineDropdown from "../../../components/expert/InlineDropdown";
 import useResource from "../../../hook/useResource";
 import useConfirm from "../../../hook/useConfirm";
+import {
+  getExpertGroupLabel,
+  getExpertGroupSelectOptions,
+} from "../../../constants/expertGroups";
 
-const EXPERT_GROUPS = [
-  { id: "", label: "กรุณาเลือกกลุ่มความเชี่ยวชาญ" },
-  { id: "1", label: "วิทยาศาสตร์และเทคโนโลยี" },
-  { id: "2", label: "มนุษยศาสตร์และสังคมศาสตร์" },
-  { id: "3", label: "บริหารธุรกิจและการจัดการ" },
-  { id: "4", label: "ครุศาสตร์และศึกษาศาสตร์" },
-  { id: "5", label: "เกษตรและสิ่งแวดล้อม" },
-  { id: "6", label: "วิศวกรรมศาสตร์" },
-  { id: "7", label: "นิติศาสตร์และรัฐศาสตร์" },
-  { id: "8", label: "ศิลปะและการออกแบบ" },
-];
+const EXPERT_GROUPS = getExpertGroupSelectOptions(
+  "กรุณาเลือกกลุ่มความเชี่ยวชาญ",
+);
 
-const getGroupLabel = (groupId) => {
-  if (!groupId && groupId !== 0) return "-";
-  return (
-    EXPERT_GROUPS.find((g) => g.id === String(groupId))?.label ??
-    String(groupId)
-  );
-};
+const getGroupLabel = getExpertGroupLabel;
 
 const ExpertiseForm = ({ navigation, route }) => {
   const item = route?.params?.item || null;
@@ -177,7 +167,7 @@ const ExpertiseForm = ({ navigation, route }) => {
                 className="flex-row items-center px-[14px] py-3 border-b border-[#eef1f4]"
                 style={[
                   editingItem?.id === entry.id
-                    ? { backgroundColor: "#dff4ec" }
+                    ? { backgroundColor: "#ccf0e2" }
                     : {},
                 ]}
               >
@@ -193,7 +183,7 @@ const ExpertiseForm = ({ navigation, route }) => {
                 </View>
                 <View className="flex-row gap-[6px]">
                   <TouchableOpacity
-                    className="w-[34px] h-[34px] rounded-lg bg-[#fff4e0] items-center justify-center"
+                    className="w-[34px] h-[34px] rounded-lg bg-[#fff0d6] items-center justify-center"
                     onPress={() => openEdit(entry)}
                     activeOpacity={0.8}
                   >
@@ -229,7 +219,7 @@ const ExpertiseForm = ({ navigation, route }) => {
               </Text>
             </View>
             {editingItem && (
-              <View className="flex-row items-center bg-[#fff4e0] rounded-full px-[10px] py-1">
+              <View className="flex-row items-center bg-[#fff0d6] rounded-full px-[10px] py-1">
                 <Ionicons name="create-outline" size={13} color="#a8631a" />
                 <Text className="text-[#a8631a] text-[11px] font-extrabold ml-1">
                   กำลังแก้ไข

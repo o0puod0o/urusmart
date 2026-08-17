@@ -15,6 +15,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
+import { colors, radius, shadows, spacing, typography } from "../../theme/tokens";
 
 const MAX_LIST_H = 300;
 
@@ -23,9 +24,15 @@ const InlineDropdown = ({
   value,
   options = [],
   onSelect,
+  placeholder,
   required = false,
   searchable = false,
   loading = false,
+  containerStyle,
+  triggerStyle,
+  selectedTextStyle,
+  placeholderTextStyle,
+  panelStyle,
 }) => {
   const { t } = useTranslation();
   const { height: screenHeight } = useWindowDimensions();
@@ -142,18 +149,21 @@ const InlineDropdown = ({
     outputRange: ["0deg", "180deg"],
   });
 
+  const displayPlaceholder = placeholder ?? options[0]?.label ?? "เลือก...";
+
   return (
-    <View style={{ paddingHorizontal: 16, paddingVertical: 8 }}>
-      {/* Label */}
-      <Text style={{ fontSize: 12, fontWeight: "700", color: "#5a6a6f", marginBottom: 6, letterSpacing: 0.2 }}>
-        {label}
-        {required && <Text style={{ color: "#e05252" }}> *</Text>}
-      </Text>
+    <View style={[{ paddingHorizontal: spacing.card, paddingVertical: 8 }, containerStyle]}>
+      {!!label && (
+        <Text style={[styles.label, { marginBottom: 7 }]}>
+          {label}
+          {required && <Text style={{ color: colors.danger }}> *</Text>}
+        </Text>
+      )}
 
       {loading ? (
-        <View style={styles.trigger}>
-          <ActivityIndicator size="small" color="#007a5a" />
-          <Text style={{ marginLeft: 8, fontSize: 13, color: "#9aa6b1" }}>กำลังโหลด...</Text>
+        <View style={[styles.trigger, triggerStyle]}>
+          <ActivityIndicator size="small" color={colors.primary} />
+          <Text style={styles.loadingText}>กำลังโหลด...</Text>
         </View>
       ) : (
         <>
@@ -164,6 +174,7 @@ const InlineDropdown = ({
             activeOpacity={0.75}
             style={[
               styles.trigger,
+              triggerStyle,
               hasValue && styles.triggerSelected,
               open && styles.triggerOpen,
             ]}
@@ -171,15 +182,15 @@ const InlineDropdown = ({
             {hasValue ? (
               <View style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 7 }}>
                 <View style={styles.selectedDot} />
-                <Text style={styles.selectedText} numberOfLines={1}>{selected.label}</Text>
+                <Text style={[styles.selectedText, selectedTextStyle]} numberOfLines={1}>{selected.label}</Text>
               </View>
             ) : (
-              <Text style={styles.placeholderText} numberOfLines={1}>
-                {options[0]?.label ?? "เลือก..."}
+              <Text style={[styles.placeholderText, placeholderTextStyle]} numberOfLines={1}>
+                {displayPlaceholder}
               </Text>
             )}
             <Animated.View style={{ transform: [{ rotate: chevronRotate }] }}>
-              <Ionicons name="chevron-down" size={16} color={open || hasValue ? "#007a5a" : "#9aa6b1"} />
+              <Ionicons name="chevron-down" size={16} color={open || hasValue ? colors.primary : colors.placeholder} />
             </Animated.View>
           </TouchableOpacity>
 
@@ -198,6 +209,7 @@ const InlineDropdown = ({
                     <Animated.View
                       style={[
                         styles.panel,
+                        panelStyle,
                         {
                           top: dropPos.top,
                           left: dropPos.left,
@@ -212,7 +224,7 @@ const InlineDropdown = ({
                       {searchable && (
                         <View style={styles.searchBar}>
                           <View style={styles.searchIconWrap}>
-                            <Ionicons name="search-outline" size={14} color="#007a5a" />
+                            <Ionicons name="search-outline" size={14} color={colors.primary} />
                           </View>
                           <TextInput
                             style={styles.searchInput}
@@ -225,7 +237,7 @@ const InlineDropdown = ({
                           />
                           {search.length > 0 && (
                             <TouchableOpacity onPress={() => setSearch("")} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                              <Ionicons name="close-circle" size={16} color="#9aa6b1" />
+                              <Ionicons name="close-circle" size={16} color={colors.placeholder} />
                             </TouchableOpacity>
                           )}
                         </View>
@@ -291,56 +303,58 @@ const InlineDropdown = ({
 };
 
 const styles = {
+  label: {
+    ...typography.label,
+  },
   trigger: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 14,
-    paddingVertical: 13,
-    borderRadius: 12,
+    minHeight: 52,
+    paddingHorizontal: spacing.fieldX,
+    paddingVertical: spacing.fieldY,
+    borderRadius: radius.md,
     borderWidth: 1.5,
-    borderColor: "#dde5e2",
-    backgroundColor: "#f8fafb",
+    borderColor: colors.border,
+    backgroundColor: colors.fieldBg,
     gap: 8,
   },
+  loadingText: {
+    ...typography.caption,
+    marginLeft: 8,
+  },
   triggerSelected: {
-    borderColor: "#a8d5be",
-    backgroundColor: "#f4fbf7",
+    borderColor: colors.borderStrong,
+    backgroundColor: colors.primarySoft,
   },
   triggerOpen: {
-    borderColor: "#007a5a",
-    backgroundColor: "#eef8f3",
+    borderColor: colors.primary,
+    backgroundColor: colors.primaryMuted,
   },
   selectedDot: {
     width: 7,
     height: 7,
     borderRadius: 4,
-    backgroundColor: "#007a5a",
+    backgroundColor: colors.primary,
     flexShrink: 0,
   },
   selectedText: {
     flex: 1,
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#1f2a2e",
+    ...typography.input,
   },
   placeholderText: {
     flex: 1,
-    fontSize: 14,
-    color: "#aab8b2",
-    fontWeight: "400",
+    ...typography.input,
+    color: colors.placeholder,
+    fontWeight: "500",
   },
   panel: {
     position: "absolute",
-    backgroundColor: "#fff",
-    borderRadius: 14,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: "#d0e8dc",
+    borderColor: "#cfe6db",
     overflow: "hidden",
-    elevation: 16,
-    shadowColor: "#064e35",
-    shadowOpacity: 0.15,
-    shadowRadius: 20,
-    shadowOffset: { width: 0, height: 8 },
+    ...shadows.floating,
   },
   searchBar: {
     flexDirection: "row",
@@ -349,22 +363,22 @@ const styles = {
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: "#eef1f4",
-    backgroundColor: "#f8fbf9",
+    borderBottomColor: colors.border,
+    backgroundColor: colors.fieldBg,
   },
   searchIconWrap: {
     width: 28,
     height: 28,
-    borderRadius: 8,
-    backgroundColor: "#e6f4ef",
+    borderRadius: radius.xs,
+    backgroundColor: colors.primaryMuted,
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,
   },
   searchInput: {
     flex: 1,
-    fontSize: 14,
-    color: "#1f2a2e",
+    ...typography.input,
+    fontWeight: "500",
     paddingVertical: 0,
   },
   optionRow: {
@@ -373,11 +387,11 @@ const styles = {
     paddingHorizontal: 14,
     paddingVertical: 13,
     borderBottomWidth: 1,
-    borderBottomColor: "#f3f6f4",
+    borderBottomColor: "#edf3f0",
     gap: 10,
   },
   optionRowSelected: {
-    backgroundColor: "#edf9f3",
+    backgroundColor: colors.primarySoft,
   },
   checkCircle: {
     width: 20,
@@ -393,23 +407,23 @@ const styles = {
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: "#007a5a",
+    backgroundColor: colors.primary,
     alignItems: "center",
     justifyContent: "center",
   },
   optionText: {
     flex: 1,
     fontSize: 14,
-    color: "#3f4d50",
+    color: colors.textMuted,
     fontWeight: "400",
     lineHeight: 20,
   },
   optionTextSelected: {
-    color: "#007a5a",
+    color: colors.primary,
     fontWeight: "700",
   },
   optionTextPlaceholder: {
-    color: "#9aa6b1",
+    color: colors.placeholder,
     fontStyle: "italic",
   },
   emptyState: {
@@ -419,7 +433,7 @@ const styles = {
   },
   emptyText: {
     fontSize: 13,
-    color: "#9aa6b1",
+    color: colors.placeholder,
     fontWeight: "500",
   },
 };

@@ -142,7 +142,7 @@ const EducationForm = ({ navigation }) => {
                     key={item.id ?? index}
                     className="flex-row items-center px-3 py-3 border-b border-[#eef1f4]"
                     style={[
-                      editingItem?.id === item.id ? { backgroundColor: "#dff4ec" } : {},
+                      editingItem?.id === item.id ? { backgroundColor: "#ccf0e2" } : {},
                     ]}
                   >
                     <Text className="text-[14px] font-bold text-[#1f2a2e] text-left px-1" style={{ width: 40 }}>
@@ -175,7 +175,7 @@ const EducationForm = ({ navigation }) => {
                       {item.university || "-"}
                     </Text>
                     <View className="flex-row gap-[6px] justify-center px-1" style={{ width: 92 }}>
-                      <TouchableOpacity className="w-[34px] h-[34px] rounded-lg bg-[#fff4e0] items-center justify-center" onPress={() => openEditForm(item)}>
+                      <TouchableOpacity className="w-[34px] h-[34px] rounded-lg bg-[#fff0d6] items-center justify-center" onPress={() => openEditForm(item)}>
                         <Ionicons name="create-outline" size={17} color="#a8631a" />
                       </TouchableOpacity>
                       <TouchableOpacity className="w-[34px] h-[34px] rounded-lg bg-[#fde7e7] items-center justify-center" onPress={() => handleDelete(item)}>
