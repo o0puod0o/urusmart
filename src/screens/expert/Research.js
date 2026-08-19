@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { View, Text, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, FlatList } from "react-native";
+import { View, Text, ScrollView, TouchableOpacity, TextInput, ActivityIndicator } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
@@ -70,12 +70,13 @@ const ResearchDropdown = ({
   }, [onSelect]);
 
   const renderOption = useCallback(
-    ({ item: opt, index }) => {
+    (opt, index) => {
       const isSelected = String(opt.id) === String(value);
       const isPlaceholder = opt.id === "";
 
       return (
         <TouchableOpacity
+          key={`${opt.id}-${index}`}
           className={`px-[14px] py-3 border-b border-[#f0f4f7] ${
             isSelected ? "bg-[#f0faf4]" : ""
           }`}
@@ -143,19 +144,14 @@ const ResearchDropdown = ({
           className="bg-white border-[1.5px] border-t-0 border-brand rounded-bl-xl rounded-br-xl overflow-hidden"
           style={{ maxHeight: 220 }}
         >
-          <FlatList
-            data={options}
-            keyExtractor={(item, index) => `${item.id}-${index}`}
-            renderItem={renderOption}
-            initialNumToRender={12}
-            maxToRenderPerBatch={12}
-            updateCellsBatchingPeriod={16}
-            windowSize={5}
-            nestedScrollEnabled
+          <ScrollView
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator
             bounces={false}
-          />
+            nestedScrollEnabled
+          >
+            {options.map(renderOption)}
+          </ScrollView>
         </View>
       )}
     </View>

@@ -47,8 +47,7 @@ const SSO_REDIRECT_URL = `${SSO_BASE_URL}/auth/redirect`;
 const ENABLE_PASSWORD_LOGIN =
   process.env.EXPO_PUBLIC_ENABLE_PASSWORD_LOGIN === "true";
 
-// ⚠️ ถ้าเพิ่ม URL scheme ใน app.json ในอนาคต ต้องเพิ่ม origin validation ก่อน
-// เพื่อป้องกัน external deep link inject SSO token
+// ถ้าเพิ่ม URL scheme ใน app.json ในอนาคต ต้อง validate origin ก่อนรับ token
 const getSsoAccessTokenFromRoute = (route) =>
   route?.params?.access_token ??
   route?.params?.accessToken ??
@@ -57,7 +56,9 @@ const getSsoAccessTokenFromRoute = (route) =>
   "";
 
 const getLoginErrorMessage = (message, t) => {
-  const normalized = String(message || "").trim().toLowerCase();
+  const normalized = String(message || "")
+    .trim()
+    .toLowerCase();
   if (
     normalized.includes("invalid email or password") ||
     normalized.includes("invalid username or password") ||
@@ -77,6 +78,60 @@ const parseSsoMessage = (message) => {
     return null;
   }
 };
+
+const parseUrl = (url = "") => {
+  try {
+    return new URL(String(url));
+  } catch {
+    return null;
+  }
+};
+
+const getSsoBackendHost = () =>
+  parseUrl(SSO_BASE_URL)?.hostname ?? "urusmart.uru.ac.th";
+
+const isUniversityHost = (hostname = "") =>
+  hostname === "uru.ac.th" || hostname.endsWith(".uru.ac.th");
+
+const isTrustedSsoNavigationUrl = (url = "") => {
+  const value = String(url);
+  if (!value || value === "about:blank") return true;
+
+  const parsed = parseUrl(value);
+  if (!parsed) return false;
+  if (!["http:", "https:"].includes(parsed.protocol)) return false;
+
+  return (
+    parsed.hostname === getSsoBackendHost() || isUniversityHost(parsed.hostname)
+  );
+};
+
+const isTrustedSsoMessageUrl = (url = "") => {
+  const parsed = parseUrl(url);
+  return (
+    parsed?.hostname === getSsoBackendHost() &&
+    parsed.pathname.includes("/auth/callback")
+  );
+};
+
+const isSsoCallbackUrl = (url = "") =>
+  String(url).includes("/auth/callback") ||
+  String(url).includes("token=") ||
+  String(url).includes("access_token=");
+
+const HIDE_SSO_CALLBACK_SCRIPT = `
+  (function () {
+    if (
+      window.location.href.indexOf('/auth/callback') !== -1 ||
+      window.location.href.indexOf('token=') !== -1 ||
+      window.location.href.indexOf('access_token=') !== -1
+    ) {
+      document.documentElement.style.opacity = '0';
+      if (document.body) document.body.style.opacity = '0';
+    }
+  })();
+  true;
+`;
 
 // ── Field ปกติ ไม่ใช้ Reanimated (ป้องกัน crash) ──────────────
 const Field = ({ label, icon, children, focused }) => (
@@ -109,6 +164,8 @@ const Login = ({ navigation, route }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [ssoLoading, setSsoLoading] = useState(false);
+  const [ssoPageLoading, setSsoPageLoading] = useState(false);
+  const [hideSsoContent, setHideSsoContent] = useState(false);
   const [showSsoWebView, setShowSsoWebView] = useState(false);
   const [emailFocused, setEmailFocused] = useState(false);
   const [passFocused, setPassFocused] = useState(false);
@@ -122,6 +179,7 @@ const Login = ({ navigation, route }) => {
   const focusedFieldRef = useRef(null);
   const passwordRef = useRef(null);
   const ssoHandledRef = useRef(false);
+  const ssoCurrentUrlRef = useRef(SSO_REDIRECT_URL);
   const ssoAccessToken = getSsoAccessTokenFromRoute(route);
 
   // ── Entrance animations ──
@@ -290,10 +348,7 @@ const Login = ({ navigation, route }) => {
 
   const completeBackendLogin = async (data) => {
     if (!data?.token) {
-      Alert.alert(
-        t("login.signInFailedTitle"),
-        t("login.missingToken"),
-      );
+      Alert.alert(t("login.signInFailedTitle"), t("login.missingToken"));
       return;
     }
 
@@ -329,16 +384,10 @@ const Login = ({ navigation, route }) => {
       if (response.ok) {
         await completeBackendLogin(data);
       } else {
-        Alert.alert(
-          t("login.signInFailedTitle"),
-          t("login.ssoFailed"),
-        );
+        Alert.alert(t("login.signInFailedTitle"), t("login.ssoFailed"));
       }
     } catch (_) {
-      Alert.alert(
-        t("login.errorTitle"),
-        t("login.ssoNetworkError"),
-      );
+      Alert.alert(t("login.errorTitle"), t("login.ssoNetworkError"));
     } finally {
       setLoading(false);
     }
@@ -351,25 +400,40 @@ const Login = ({ navigation, route }) => {
   const openSsoLogin = () => {
     Keyboard.dismiss();
     ssoHandledRef.current = false;
+    ssoCurrentUrlRef.current = SSO_REDIRECT_URL;
+    setHideSsoContent(false);
+    setSsoPageLoading(true);
     setShowSsoWebView(true);
+  };
+
+  const closeSsoLogin = () => {
+    setShowSsoWebView(false);
+    setHideSsoContent(false);
+    setSsoPageLoading(false);
   };
 
   const handleSsoMessage = async (event) => {
     if (ssoHandledRef.current) return;
+
+    const sourceUrl = event.nativeEvent?.url || ssoCurrentUrlRef.current || "";
+    if (!isTrustedSsoMessageUrl(sourceUrl)) {
+      if (__DEV__) {
+        console.warn("[SSO] rejected WebView message from:", sourceUrl);
+      }
+      return;
+    }
 
     const payload = parseSsoMessage(event.nativeEvent?.data);
     if (!payload?.token) return;
 
     ssoHandledRef.current = true;
     setSsoLoading(true);
+    setHideSsoContent(true);
     try {
-      setShowSsoWebView(false);
+      closeSsoLogin();
       await completeBackendLogin(payload);
     } catch (error) {
-      Alert.alert(
-        t("login.signInFailedTitle"),
-        t("login.ssoFailed"),
-      );
+      Alert.alert(t("login.signInFailedTitle"), t("login.ssoFailed"));
     } finally {
       setSsoLoading(false);
     }
@@ -413,10 +477,7 @@ const Login = ({ navigation, route }) => {
         );
       }
     } catch (_) {
-      Alert.alert(
-        t("login.errorTitle"),
-        t("login.networkError"),
-      );
+      Alert.alert(t("login.errorTitle"), t("login.networkError"));
     } finally {
       setLoading(false);
     }
@@ -453,10 +514,7 @@ const Login = ({ navigation, route }) => {
     if (!response.ok) {
       await clearAuthSession();
       await disableBiometricLogin();
-      Alert.alert(
-        t("login.sessionExpiredTitle"),
-        t("login.sessionExpiredMsg"),
-      );
+      Alert.alert(t("login.sessionExpiredTitle"), t("login.sessionExpiredMsg"));
       return;
     }
     await saveAuthSession(token);
@@ -754,14 +812,13 @@ const Login = ({ navigation, route }) => {
             )}
           </View>
         </Animated.View>
-
       </ScrollView>
 
       <Modal
         visible={showSsoWebView}
         animationType="slide"
         presentationStyle="pageSheet"
-        onRequestClose={() => setShowSsoWebView(false)}
+        onRequestClose={closeSsoLogin}
       >
         <View className="flex-1 bg-primary">
           <View
@@ -770,7 +827,7 @@ const Login = ({ navigation, route }) => {
           >
             <TouchableOpacity
               className="w-10 h-10 items-center justify-center"
-              onPress={() => setShowSsoWebView(false)}
+              onPress={closeSsoLogin}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
               <Ionicons name="close" size={24} color="#fff" />
@@ -787,24 +844,61 @@ const Login = ({ navigation, route }) => {
           <WebView
             source={{ uri: SSO_REDIRECT_URL }}
             className="flex-1 bg-white"
+            style={{ opacity: hideSsoContent ? 0 : 1 }}
             onMessage={handleSsoMessage}
+            injectedJavaScriptBeforeContentLoaded={HIDE_SSO_CALLBACK_SCRIPT}
             javaScriptEnabled
             domStorageEnabled
             sharedCookiesEnabled
             thirdPartyCookiesEnabled
             startInLoadingState
+            onShouldStartLoadWithRequest={(request) => {
+              if (!isTrustedSsoNavigationUrl(request.url)) {
+                if (__DEV__) {
+                  console.warn(
+                    "[SSO] blocked untrusted navigation:",
+                    request.url,
+                  );
+                }
+                return false;
+              }
+              ssoCurrentUrlRef.current = request.url;
+              if (isSsoCallbackUrl(request.url)) {
+                setHideSsoContent(true);
+                setSsoPageLoading(true);
+              }
+              return true;
+            }}
+            onLoadStart={(event) => {
+              const url = event.nativeEvent?.url;
+              ssoCurrentUrlRef.current = url || ssoCurrentUrlRef.current;
+              setSsoPageLoading(true);
+              setHideSsoContent(isSsoCallbackUrl(url));
+            }}
+            onLoadEnd={(event) => {
+              const url = event.nativeEvent?.url;
+              ssoCurrentUrlRef.current = url || ssoCurrentUrlRef.current;
+              setSsoPageLoading(false);
+              setHideSsoContent(isSsoCallbackUrl(url));
+            }}
             renderLoading={() => (
               <View className="absolute inset-0 items-center justify-center bg-white">
                 <ActivityIndicator size="large" color="#0f7a55" />
               </View>
             )}
             onError={() => {
-              Alert.alert(
-                t("login.errorTitle"),
-                t("login.ssoNetworkError"),
-              );
+              setSsoPageLoading(false);
+              Alert.alert(t("login.errorTitle"), t("login.ssoNetworkError"));
             }}
           />
+          {(ssoPageLoading || hideSsoContent || ssoLoading) && (
+            <View
+              className="absolute left-0 right-0 bottom-0 items-center justify-center bg-white"
+              style={{ top: PT + 52 }}
+            >
+              <ActivityIndicator size="large" color="#0f7a55" />
+            </View>
+          )}
         </View>
       </Modal>
     </KeyboardAvoidingView>
