@@ -112,6 +112,14 @@ const InlineDropdown = ({
       setDropPos((prev) => {
         if (!prev) return prev;
         const usable = screenHeight - kbH - 8;
+        if (searchable) {
+          const top = Platform.OS === "ios" ? 72 : 56;
+          return {
+            ...prev,
+            top,
+            maxHeight: Math.max(180, usable - top),
+          };
+        }
         if (prev.top + prev.maxHeight > usable) {
           const newMaxH = Math.max(120, usable - prev.top);
           const newTop = newMaxH < 120 ? Math.max(16, usable - 120 - 4) : prev.top;

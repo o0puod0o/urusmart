@@ -17,7 +17,7 @@ import NotificationSettingPage from "../screens/Settings/NotificationSettingPage
 import LanguagePage from "../screens/Settings/LanguagePage";
 import SecurityPage from "../screens/Settings/SecurityPage";
 import ContactUsPage from "../screens/Settings/ContactUsPage";
-import Research from "../screens/expert/Research";
+import ExpertHome from "../screens/expert/ExpertHome";
 import ResearchList from "../screens/expert/ResearchList";
 import ProfileForm from "../screens/expert/profile/ProfileForm";
 import EducationForm from "../screens/expert/profile/EducationForm";
@@ -221,7 +221,7 @@ export default function AppNavigator() {
       <RootStack.Screen name="MainTabs" component={MainTabs} />
       <RootStack.Screen name="Announcements" component={AnnouncementsScreen} />
       <RootStack.Screen name="Notifications" component={NotificationsScreen} />
-      <RootStack.Screen name="Research" component={Research} />
+      <RootStack.Screen name="Research" component={ExpertHome} />
       <RootStack.Screen name="ResearchList" component={ResearchList} />
       <RootStack.Screen name="ProfileForm" component={ProfileForm} />
       <RootStack.Screen name="EducationForm" component={EducationForm} />

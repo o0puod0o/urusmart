@@ -223,6 +223,7 @@ const InterestForm = ({ navigation }) => {
               setCustomInterest("");
             }}
             loading={loadingOptions}
+            searchable
           />
           <View className="h-px bg-[#f0f4f7]" />
           <View className="flex-row items-center gap-2 px-4 py-3">

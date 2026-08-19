@@ -1,5 +1,16 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { View, Text, ScrollView, TouchableOpacity, TextInput, ActivityIndicator } from "react-native";
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  TextInput,
+  ActivityIndicator,
+  FlatList,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+} from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
@@ -57,8 +68,11 @@ const ResearchDropdown = ({
   placeholder,
   onSelect,
   loading = false,
+  searchable = false,
 }) => {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
   const selected = useMemo(
     () => options.find((o) => String(o.id) === String(value) && o.id !== ""),
     [options, value],
@@ -66,8 +80,19 @@ const ResearchDropdown = ({
 
   const handleSelect = useCallback((id) => {
     onSelect(id);
+    setSearch("");
     setOpen(false);
   }, [onSelect]);
+
+  const filteredOptions = useMemo(() => {
+    if (!searchable || !search.trim()) return options;
+    const q = search.trim().toLowerCase();
+    return options.filter(
+      (option) =>
+        String(option.label ?? "").toLowerCase().includes(q) ||
+        String(option.id ?? "").toLowerCase().includes(q),
+    );
+  }, [options, search, searchable]);
 
   const renderOption = useCallback(
     (opt, index) => {
@@ -117,7 +142,10 @@ const ResearchDropdown = ({
             : "bg-[#f4f6f8] border border-[#e8ecf0]"
         }`}
         onPress={() => {
-          if (!loading) setOpen((prev) => !prev);
+          if (!loading) {
+            setSearch("");
+            setOpen((prev) => !prev);
+          }
         }}
         activeOpacity={0.8}
       >
@@ -139,21 +167,86 @@ const ResearchDropdown = ({
         />
       </TouchableOpacity>
 
-      {open && (
-        <View
-          className="bg-white border-[1.5px] border-t-0 border-brand rounded-bl-xl rounded-br-xl overflow-hidden"
-          style={{ maxHeight: 220 }}
+      <Modal
+        visible={open}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setOpen(false)}
+      >
+        <KeyboardAvoidingView
+          className="flex-1 justify-center px-5"
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          style={{ backgroundColor: "rgba(10, 20, 16, 0.28)" }}
         >
-          <ScrollView
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator
-            bounces={false}
-            nestedScrollEnabled
-          >
-            {options.map(renderOption)}
-          </ScrollView>
-        </View>
-      )}
+          <TouchableOpacity
+            className="absolute inset-0"
+            activeOpacity={1}
+            onPress={() => setOpen(false)}
+          />
+          <View className="bg-white rounded-2xl overflow-hidden border border-[#d4ece2]">
+            <View className="flex-row items-center px-4 py-3 bg-[#f0faf5] border-b border-[#d4ece2]">
+              <Text
+                className="flex-1 text-[14px] font-bold text-[#0a3d2a]"
+                numberOfLines={1}
+              >
+                {selected ? selected.label : placeholder}
+              </Text>
+              <TouchableOpacity
+                className="w-8 h-8 rounded-full items-center justify-center bg-white"
+                onPress={() => setOpen(false)}
+              >
+                <Ionicons name="close" size={18} color={colors.primary} />
+              </TouchableOpacity>
+            </View>
+            {searchable && (
+              <View className="flex-row items-center gap-2 px-3 py-3 bg-[#f8fafb] border-b border-[#edf3f0]">
+                <View className="w-8 h-8 rounded-[10px] bg-[#e8f5ee] items-center justify-center">
+                  <Ionicons name="search-outline" size={15} color={colors.primary} />
+                </View>
+                <TextInput
+                  className="flex-1 text-[14px] text-[#1a1a2e] font-medium"
+                  style={{ paddingVertical: 0 }}
+                  placeholder={t("research.common.search")}
+                  placeholderTextColor="#aab8b2"
+                  value={search}
+                  onChangeText={setSearch}
+                  autoCorrect={false}
+                  clearButtonMode="while-editing"
+                />
+                {search.length > 0 && (
+                  <TouchableOpacity
+                    onPress={() => setSearch("")}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <Ionicons name="close-circle" size={18} color="#9aa6b1" />
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
+            <FlatList
+              data={filteredOptions}
+              keyExtractor={(item, index) => `${item.id}-${index}`}
+              renderItem={({ item, index }) => renderOption(item, index)}
+              ListEmptyComponent={
+                <View className="items-center py-8">
+                  <Ionicons name="search-outline" size={28} color="#c4d4cc" />
+                  <Text className="text-[13px] text-[#9aa6b1] font-semibold mt-2">
+                    {t("research.common.notFound")}
+                  </Text>
+                </View>
+              }
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator
+              bounces={false}
+              initialNumToRender={16}
+              maxToRenderPerBatch={16}
+              updateCellsBatchingPeriod={16}
+              windowSize={7}
+              style={{ maxHeight: 360 }}
+            />
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 };
@@ -298,6 +391,7 @@ const SearchSection = ({ onSearch }) => {
               if (value) setSelectedInterest("");
             }}
             loading={loadingExpertGroups}
+            searchable
           />
           <ResearchDropdown
             value={selectedInterest}
@@ -392,7 +486,7 @@ const SectionCard = ({ title, sectionIcon, gradColors, items, onPress, counts, c
   </View>
 );
 
-const Research = ({ navigation }) => {
+const ExpertHome = ({ navigation }) => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const PERSONAL_MENUS = getPersonalMenus(t);
@@ -453,4 +547,4 @@ const Research = ({ navigation }) => {
   );
 };
 
-export default Research;
+export default ExpertHome;
