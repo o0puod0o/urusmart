@@ -281,7 +281,7 @@ const ResearchForm = ({ navigation }) => {
           </View>
           <View className="flex-1">
             <Text className="text-[11px] font-bold text-[#6b7a82] uppercase tracking-[0.8px]">
-              จัดการข้อมูล
+              {t("research.common.manageData")}
             </Text>
             <Text className="text-[19px] font-black text-[#3f4d50] mt-[2px]">
               {t("research.researchForm.title")}
@@ -328,12 +328,12 @@ const ResearchForm = ({ navigation }) => {
               <View>
                 <View className="flex-row items-center bg-white border-b border-[#e3e7eb] px-3 py-3">
                   {[
-                    { w: 40, label: "ที่" },
-                    { w: 86, label: "ปี" },
-                    { w: 240, label: "ชื่องานวิจัย" },
-                    { w: 120, label: "ประเภท" },
-                    { w: 120, label: "แหล่งทุน" },
-                    { w: 100, label: "ระดับ" },
+                    { w: 40, label: t("research.common.no") },
+                    { w: 86, label: t("research.common.year") },
+                    { w: 240, label: t("research.researchForm.colTitle") },
+                    { w: 120, label: t("research.researchForm.colType") },
+                    { w: 120, label: t("research.researchForm.colPmu") },
+                    { w: 100, label: t("research.researchForm.colLevel") },
                     { w: 92, label: t("research.common.manage") },
                   ].map((col, i, columns) => (
                     <Text
@@ -484,7 +484,7 @@ const ResearchForm = ({ navigation }) => {
             )}
           </View>
           <InlineDropdown
-            label="ปี:"
+            label={t("research.common.yearField")}
             value={form.year}
             options={YEAR_OPTIONS}
             onSelect={(v) => setField("year", v)}
@@ -563,8 +563,8 @@ const ResearchForm = ({ navigation }) => {
               className="flex-row items-center gap-[6px] bg-[#fef2f2] border-[1.5px] border-[#dc2626] rounded-xl px-[18px]"
               onPress={() =>
                 confirm({
-                  title: "รีเซ็ตฟอร์ม",
-                  message: "ต้องการเคลียร์ข้อมูลในฟอร์มหรือไม่?",
+                  title: t("research.common.resetFormTitle"),
+                  message: t("research.common.resetFormMessage"),
                   icon: "refresh",
                   onConfirm: openNew,
                 })

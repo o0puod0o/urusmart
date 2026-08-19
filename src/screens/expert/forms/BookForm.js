@@ -289,7 +289,7 @@ const BookForm = ({ navigation }) => {
           </Text>
           <View className="h-px bg-[#eef1f4] mx-4 my-[10px]" />
           <InlineDropdown
-            label="ปี:"
+            label={t("research.common.yearField")}
             value={form.year}
             options={YEAR_OPTIONS}
             onSelect={(v) => setField("year", v)}
@@ -341,8 +341,8 @@ const BookForm = ({ navigation }) => {
               className="flex-row items-center gap-[6px] bg-[#fef2f2] border-[1.5px] border-[#dc2626] rounded-xl min-h-[50px] px-5"
               onPress={() =>
                 confirm({
-                  title: "รีเซ็ตฟอร์ม",
-                  message: "ต้องการเคลียร์ข้อมูลในฟอร์มหรือไม่?",
+                  title: t("research.common.resetFormTitle"),
+                  message: t("research.common.resetFormMessage"),
                   icon: "refresh",
                   onConfirm: openNew,
                 })

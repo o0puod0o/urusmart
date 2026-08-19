@@ -78,22 +78,27 @@ const InlineDropdown = ({
 
   const handleOpen = () => {
     if (loading) return;
-    triggerRef.current?.measure((x, y, width, height, pageX, pageY) => {
-      const usable = screenHeight - keyboardHeight;
-      const spaceBelow = usable - (pageY + height);
-      const spaceAbove = pageY;
-      const flipUp = spaceBelow < 220;
-      const listH = flipUp
-        ? Math.max(120, Math.min(MAX_LIST_H, spaceAbove - 24))
-        : Math.max(120, Math.min(MAX_LIST_H, spaceBelow - 16));
-      const top = flipUp
-        ? Math.max(16, pageY - listH - 4)
-        : pageY + height + 4;
-      setDropPos({ top, left: pageX, width, maxHeight: listH });
-      setOpen(true);
-      setSearch("");
-      animateIn();
-    });
+    Keyboard.dismiss();
+    setKeyboardHeight(0);
+
+    setTimeout(() => {
+      triggerRef.current?.measure((x, y, width, height, pageX, pageY) => {
+        const usable = screenHeight;
+        const spaceBelow = usable - (pageY + height);
+        const spaceAbove = pageY;
+        const flipUp = spaceBelow < 220 && spaceAbove > spaceBelow;
+        const listH = flipUp
+          ? Math.max(120, Math.min(MAX_LIST_H, spaceAbove - 24))
+          : Math.max(120, Math.min(MAX_LIST_H, spaceBelow - 16));
+        const top = flipUp
+          ? Math.max(16, pageY - listH - 4)
+          : pageY + height + 4;
+        setDropPos({ top, left: pageX, width, maxHeight: listH });
+        setOpen(true);
+        setSearch("");
+        animateIn();
+      });
+    }, Platform.OS === "ios" ? 80 : 0);
   };
 
   // ปรับ dropdown ให้ขึ้นเมื่อ keyboard โผล่
@@ -163,7 +168,7 @@ const InlineDropdown = ({
       {loading ? (
         <View style={[styles.trigger, triggerStyle]}>
           <ActivityIndicator size="small" color={colors.primary} />
-          <Text style={styles.loadingText}>กำลังโหลด...</Text>
+          <Text style={styles.loadingText}>{t("research.common.loading")}</Text>
         </View>
       ) : (
         <>

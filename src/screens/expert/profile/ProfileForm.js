@@ -321,8 +321,8 @@ const ProfileForm = ({ navigation, route }) => {
         const { status } = await ImagePicker.requestCameraPermissionsAsync();
         if (status !== "granted") {
           Alert.alert(
-            "ไม่สามารถเข้าถึงกล้องได้",
-            "กรุณาอนุญาตการเข้าถึงกล้องในการตั้งค่า",
+            t("research.profile.cameraDeniedTitle"),
+            t("research.profile.cameraDeniedMsg"),
           );
           return;
         }
@@ -337,8 +337,8 @@ const ProfileForm = ({ navigation, route }) => {
           await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (status !== "granted") {
           Alert.alert(
-            "ไม่สามารถเข้าถึงคลังภาพได้",
-            "กรุณาอนุญาตการเข้าถึงคลังภาพในการตั้งค่า",
+            t("research.profile.galleryDeniedTitle"),
+            t("research.profile.galleryDeniedMsg"),
           );
           return;
         }
@@ -392,24 +392,30 @@ const ProfileForm = ({ navigation, route }) => {
           await AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(stored));
         }
       } catch (_) {}
-      Alert.alert("สำเร็จ", "เปลี่ยนรูปโปรไฟล์เรียบร้อยแล้ว");
+      Alert.alert(
+        t("research.profile.photoSuccessTitle"),
+        t("research.profile.photoSuccessMsg"),
+      );
     } catch (e) {
       console.warn(
         "[ProfileForm] Photo upload:",
         e?.message,
         e?.response?.data,
       );
-      Alert.alert("เกิดข้อผิดพลาด", "ไม่สามารถอัปโหลดรูปภาพได้ กรุณาลองใหม่");
+      Alert.alert(
+        t("research.profile.photoErrorTitle"),
+        t("research.profile.photoErrorMsg"),
+      );
     } finally {
       setPhotoLoading(false);
     }
   };
 
   const handleChangePhoto = () => {
-    Alert.alert("เปลี่ยนรูปโปรไฟล์", "เลือกแหล่งที่มาของรูปภาพ", [
-      { text: "ยกเลิก", style: "cancel" },
-      { text: "กล้องถ่ายรูป", onPress: () => pickImage("camera") },
-      { text: "คลังภาพ", onPress: () => pickImage("gallery") },
+    Alert.alert(t("research.profile.changePhotoTitle"), t("research.profile.changePhotoMsg"), [
+      { text: t("research.common.cancel"), style: "cancel" },
+      { text: t("research.profile.photoCamera"), onPress: () => pickImage("camera") },
+      { text: t("research.profile.photoGallery"), onPress: () => pickImage("gallery") },
     ]);
   };
 
@@ -524,17 +530,17 @@ const ProfileForm = ({ navigation, route }) => {
         <View className="flex-1 items-center justify-center gap-4 px-8">
           <Ionicons name="cloud-offline-outline" size={52} color="#dc2626" />
           <Text className="text-[15px] font-black text-[#dc2626] text-center">
-            โหลดข้อมูลไม่สำเร็จ
+            {t("research.profile.loadFailTitle")}
           </Text>
           <Text className="text-[13px] text-[#6b7a82] text-center">
-            ไม่สามารถดึงข้อมูลโปรไฟล์ได้ กรุณาตรวจสอบการเชื่อมต่อและลองใหม่
+            {t("research.profile.loadFailProfileMsg")}
           </Text>
           <TouchableOpacity
             className="bg-[#007a5a] rounded-xl px-6 py-[13px] mt-2"
             onPress={fetchProfile}
             activeOpacity={0.85}
           >
-            <Text className="text-white text-[13px] font-black">ลองใหม่</Text>
+            <Text className="text-white text-[13px] font-black">{t("research.profile.retry")}</Text>
           </TouchableOpacity>
         </View>
       ) : (
@@ -629,10 +635,10 @@ const ProfileForm = ({ navigation, route }) => {
                 marginTop: 10,
               }}
             >
-              แก้ไขประวัติส่วนตัว
+              {t("research.profile.editTitle")}
             </Text>
             <Text style={{ fontSize: 11, color: "#9aa6b1", marginTop: 3 }}>
-              แตะที่รูปเพื่อเปลี่ยนรูปโปรไฟล์
+              {t("research.profile.tapPhoto")}
             </Text>
           </View>
 
@@ -713,7 +719,7 @@ const ProfileForm = ({ navigation, route }) => {
                 >
                   {form.birthdate
                     ? formatThaiDate(form.birthdate)
-                    : "เลือกวันเกิด (วว/ดด/ปปปป พ.ศ.)"}
+                    : t("research.profile.birthdatePlaceholder")}
                 </Text>
                 <Ionicons name="chevron-down" size={16} color="#9aa6b1" />
               </TouchableOpacity>
@@ -743,7 +749,7 @@ const ProfileForm = ({ navigation, route }) => {
                     </Text>
                     <TouchableOpacity onPress={() => setShowDatePicker(false)}>
                       <Text className="text-[15px] text-[#007a5a] font-black">
-                        ตกลง
+                        {t("research.profile.ok")}
                       </Text>
                     </TouchableOpacity>
                   </View>
@@ -778,13 +784,13 @@ const ProfileForm = ({ navigation, route }) => {
             <View className="flex-row items-center gap-2 bg-[#e6f4ef] border-b border-[#eef1f4] px-[14px] py-[11px]">
               <Ionicons name="briefcase-outline" size={16} color="#00614a" />
               <Text className="text-[13px] font-extrabold text-[#00614a]">
-                ข้อมูลการทำงาน
+                {t("research.profile.workInfo")}
               </Text>
             </View>
             <FormField
               ref={refs.faculty_name_th}
               onLayout={registerFieldLayout("faculty_name_th")}
-              label="คณะ"
+              label={t("research.profile.faculty")}
               value={form.faculty_name_th}
               onChangeText={(v) => set("faculty_name_th", v)}
               onSubmitEditing={() => focusField("department_name_th")}
@@ -793,7 +799,7 @@ const ProfileForm = ({ navigation, route }) => {
             <FormField
               ref={refs.department_name_th}
               onLayout={registerFieldLayout("department_name_th")}
-              label="ภาควิชา / สาขา"
+              label={t("research.profile.department")}
               value={form.department_name_th}
               onChangeText={(v) => set("department_name_th", v)}
               onSubmitEditing={() => focusField("prefix")}
@@ -1013,14 +1019,16 @@ const ProfileForm = ({ navigation, route }) => {
               activeOpacity={0.85}
             >
               <Ionicons name="checkmark-circle" size={18} color="#fff" />
-              <Text className="text-white text-[14px] font-black">บันทึก</Text>
+              <Text className="text-white text-[14px] font-black">
+                {t("research.common.save")}
+              </Text>
             </TouchableOpacity>
             <TouchableOpacity
               className="flex-row items-center gap-[6px] bg-[#fef2f2] border-[1.5px] border-[#dc2626] rounded-xl px-[18px]"
               onPress={() =>
                 confirm({
-                  title: "รีเซ็ตฟอร์ม",
-                  message: "ต้องการเคลียร์ข้อมูลในฟอร์มทั้งหมดหรือไม่?",
+                  title: t("research.common.resetFormTitle"),
+                  message: t("research.common.resetFormMessage"),
                   icon: "refresh",
                   onConfirm: handleReset,
                 })

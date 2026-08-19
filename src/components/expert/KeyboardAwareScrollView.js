@@ -6,7 +6,7 @@ import React, {
 import { findNodeHandle, Platform, ScrollView } from "react-native";
 
 const KeyboardAwareScrollView = forwardRef(
-  ({ onFocusCapture, keyboardOffset = 120, ...props }, forwardedRef) => {
+  ({ onFocusCapture, keyboardOffset = 160, ...props }, forwardedRef) => {
     const scrollRef = useRef(null);
 
     useImperativeHandle(forwardedRef, () => scrollRef.current);
@@ -35,7 +35,7 @@ const KeyboardAwareScrollView = forwardRef(
     return (
       <ScrollView
         ref={scrollRef}
-        automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
+        automaticallyAdjustKeyboardInsets={false}
         onFocusCapture={handleFocusCapture}
         {...props}
       />

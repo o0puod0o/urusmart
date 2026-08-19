@@ -15,7 +15,7 @@ const BASE_YEAR_LIST = Array.from({ length: currentYear - 2529 }, (_, i) => ({ i
 
 const WorkHistoryForm = ({ navigation, route }) => {
   const { t } = useTranslation();
-  const YEAR_END_OPTIONS = useMemo(() => [{ id: "", label: t("research.common.selectYear") }, { id: "ปัจจุบัน", label: "ปัจจุบัน" }, ...BASE_YEAR_LIST], [t]);
+  const YEAR_END_OPTIONS = useMemo(() => [{ id: "", label: t("research.common.selectYear") }, { id: "ปัจจุบัน", label: t("research.common.current") }, ...BASE_YEAR_LIST], [t]);
   const { items, loading, saving, create, update, remove } = useResource("/workexes");
   const sortedItems = useMemo(() => [...items].sort((a, b) => Number(a.id) - Number(b.id)), [items]);
   const item = route?.params?.item || null;
@@ -68,7 +68,7 @@ const WorkHistoryForm = ({ navigation, route }) => {
             <Ionicons name="briefcase" size={22} color="#007a5a" />
           </View>
           <View className="flex-1">
-            <Text className="text-[11px] font-bold text-[#6b7a82] uppercase tracking-[0.8px]">จัดการข้อมูล</Text>
+            <Text className="text-[11px] font-bold text-[#6b7a82] uppercase tracking-[0.8px]">{t("research.common.manageData")}</Text>
             <Text className="text-[19px] font-black text-[#3f4d50] mt-[2px]">{t("research.workHistory.title")}</Text>
           </View>
           <View className="bg-[#007a5a] rounded-full min-w-9 px-[10px] py-[5px] items-center">
@@ -90,7 +90,7 @@ const WorkHistoryForm = ({ navigation, route }) => {
           ) : sortedItems.length === 0 ? (
             <View className="items-center py-9">
               <Ionicons name="folder-open-outline" size={42} color="#9aa6b1" />
-              <Text className="text-[14px] font-bold text-[#1f2a2e] mt-[10px]">ยังไม่มีข้อมูล{t("research.workHistory.title")}</Text>
+              <Text className="text-[14px] font-bold text-[#1f2a2e] mt-[10px]">{t("research.workHistory.noData")}</Text>
               <Text className="text-[12px] text-[#6b7a82] mt-1">{t("research.common.addBelow")}</Text>
             </View>
           ) : (
@@ -99,7 +99,7 @@ const WorkHistoryForm = ({ navigation, route }) => {
                 <View className="flex-row items-center bg-white border-b border-[#e3e7eb] px-3 py-3">
                   {[
                     { w: 40, l: t("research.common.no") },
-                    { w: 130, l: "ช่วงปี" },
+                    { w: 130, l: t("research.common.period") },
                     { w: 220, l: t("research.workHistory.colPosition") },
                     { w: 220, l: t("research.workHistory.colPlace") },
                     { w: 92, l: t("research.common.manage") },
@@ -193,7 +193,7 @@ const WorkHistoryForm = ({ navigation, route }) => {
                 <Text className="text-white text-[14px] font-black">{editingItem ? t("research.common.saveEdit") : t("research.workHistory.addForm")}</Text>
               </>}
             </TouchableOpacity>
-            <TouchableOpacity className="flex-row items-center gap-[6px] bg-[#fef2f2] border-[1.5px] border-[#dc2626] rounded-xl px-[18px]" onPress={() => confirm({ title: "รีเซ็ตฟอร์ม", message: "ต้องการเคลียร์ข้อมูลในฟอร์มหรือไม่?", icon: "refresh", onConfirm: openNew })}>
+            <TouchableOpacity className="flex-row items-center gap-[6px] bg-[#fef2f2] border-[1.5px] border-[#dc2626] rounded-xl px-[18px]" onPress={() => confirm({ title: t("research.common.resetFormTitle"), message: t("research.common.resetFormMessage"), icon: "refresh", onConfirm: openNew })}>
               <Ionicons name="refresh" size={16} color="#dc2626" />
               <Text className="text-[#dc2626] text-[14px] font-black">{t("research.common.reset")}</Text>
             </TouchableOpacity>

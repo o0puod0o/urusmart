@@ -43,7 +43,11 @@ const ServiceIconGrid = ({ navigation }) => {
     } else if (item.label === "Expert") {
       navigation?.navigate("Research");
     } else if (item.url) {
-      navigation?.navigate("InAppBrowser", { url: item.url, title: getLabel(item) });
+      navigation?.navigate("InAppBrowser", {
+        url: item.url,
+        title: getLabel(item),
+        passAuthToken: true,
+      });
     }
   };
 

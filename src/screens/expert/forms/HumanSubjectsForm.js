@@ -18,6 +18,7 @@ import InlineDropdown from "../../../components/expert/InlineDropdown";
 import useResource from "../../../hook/useResource";
 import useConfirm from "../../../hook/useConfirm";
 import { getExpertLink, getExpertTitle, getExpertYear } from "../../../utils/expertFields";
+import { normalizeOptionalUrl } from "../../../utils/url";
 
 const BASE_YEAR_LIST = Array.from({ length: 2569 - 2533 + 1 }, (_, i) => ({
   id: String(2569 - i),
@@ -64,10 +65,18 @@ const HumanSubjectsForm = ({ navigation }) => {
       Alert.alert(t("research.common.warning"), t("research.human.validation"));
       return;
     }
+    const normalizedUrl = normalizeOptionalUrl(form.evidenceUrl);
+    if (!normalizedUrl.ok) {
+      Alert.alert(
+        t("research.common.warning"),
+        t("research.common.urlInvalid"),
+      );
+      return;
+    }
     const payload = {
       year: form.year,
       name: form.title.trim(),
-      link: form.evidenceUrl.trim(),
+      link: normalizedUrl.url,
     };
     try {
       editingItem
@@ -380,8 +389,8 @@ const HumanSubjectsForm = ({ navigation }) => {
               className="flex-row items-center gap-[6px] bg-[#fef2f2] border-[1.5px] border-[#dc2626] rounded-xl min-h-[50px] px-5"
               onPress={() =>
                 confirm({
-                  title: "รีเซ็ตฟอร์ม",
-                  message: "ต้องการเคลียร์ข้อมูลในฟอร์มหรือไม่?",
+                  title: t("research.common.resetFormTitle"),
+                  message: t("research.common.resetFormMessage"),
                   icon: "refresh",
                   onConfirm: openNew,
                 })

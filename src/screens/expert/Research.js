@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from "react";
-import { View, Text, ScrollView, TouchableOpacity, TextInput, ActivityIndicator } from "react-native";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { View, Text, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, FlatList } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
@@ -59,12 +59,53 @@ const ResearchDropdown = ({
   loading = false,
 }) => {
   const [open, setOpen] = useState(false);
-  const selected = options.find((o) => String(o.id) === String(value) && o.id !== "");
+  const selected = useMemo(
+    () => options.find((o) => String(o.id) === String(value) && o.id !== ""),
+    [options, value],
+  );
 
-  const handleSelect = (id) => {
+  const handleSelect = useCallback((id) => {
     onSelect(id);
     setOpen(false);
-  };
+  }, [onSelect]);
+
+  const renderOption = useCallback(
+    ({ item: opt, index }) => {
+      const isSelected = String(opt.id) === String(value);
+      const isPlaceholder = opt.id === "";
+
+      return (
+        <TouchableOpacity
+          className={`px-[14px] py-3 border-b border-[#f0f4f7] ${
+            isSelected ? "bg-[#f0faf4]" : ""
+          }`}
+          onPress={() => handleSelect(opt.id)}
+          activeOpacity={0.75}
+        >
+          <View className="flex-row items-center">
+            <View className="w-5 items-center mr-[6px]">
+              {isSelected && (
+                <Ionicons name="checkmark" size={14} color={colors.primary} />
+              )}
+            </View>
+            <Text
+              className={`flex-1 text-[13px] ${
+                isSelected
+                  ? "text-brand font-semibold"
+                  : isPlaceholder
+                    ? "text-[#9aa6b1]"
+                    : "text-[#444]"
+              }`}
+              numberOfLines={2}
+            >
+              {opt.label}
+            </Text>
+          </View>
+        </TouchableOpacity>
+      );
+    },
+    [handleSelect, value],
+  );
 
   return (
     <View>
@@ -102,46 +143,19 @@ const ResearchDropdown = ({
           className="bg-white border-[1.5px] border-t-0 border-brand rounded-bl-xl rounded-br-xl overflow-hidden"
           style={{ maxHeight: 220 }}
         >
-          <ScrollView
+          <FlatList
+            data={options}
+            keyExtractor={(item, index) => `${item.id}-${index}`}
+            renderItem={renderOption}
+            initialNumToRender={12}
+            maxToRenderPerBatch={12}
+            updateCellsBatchingPeriod={16}
+            windowSize={5}
             nestedScrollEnabled
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator
             bounces={false}
-          >
-            {options.map((opt, index) => {
-              const isSelected = String(opt.id) === String(value);
-              const isPlaceholder = opt.id === "";
-              return (
-                <TouchableOpacity
-                  key={`${opt.id}-${index}`}
-                  className={`px-[14px] py-3 border-b border-[#f0f4f7] ${
-                    isSelected ? "bg-[#f0faf4]" : ""
-                  }`}
-                  onPress={() => handleSelect(opt.id)}
-                  activeOpacity={0.75}
-                >
-                  <View className="flex-row items-center">
-                    <View className="w-5 items-center mr-[6px]">
-                      {isSelected && (
-                        <Ionicons name="checkmark" size={14} color={colors.primary} />
-                      )}
-                    </View>
-                    <Text
-                      className={`flex-1 text-[13px] ${
-                        isSelected
-                          ? "text-brand font-semibold"
-                          : isPlaceholder
-                            ? "text-[#9aa6b1]"
-                            : "text-[#444]"
-                      }`}
-                    >
-                      {opt.label}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
+          />
         </View>
       )}
     </View>

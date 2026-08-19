@@ -18,6 +18,7 @@ import InlineDropdown from "../../../components/expert/InlineDropdown";
 import useResource from "../../../hook/useResource";
 import useConfirm from "../../../hook/useConfirm";
 import { getExpertLink, getExpertTitle, getExpertYear } from "../../../utils/expertFields";
+import { normalizeOptionalUrl } from "../../../utils/url";
 
 const BASE_YEAR_LIST = Array.from({ length: 2569 - 2533 + 1 }, (_, i) => ({
   id: String(2569 - i),
@@ -67,12 +68,20 @@ const ProceedingForm = ({ navigation }) => {
       return;
     }
     const reference = form.reference.trim();
+    const normalizedUrl = normalizeOptionalUrl(form.url);
+    if (!normalizedUrl.ok) {
+      Alert.alert(
+        t("research.common.warning"),
+        t("research.common.urlInvalid"),
+      );
+      return;
+    }
     const payload = {
       year: form.year,
       name: reference,
       reference,
       title: reference,
-      url: form.url.trim(),
+      url: normalizedUrl.url,
     };
     try {
       editingItem
@@ -141,7 +150,7 @@ const ProceedingForm = ({ navigation }) => {
           </View>
           <View className="flex-1">
             <Text className="text-[11px] font-bold text-[#6b7a82] uppercase tracking-[0.8px]">
-              จัดการข้อมูล
+              {t("research.common.manageData")}
             </Text>
             <Text className="text-[19px] font-black text-[#3f4d50] mt-[2px]">
               Proceeding
@@ -304,7 +313,7 @@ const ProceedingForm = ({ navigation }) => {
             </View>
           </View>
           <InlineDropdown
-            label="ปี:"
+            label={t("research.common.yearField")}
             value={form.year}
             options={yearOptions}
             onSelect={(v) => setField("year", v)}
@@ -375,8 +384,8 @@ const ProceedingForm = ({ navigation }) => {
               className="bg-[#fef2f2] border-[1.5px] border-[#dc2626] rounded-xl px-[18px] flex-row items-center gap-[6px]"
               onPress={() =>
                 confirm({
-                  title: "รีเซ็ตฟอร์ม",
-                  message: "ต้องการเคลียร์ข้อมูลในฟอร์มหรือไม่?",
+                  title: t("research.common.resetFormTitle"),
+                  message: t("research.common.resetFormMessage"),
                   icon: "refresh",
                   onConfirm: openNew,
                 })

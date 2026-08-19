@@ -298,7 +298,7 @@ const SpeakerForm = ({ navigation }) => {
             )}
           </View>
           <InlineDropdown
-            label="ปี:"
+            label={t("research.common.yearField")}
             value={form.year}
             options={YEAR_OPTIONS}
             onSelect={(v) => setField("year", v)}
@@ -344,8 +344,8 @@ const SpeakerForm = ({ navigation }) => {
               className="flex-row items-center gap-[6px] bg-[#fef2f2] border-[1.5px] border-[#dc2626] rounded-xl min-h-[50px] px-[18px]"
               onPress={() =>
                 confirm({
-                  title: "รีเซ็ตฟอร์ม",
-                  message: "ต้องการเคลียร์ข้อมูลในฟอร์มหรือไม่?",
+                  title: t("research.common.resetFormTitle"),
+                  message: t("research.common.resetFormMessage"),
                   icon: "refresh",
                   onConfirm: openNew,
                 })

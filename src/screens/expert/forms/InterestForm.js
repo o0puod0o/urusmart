@@ -123,7 +123,7 @@ const InterestForm = ({ navigation }) => {
           </View>
           <View className="flex-1">
             <Text className="text-[11px] font-bold text-[#6b7a82] uppercase tracking-[0.8px]">
-              จัดการข้อมูล
+              {t("research.common.manageData")}
             </Text>
             <Text className="text-[19px] font-black text-[#3f4d50] mt-[2px]">
               {t("research.interest.title")}
@@ -273,8 +273,8 @@ const InterestForm = ({ navigation }) => {
               className="bg-[#fef2f2] border-[1.5px] border-[#dc2626] rounded-xl px-[18px] flex-row items-center gap-[6px]"
               onPress={() =>
                 confirm({
-                  title: "รีเซ็ตฟอร์ม",
-                  message: "ต้องการเคลียร์ข้อมูลในฟอร์มหรือไม่?",
+                  title: t("research.common.resetFormTitle"),
+                  message: t("research.common.resetFormMessage"),
                   icon: "refresh",
                   onConfirm: () => {
                     setSelectedInterest("");

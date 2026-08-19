@@ -19,6 +19,7 @@ import useResource from "../../../hook/useResource";
 import useConfirm from "../../../hook/useConfirm";
 import useRefs from "../../../hook/useRefs";
 import { getExpertLink, getExpertTitle, getExpertYear } from "../../../utils/expertFields";
+import { normalizeOptionalUrl } from "../../../utils/url";
 
 const BASE_YEAR_LIST = Array.from({ length: 2569 - 2533 + 1 }, (_, i) => ({
   id: String(2569 - i),
@@ -81,19 +82,21 @@ const JournalForm = ({ navigation }) => {
       return;
     }
     if (!form.database) {
-      Alert.alert(t("research.common.warning"), "กรุณาเลือกฐานข้อมูล");
+      Alert.alert(t("research.common.warning"), t("research.common.selectDatabase"));
       return;
     }
-    const rawUrl = form.url?.trim() || null;
-    const normalizedUrl = rawUrl
-      ? /^https?:\/\//i.test(rawUrl)
-        ? rawUrl
-        : `https://${rawUrl}`
-      : null;
+    const normalizedUrl = normalizeOptionalUrl(form.url);
+    if (!normalizedUrl.ok) {
+      Alert.alert(
+        t("research.common.warning"),
+        t("research.common.urlInvalid"),
+      );
+      return;
+    }
     const payload = {
       year: String(form.year),
       name: form.reference.trim(),
-      url: normalizedUrl,
+      url: normalizedUrl.url,
       journal_type_id: parseInt(form.database, 10),
     };
     try {
@@ -340,7 +343,7 @@ const JournalForm = ({ navigation }) => {
             )}
           </View>
           <InlineDropdown
-            label="ปี:"
+            label={t("research.common.yearField")}
             value={form.year}
             options={YEAR_OPTIONS}
             onSelect={(v) => setField("year", v)}
@@ -416,8 +419,8 @@ const JournalForm = ({ navigation }) => {
               className="flex-row items-center gap-[6px] bg-[#fef2f2] border-[1.5px] border-[#dc2626] rounded-xl px-[18px]"
               onPress={() =>
                 confirm({
-                  title: "รีเซ็ตฟอร์ม",
-                  message: "ต้องการเคลียร์ข้อมูลในฟอร์มหรือไม่?",
+                  title: t("research.common.resetFormTitle"),
+                  message: t("research.common.resetFormMessage"),
                   icon: "refresh",
                   onConfirm: openNew,
                 })

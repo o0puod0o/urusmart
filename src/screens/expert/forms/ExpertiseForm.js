@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 import AppHeader from "../../../components/AppHeader";
 import FormContainer from "../../../components/expert/FormContainer";
 import KeyboardAwareScrollView from "../../../components/expert/KeyboardAwareScrollView";
@@ -19,14 +20,15 @@ import {
   getExpertGroupSelectOptions,
 } from "../../../constants/expertGroups";
 
-const EXPERT_GROUPS = getExpertGroupSelectOptions(
-  "กรุณาเลือกกลุ่มความเชี่ยวชาญ",
-);
-
 const getGroupLabel = getExpertGroupLabel;
 
 const ExpertiseForm = ({ navigation, route }) => {
+  const { t } = useTranslation();
   const item = route?.params?.item || null;
+  const expertGroups = useMemo(
+    () => getExpertGroupSelectOptions(t("research.expertise.selectGroup")),
+    [t],
+  );
   const {
     items,
     loading: loadingItems,
@@ -54,11 +56,11 @@ const ExpertiseForm = ({ navigation, route }) => {
 
   const handleSave = async () => {
     if (!form.group_id) {
-      Alert.alert("กรุณาเลือกกลุ่มความเชี่ยวชาญ");
+      Alert.alert(t("research.common.warning"), t("research.expertise.validation"));
       return;
     }
     const groupLabel =
-      EXPERT_GROUPS.find((g) => g.id === form.group_id)?.label ?? "";
+      expertGroups.find((g) => g.id === form.group_id)?.label ?? "";
     const payload = { group_id: parseInt(form.group_id, 10), name: groupLabel };
     if (__DEV__)
       console.log("[ExpertiseForm] payload:", JSON.stringify(payload));
@@ -67,13 +69,13 @@ const ExpertiseForm = ({ navigation, route }) => {
       editingItem
         ? await update(editingItem.id, payload)
         : await create(payload);
-      Alert.alert(editingItem ? "แก้ไขสำเร็จ" : "เพิ่มสำเร็จ");
+      Alert.alert(editingItem ? t("research.common.editSuccess") : t("research.common.addSuccess"));
       openNew();
     } catch (err) {
       if (__DEV__) console.warn("[ExpertiseForm] save error:", err.message);
       Alert.alert(
-        "บันทึกไม่สำเร็จ",
-        err.message ?? "เกิดข้อผิดพลาด กรุณาลองใหม่",
+        t("research.common.saveFail"),
+        err.message ?? t("research.common.apiError"),
       );
     } finally {
       setSaving(false);
@@ -85,22 +87,22 @@ const ExpertiseForm = ({ navigation, route }) => {
       try {
         await remove(entry.id);
       } catch (err) {
-        Alert.alert("เกิดข้อผิดพลาด", err.message);
+        Alert.alert(t("research.common.deleteFail"), err.message);
       }
     };
     if (Platform.OS === "web") {
-      if (window.confirm("ต้องการลบรายการนี้ใช่ไหม?")) doDelete();
+      if (window.confirm(t("research.common.deleteConfirm"))) doDelete();
     } else {
-      Alert.alert("ลบข้อมูล", "ต้องการลบรายการนี้ใช่ไหม?", [
-        { text: "ยกเลิก", style: "cancel" },
-        { text: "ลบ", style: "destructive", onPress: doDelete },
+      Alert.alert(t("research.common.deleteTitle"), t("research.common.deleteConfirm"), [
+        { text: t("research.common.cancel"), style: "cancel" },
+        { text: t("research.common.deleteBtn"), style: "destructive", onPress: doDelete },
       ]);
     }
   };
 
   return (
     <FormContainer className="flex-1 bg-[#f5f7f8]">
-      <AppHeader title="ความเชี่ยวชาญ" onBack={() => navigation.goBack()} />
+      <AppHeader title={t("research.expertise.title")} onBack={() => navigation.goBack()} />
       <KeyboardAwareScrollView
         contentContainerStyle={{
           paddingHorizontal: 14,
@@ -121,10 +123,10 @@ const ExpertiseForm = ({ navigation, route }) => {
           </View>
           <View className="flex-1">
             <Text className="text-[11px] font-bold text-[#6b7a82] uppercase tracking-[0.8px]">
-              ข้อมูลผู้เชี่ยวชาญ
+              {t("research.expertise.eyebrow")}
             </Text>
             <Text className="text-[19px] font-black text-[#3f4d50] mt-[2px]">
-              ความเชี่ยวชาญ
+              {t("research.expertise.title")}
             </Text>
           </View>
           <View className="bg-[#007a5a] rounded-full min-w-9 px-[10px] py-[5px] items-center">
@@ -134,7 +136,7 @@ const ExpertiseForm = ({ navigation, route }) => {
           </View>
         </View>
 
-        {/* รายการ */}
+        {/* List */}
         <View
           className="bg-white border border-[#eef1f4] rounded-2xl overflow-hidden mb-4"
           style={{ elevation: 1 }}
@@ -142,22 +144,22 @@ const ExpertiseForm = ({ navigation, route }) => {
           <View className="flex-row items-center gap-2 bg-[#e6f4ef] border-b border-[#eef1f4] px-[14px] py-[11px]">
             <Ionicons name="list-outline" size={16} color="#00614a" />
             <Text className="text-[13px] font-extrabold text-[#00614a]">
-              รายการความเชี่ยวชาญ
+              {t("research.expertise.listTitle")}
             </Text>
           </View>
           {loadingItems ? (
             <View className="flex-row items-center justify-center py-9 gap-[10px]">
               <ActivityIndicator size="small" color="#007a5a" />
-              <Text className="text-[13px] text-[#6b7a82]">กำลังโหลด...</Text>
+              <Text className="text-[13px] text-[#6b7a82]">{t("research.common.loading")}</Text>
             </View>
           ) : items.length === 0 ? (
             <View className="items-center py-9">
               <Ionicons name="folder-open-outline" size={42} color="#9aa6b1" />
               <Text className="text-[14px] font-bold text-[#1f2a2e] mt-[10px]">
-                ยังไม่มีข้อมูลความเชี่ยวชาญ
+                {t("research.expertise.noData")}
               </Text>
               <Text className="text-[12px] text-[#6b7a82] mt-1">
-                เพิ่มข้อมูลด้านล่าง
+                {t("research.expertise.addBelow")}
               </Text>
             </View>
           ) : (
@@ -202,7 +204,7 @@ const ExpertiseForm = ({ navigation, route }) => {
           )}
         </View>
 
-        {/* ฟอร์ม */}
+        {/* Form */}
         <View
           className="bg-white border border-[#eef1f4] rounded-2xl pb-[18px]"
           style={{ elevation: 1 }}
@@ -215,23 +217,23 @@ const ExpertiseForm = ({ navigation, route }) => {
                 color="#007a5a"
               />
               <Text className="text-[16px] font-black text-[#3f4d50] ml-2">
-                {editingItem ? "แก้ไขความเชี่ยวชาญ" : "เพิ่มความเชี่ยวชาญ"}
+                {editingItem ? t("research.expertise.editForm") : t("research.expertise.addForm")}
               </Text>
             </View>
             {editingItem && (
               <View className="flex-row items-center bg-[#fff0d6] rounded-full px-[10px] py-1">
                 <Ionicons name="create-outline" size={13} color="#a8631a" />
                 <Text className="text-[#a8631a] text-[11px] font-extrabold ml-1">
-                  กำลังแก้ไข
+                  {t("research.common.editing")}
                 </Text>
               </View>
             )}
           </View>
 
           <InlineDropdown
-            label="กลุ่มความเชี่ยวชาญ"
+            label={t("research.expertise.groupLabel")}
             value={form.group_id}
-            options={EXPERT_GROUPS}
+            options={expertGroups}
             onSelect={(v) => setForm((p) => ({ ...p, group_id: v }))}
             required
             searchable
@@ -255,7 +257,7 @@ const ExpertiseForm = ({ navigation, route }) => {
                     color="#fff"
                   />
                   <Text className="text-white text-[14px] font-black">
-                    {editingItem ? "บันทึก" : "เพิ่มข้อมูล"}
+                    {editingItem ? t("research.common.save") : t("research.common.addData")}
                   </Text>
                 </>
               )}
@@ -264,8 +266,8 @@ const ExpertiseForm = ({ navigation, route }) => {
               className="flex-row items-center gap-[6px] bg-[#fef2f2] border-[1.5px] border-[#dc2626] rounded-xl px-[18px]"
               onPress={() =>
                 confirm({
-                  title: "รีเซ็ตฟอร์ม",
-                  message: "ต้องการเคลียร์ข้อมูลในฟอร์มหรือไม่?",
+                  title: t("research.common.resetFormTitle"),
+                  message: t("research.common.resetFormMessage"),
                   icon: "refresh",
                   onConfirm: openNew,
                 })
@@ -274,7 +276,7 @@ const ExpertiseForm = ({ navigation, route }) => {
             >
               <Ionicons name="refresh" size={17} color="#dc2626" />
               <Text className="text-[#dc2626] text-[14px] font-black">
-                รีเซ็ท
+                {t("research.common.reset")}
               </Text>
             </TouchableOpacity>
           </View>
