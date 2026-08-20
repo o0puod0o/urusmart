@@ -50,7 +50,7 @@ api.interceptors.response.use(
   async (error) => {
     const status = error.response?.status;
 
-    if (status === 401) {
+    if (status === 401 && !error.config?.suppressAuthRedirect) {
       await clearAuthSession();
       await AsyncStorage.removeItem(STORAGE_KEYS.USER);
       // ลบ biometric token ด้วย ป้องกันการใช้ expired token วนซ้ำ

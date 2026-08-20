@@ -219,6 +219,7 @@ export async function syncNotificationInboxFromBackend() {
     const response = await api.get("/notifications", {
       params: { page: 1, per_page: NOTIFICATION_INBOX_LIMIT },
       suppressErrorLog: true,
+      suppressAuthRedirect: true,
     });
     const serverItems = extractServerNotifications(response.data)
       .map(normalizeServerNotification)
@@ -294,7 +295,9 @@ export function markNotificationRead(id) {
   ).then(async (items) => {
     if (!serverId || isBackendInboxUnavailable()) return items;
     try {
-      await api.patch(`/notifications/${encodeURIComponent(serverId)}/read`);
+      await api.patch(`/notifications/${encodeURIComponent(serverId)}/read`, null, {
+        suppressAuthRedirect: true,
+      });
     } catch (error) {
       if (error.response?.status === 404 || error.response?.status === 405) {
         markBackendInboxUnavailable();
@@ -310,7 +313,9 @@ export function markAllNotificationsRead() {
   ).then(async (items) => {
     if (isBackendInboxUnavailable()) return items;
     try {
-      await api.post("/notifications/read-all");
+      await api.post("/notifications/read-all", null, {
+        suppressAuthRedirect: true,
+      });
     } catch (error) {
       if (error.response?.status === 404 || error.response?.status === 405) {
         markBackendInboxUnavailable();
@@ -571,7 +576,7 @@ export async function syncNotificationSettingsToBackend(settings) {
     await api.put(
       "/notification-settings",
       getNotificationSettingsPayload(settings),
-      { suppressErrorLog: true },
+      { suppressErrorLog: true, suppressAuthRedirect: true },
     );
     if (__DEV__) console.log("[Notifications] บันทึก settings สำเร็จ");
     return true;
@@ -624,9 +629,36 @@ export async function onLoginSuccess() {
 // หน้าที่อนุญาตให้ push notification นำทางได้ — ป้องกัน navigation injection
 const ALLOWED_NOTIFICATION_SCREENS = ["Notifications", "Announcements", "MainTabs"];
 
+const getNotificationResponseKey = (response) => {
+  const request = response?.notification?.request;
+  const identifier = request?.identifier;
+  const actionIdentifier = response?.actionIdentifier;
+  if (!identifier && !actionIdentifier) return null;
+  return `${identifier ?? "unknown"}:${actionIdentifier ?? "default"}`;
+};
+
+const shouldHandleNotificationResponse = async (response) => {
+  const authToken = await getAuthToken();
+  if (!authToken) return false;
+
+  const key = getNotificationResponseKey(response);
+  if (!key) return true;
+
+  const previousKey = await AsyncStorage.getItem(
+    STORAGE_KEYS.LAST_NOTIFICATION_RESPONSE,
+  );
+  if (previousKey === key) return false;
+
+  await AsyncStorage.setItem(STORAGE_KEYS.LAST_NOTIFICATION_RESPONSE, key);
+  return true;
+};
+
 // ── handle เมื่อผู้ใช้แตะ notification ──────────────────────
-export function handleNotificationResponse(response) {
+export async function handleNotificationResponse(response) {
   saveNotificationToInbox(response?.notification).catch(() => {});
+  const shouldNavigate = await shouldHandleNotificationResponse(response);
+  if (!shouldNavigate) return;
+
   const data = response?.notification?.request?.content?.data;
   if (!data) return;
 

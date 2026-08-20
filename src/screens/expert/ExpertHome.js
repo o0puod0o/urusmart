@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
+import { useFocusEffect } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import AppHeader from "../../components/AppHeader";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -491,7 +492,13 @@ const ExpertHome = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const PERSONAL_MENUS = getPersonalMenus(t);
   const EXPERT_MENUS = getExpertMenus(t);
-  const { counts, loading: countsLoading } = useMenuCounts();
+  const { counts, loading: countsLoading, refetch: refetchCounts } = useMenuCounts();
+
+  useFocusEffect(
+    useCallback(() => {
+      refetchCounts();
+    }, [refetchCounts]),
+  );
 
   const handleMenuPress = (item) => {
     const routes = {

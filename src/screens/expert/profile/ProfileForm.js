@@ -20,6 +20,7 @@ import FormContainer from "../../../components/expert/FormContainer";
 import FormField from "../../../components/expert/FormField";
 import InlineDropdown from "../../../components/expert/InlineDropdown";
 import * as ImagePicker from "expo-image-picker";
+import * as FileSystem from "expo-file-system/legacy";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import api from "../../../services/api";
 import { STORAGE_KEYS } from "../../../config";
@@ -41,6 +42,67 @@ const resolveId = (opts, value) => {
   if (opts.some((o) => o.id === s)) return s;
   const byLabel = opts.find((o) => o.label === s);
   return byLabel ? byLabel.id : s;
+};
+
+const withCacheBust = (url) => {
+  if (!url || !/^https?:\/\//.test(url)) return url;
+  const separator = url.includes("?") ? "&" : "?";
+  return `${url}${separator}v=${Date.now()}`;
+};
+
+const isDisplayableImageUri = (uri) =>
+  typeof uri === "string" &&
+  /^(https?:\/\/|file:\/\/|content:\/\/|ph:\/\/|assets-library:\/\/)/.test(
+    uri,
+  );
+
+const getUploadedPhotoUrl = (payload) => {
+  const data = payload?.data ?? payload ?? {};
+  return (
+    data?.photo_url ??
+    data?.picture ??
+    data?.avatar ??
+    data?.profile_image ??
+    data?.profile_photo_url ??
+    data?.image_url ??
+    data?.url ??
+    data?.path ??
+    data?.file_url ??
+    ""
+  );
+};
+
+const preparePickedImage = async (asset) => {
+  const extension =
+    asset.fileName?.split(".").pop()?.toLowerCase() ||
+    asset.uri?.split("?")[0]?.split(".").pop()?.toLowerCase() ||
+    "jpg";
+  const safeExtension = ["jpg", "jpeg", "png", "webp"].includes(extension)
+    ? extension
+    : "jpg";
+  const mimeType =
+    asset.mimeType ||
+    (safeExtension === "png"
+      ? "image/png"
+      : safeExtension === "webp"
+        ? "image/webp"
+        : "image/jpeg");
+  const localUri = `${FileSystem.cacheDirectory}profile_${Date.now()}.${safeExtension}`;
+
+  try {
+    await FileSystem.copyAsync({ from: asset.uri, to: localUri });
+    return {
+      uri: localUri,
+      type: mimeType,
+      name: `photo_${Date.now()}.${safeExtension}`,
+    };
+  } catch (_) {
+    return {
+      uri: asset.uri,
+      type: mimeType,
+      name: asset.fileName || `photo_${Date.now()}.${safeExtension}`,
+    };
+  }
 };
 
 const ProfileForm = ({ navigation, route }) => {
@@ -89,6 +151,7 @@ const ProfileForm = ({ navigation, route }) => {
   const [photoLoading, setPhotoLoading] = useState(false);
   const scrollRef = useRef(null);
   const fieldLayouts = useRef({});
+  const lastLocalPhotoUri = useRef("");
 
   const refs = {
     prefix: useRef(null),
@@ -353,42 +416,46 @@ const ProfileForm = ({ navigation, route }) => {
       if (result.canceled) return;
 
       const asset = result.assets[0];
+      const pickedImage = await preparePickedImage(asset);
       // แสดงรูปจาก local ทันที ไม่ต้องรอ server
-      setPhotoUrl(asset.uri);
+      lastLocalPhotoUri.current = pickedImage.uri;
+      setPhotoUrl(pickedImage.uri);
       setPhotoLoading(true);
 
       const formData = new FormData();
       formData.append("photo", {
-        uri: asset.uri,
-        type: asset.mimeType ?? "image/jpeg",
-        name: `photo_${Date.now()}.jpg`,
+        uri: pickedImage.uri,
+        type: pickedImage.type,
+        name: pickedImage.name,
       });
 
       const res = await api.post("/me/photo", formData, {
         headers: { "Content-Type": "multipart/form-data" },
         transformRequest: (data) => data,
       });
-      const serverUrl =
-        res.data?.data?.photo_url ??
-        res.data?.photo_url ??
-        res.data?.data?.picture ??
-        res.data?.picture;
+      const serverUrl = getUploadedPhotoUrl(res.data);
       if (__DEV__) {
         console.log(
           "[ProfileForm] server photo URL:",
+          res.data,
+          "→ extracted:",
           serverUrl,
           "→ fixed:",
           fixPhotoUrl(serverUrl),
         );
       }
-      const finalUrl = fixPhotoUrl(serverUrl) || asset.uri;
+      const fixedServerUrl = withCacheBust(fixPhotoUrl(serverUrl));
+      const finalUrl = isDisplayableImageUri(fixedServerUrl)
+        ? fixedServerUrl
+        : pickedImage.uri;
       setPhotoUrl(finalUrl);
       // อัปเดต AsyncStorage ให้หน้าอื่น (Setting, Chatbot) เห็นรูปใหม่ทันที
       try {
         const raw = await AsyncStorage.getItem(STORAGE_KEYS.USER);
         if (raw) {
           const stored = JSON.parse(raw);
-          stored.picture = serverUrl || asset.uri;
+          stored.picture = finalUrl;
+          stored.photo_url = finalUrl;
           await AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(stored));
         }
       } catch (_) {}
@@ -590,7 +657,12 @@ const ProfileForm = ({ navigation, route }) => {
                         "url:",
                         photoUrl,
                       );
-                      setPhotoUrl("");
+                      if (
+                        lastLocalPhotoUri.current &&
+                        photoUrl !== lastLocalPhotoUri.current
+                      ) {
+                        setPhotoUrl(lastLocalPhotoUri.current);
+                      }
                     }}
                   />
                 ) : (

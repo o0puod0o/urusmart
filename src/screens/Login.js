@@ -108,10 +108,9 @@ const isTrustedSsoNavigationUrl = (url = "") => {
 
 const isTrustedSsoMessageUrl = (url = "") => {
   const parsed = parseUrl(url);
-  return (
-    parsed?.hostname === getSsoBackendHost() &&
-    parsed.pathname.includes("/auth/callback")
-  );
+  if (!parsed) return false;
+  if (!["http:", "https:"].includes(parsed.protocol)) return false;
+  return parsed.hostname === getSsoBackendHost();
 };
 
 const isSsoCallbackUrl = (url = "") =>
@@ -299,12 +298,15 @@ const Login = ({ navigation, route }) => {
     await clearBiometricToken();
   };
 
+  const runPostLoginNotifications = () => {
+    onLoginSuccess().catch((error) => {
+      console.error("POST-LOGIN NOTIFICATION ERROR:", error);
+    });
+  };
+
   const promptEnableBiometric = async (token) => {
     const support = await checkSupport();
-    if (!support.supported) {
-      navigateToMain();
-      return;
-    }
+    if (!support.supported) return;
     const biometricLabelText = getBiometricLabel(support);
 
     Alert.alert(
@@ -317,7 +319,6 @@ const Login = ({ navigation, route }) => {
           onPress: async () => {
             await setBiometricEnabled(false);
             await clearBiometricToken();
-            navigateToMain();
           },
         },
         {
@@ -336,14 +337,20 @@ const Login = ({ navigation, route }) => {
                 t("login.enableFailedTitle"),
                 t("login.enableFailedMsg"),
               );
-            } finally {
-              navigateToMain();
             }
           },
         },
       ],
       { cancelable: false },
     );
+  };
+
+  const promptEnableBiometricAfterNavigation = (token) => {
+    setTimeout(() => {
+      promptEnableBiometric(token).catch((error) => {
+        console.error("BIOMETRIC PROMPT ERROR:", error);
+      });
+    }, 600);
   };
 
   const completeBackendLogin = async (data) => {
@@ -357,12 +364,9 @@ const Login = ({ navigation, route }) => {
       STORAGE_KEYS.USER,
       JSON.stringify(data.user || {}),
     );
-    try {
-      await onLoginSuccess();
-    } catch (error) {
-      console.error("POST-LOGIN NOTIFICATION ERROR:", error);
-    }
-    await promptEnableBiometric(data.token);
+    runPostLoginNotifications();
+    navigateToMain();
+    promptEnableBiometricAfterNavigation(data.token);
   };
 
   const loginWithSsoToken = async (accessToken) => {
@@ -518,7 +522,7 @@ const Login = ({ navigation, route }) => {
       return;
     }
     await saveAuthSession(token);
-    await onLoginSuccess();
+    runPostLoginNotifications();
     navigateToMain();
   };
 
