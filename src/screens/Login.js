@@ -151,6 +151,19 @@ const isTrustedSsoMessageUrl = (url = "") => {
   return parsed.hostname === getSsoBackendHost();
 };
 
+const isSsoBackendUrl = (url = "") => {
+  const parsed = parseUrl(url);
+  if (!parsed) return false;
+  if (!["http:", "https:"].includes(parsed.protocol)) return false;
+  return parsed.hostname === getSsoBackendHost();
+};
+
+const isSsoResultUrl = (url = "") => {
+  const parsed = parseUrl(url);
+  if (!parsed) return false;
+  return isSsoBackendUrl(url) && !parsed.pathname.includes("/auth/redirect");
+};
+
 const isSsoCallbackUrl = (url = "") =>
   String(url).includes("/auth/callback") ||
   String(url).includes("token=") ||
@@ -501,7 +514,7 @@ const Login = ({ navigation, route }) => {
     setShowSsoWebView(true);
   };
 
-  const startSsoCallbackTimeout = () => {
+  const startSsoCallbackTimeout = (delay = 45000) => {
     if (ssoHandledRef.current || ssoTimeoutRef.current) return;
     ssoTimeoutRef.current = setTimeout(() => {
       if (ssoHandledRef.current) return;
@@ -511,7 +524,7 @@ const Login = ({ navigation, route }) => {
         "เข้าสู่ระบบใช้เวลานาน",
         "ยังไม่ได้รับข้อมูลยืนยันตัวตนจาก SSO กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองใหม่อีกครั้ง",
       );
-    }, 45000);
+    }, delay);
   };
 
   const closeSsoLogin = () => {
@@ -988,7 +1001,7 @@ const Login = ({ navigation, route }) => {
                 return false;
               }
               ssoCurrentUrlRef.current = request.url;
-              if (isSsoCallbackUrl(request.url)) {
+              if (isSsoCallbackUrl(request.url) || isSsoResultUrl(request.url)) {
                 setHideSsoContent(true);
                 setSsoPageLoading(true);
                 startSsoCallbackTimeout();
@@ -1000,8 +1013,8 @@ const Login = ({ navigation, route }) => {
               debugSso("load start", url);
               ssoCurrentUrlRef.current = url || ssoCurrentUrlRef.current;
               setSsoPageLoading(true);
-              setHideSsoContent(isSsoCallbackUrl(url));
-              if (isSsoCallbackUrl(url)) {
+              setHideSsoContent(isSsoCallbackUrl(url) || isSsoResultUrl(url));
+              if (isSsoCallbackUrl(url) || isSsoResultUrl(url)) {
                 startSsoCallbackTimeout();
               }
             }}
@@ -1010,8 +1023,8 @@ const Login = ({ navigation, route }) => {
               debugSso("load end", url);
               ssoCurrentUrlRef.current = url || ssoCurrentUrlRef.current;
               setSsoPageLoading(false);
-              setHideSsoContent(isSsoCallbackUrl(url));
-              if (isSsoCallbackUrl(url)) {
+              setHideSsoContent(isSsoCallbackUrl(url) || isSsoResultUrl(url));
+              if (isSsoCallbackUrl(url) || isSsoResultUrl(url)) {
                 startSsoCallbackTimeout();
                 ssoWebViewRef.current?.injectJavaScript(SSO_CAPTURE_SCRIPT);
               }
