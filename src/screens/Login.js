@@ -129,6 +129,12 @@ const debugSso = (label, url) => {
   if (__DEV__) console.log(`[SSO] ${label}:`, sanitizeSsoUrlForLog(url));
 };
 
+const getSsoDebugUrl = (url = "") => {
+  const parsed = parseUrl(url);
+  if (!parsed) return String(url || "").slice(0, 80);
+  return `${parsed.hostname}${parsed.pathname}`;
+};
+
 const sanitizeSsoMessageForLog = (message = "") => {
   try {
     const payload = JSON.parse(String(message || ""));
@@ -412,6 +418,7 @@ const Login = ({ navigation, route }) => {
   const [biometricReady, setBiometricReady] = useState(false);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [ssoDebugLines, setSsoDebugLines] = useState([]);
   const scrollRef = useRef(null);
   const focusedFieldRef = useRef(null);
   const passwordRef = useRef(null);
@@ -419,6 +426,7 @@ const Login = ({ navigation, route }) => {
   const ssoTimeoutRef = useRef(null);
   const ssoHandledRef = useRef(false);
   const ssoCurrentUrlRef = useRef(SSO_REDIRECT_URL);
+  const ssoLastBackendUrlRef = useRef(SSO_REDIRECT_URL);
   const ssoAccessToken = getSsoAccessTokenFromRoute(route);
 
   // ── Entrance animations ──
@@ -536,6 +544,22 @@ const Login = ({ navigation, route }) => {
 
   const navigateToMain = () => {
     navigation.reset({ index: 0, routes: [{ name: "MainTabs" }] });
+  };
+
+  const addSsoDebugLine = (label, detail = "") => {
+    if (Platform.OS !== "android") return;
+    const line = `${label}${detail ? `: ${detail}` : ""}`;
+    console.log(`[SSO APK] ${line}`);
+    setSsoDebugLines((current) => [...current.slice(-5), line]);
+  };
+
+  const rememberSsoUrl = (label, url = "") => {
+    debugSso(label, url);
+    if (!url) return;
+    ssoCurrentUrlRef.current = url;
+    if (isSsoBackendUrl(url)) {
+      ssoLastBackendUrlRef.current = url;
+    }
   };
 
   const disableBiometricLogin = async () => {
@@ -673,6 +697,9 @@ const Login = ({ navigation, route }) => {
     Keyboard.dismiss();
     ssoHandledRef.current = false;
     ssoCurrentUrlRef.current = SSO_REDIRECT_URL;
+    ssoLastBackendUrlRef.current = SSO_REDIRECT_URL;
+    setSsoDebugLines([]);
+    addSsoDebugLine("open", getSsoDebugUrl(SSO_REDIRECT_URL));
     setHideSsoContent(false);
     setSsoPageLoading(true);
     setShowSsoWebView(true);
@@ -682,6 +709,7 @@ const Login = ({ navigation, route }) => {
     if (ssoHandledRef.current || ssoTimeoutRef.current) return;
     ssoTimeoutRef.current = setTimeout(() => {
       if (ssoHandledRef.current) return;
+      addSsoDebugLine("timeout", getSsoDebugUrl(ssoLastBackendUrlRef.current));
       setSsoPageLoading(false);
       setHideSsoContent(false);
       Alert.alert(
@@ -713,7 +741,9 @@ const Login = ({ navigation, route }) => {
   const handleSsoMessage = async (event) => {
     if (ssoHandledRef.current) return;
 
-    const sourceUrl = event.nativeEvent?.url || ssoCurrentUrlRef.current || "";
+    const sourceUrlFromEvent = event.nativeEvent?.url || "";
+    const sourceUrl =
+      sourceUrlFromEvent || ssoCurrentUrlRef.current || ssoLastBackendUrlRef.current || "";
     if (__DEV__) {
       console.log(
         "[SSO] raw message:",
@@ -724,13 +754,22 @@ const Login = ({ navigation, route }) => {
     if (__DEV__) {
       console.log("[SSO] message payload keys:", Object.keys(payload || {}));
     }
+    addSsoDebugLine(
+      "message",
+      `keys=${Object.keys(payload || {}).join(",") || "-"} token=${payload?.token ? "yes" : "no"} from=${getSsoDebugUrl(sourceUrl)}`,
+    );
     if (!payload?.token) return;
 
     const sourceTrusted = isTrustedSsoMessageUrl(sourceUrl);
+    const currentTrusted = isTrustedSsoMessageUrl(ssoCurrentUrlRef.current);
+    const lastBackendResultTrusted =
+      isSsoResultUrl(ssoLastBackendUrlRef.current) ||
+      isSsoCallbackUrl(ssoLastBackendUrlRef.current);
     const fallbackTrusted =
-      (!sourceUrl || sourceUrl === "about:blank") &&
-      isTrustedSsoMessageUrl(ssoCurrentUrlRef.current);
-    if (!sourceTrusted && !fallbackTrusted) {
+      (!sourceUrlFromEvent || sourceUrlFromEvent === "about:blank") &&
+      (currentTrusted || lastBackendResultTrusted);
+    if (!sourceTrusted && !currentTrusted && !lastBackendResultTrusted && !fallbackTrusted) {
+      addSsoDebugLine("reject", getSsoDebugUrl(sourceUrl));
       if (__DEV__) {
         console.warn(
           "[SSO] rejected WebView message from:",
@@ -747,6 +786,7 @@ const Login = ({ navigation, route }) => {
     if (ssoHandledRef.current || !payload?.token) return;
 
     ssoHandledRef.current = true;
+    addSsoDebugLine("success", "token received");
     if (ssoTimeoutRef.current) {
       clearTimeout(ssoTimeoutRef.current);
       ssoTimeoutRef.current = null;
@@ -1196,8 +1236,9 @@ const Login = ({ navigation, route }) => {
             mixedContentMode="compatibility"
             startInLoadingState
             onShouldStartLoadWithRequest={(request) => {
-              debugSso("request", request.url);
+              rememberSsoUrl("request", request.url);
               if (!isTrustedSsoNavigationUrl(request.url)) {
+                addSsoDebugLine("block", getSsoDebugUrl(request.url));
                 if (__DEV__) {
                   console.warn(
                     "[SSO] blocked untrusted navigation:",
@@ -1206,12 +1247,12 @@ const Login = ({ navigation, route }) => {
                 }
                 return false;
               }
-              ssoCurrentUrlRef.current = request.url;
               if (handleSsoNavigationUrl(request.url)) return false;
               if (
                 isSsoCallbackUrl(request.url) ||
                 isSsoResultUrl(request.url)
               ) {
+                addSsoDebugLine("result request", getSsoDebugUrl(request.url));
                 setHideSsoContent(isSsoCallbackUrl(request.url));
                 setSsoPageLoading(true);
                 startSsoCallbackTimeout();
@@ -1221,10 +1262,10 @@ const Login = ({ navigation, route }) => {
             }}
             onNavigationStateChange={(navState) => {
               const url = navState?.url;
-              debugSso("state", url);
-              ssoCurrentUrlRef.current = url || ssoCurrentUrlRef.current;
+              rememberSsoUrl("state", url);
               if (handleSsoNavigationUrl(url)) return;
               if (isSsoCallbackUrl(url) || isSsoResultUrl(url)) {
+                addSsoDebugLine("result state", getSsoDebugUrl(url));
                 startSsoCallbackTimeout();
                 injectSsoCaptureScript();
               }
@@ -1238,8 +1279,8 @@ const Login = ({ navigation, route }) => {
             }}
             onLoadStart={(event) => {
               const url = event.nativeEvent?.url;
-              debugSso("load start", url);
-              ssoCurrentUrlRef.current = url || ssoCurrentUrlRef.current;
+              rememberSsoUrl("load start", url);
+              addSsoDebugLine("load start", getSsoDebugUrl(url));
               handleSsoNavigationUrl(url);
               setSsoPageLoading(true);
               setHideSsoContent(isSsoCallbackUrl(url));
@@ -1250,8 +1291,8 @@ const Login = ({ navigation, route }) => {
             }}
             onLoadEnd={(event) => {
               const url = event.nativeEvent?.url;
-              debugSso("load end", url);
-              ssoCurrentUrlRef.current = url || ssoCurrentUrlRef.current;
+              rememberSsoUrl("load end", url);
+              addSsoDebugLine("load end", getSsoDebugUrl(url));
               handleSsoNavigationUrl(url);
               setSsoPageLoading(false);
               setHideSsoContent(isSsoCallbackUrl(url));
@@ -1264,9 +1305,9 @@ const Login = ({ navigation, route }) => {
             }}
             onOpenWindow={(event) => {
               const url = event.nativeEvent?.targetUrl;
-              debugSso("open window", url);
+              rememberSsoUrl("open window", url);
+              addSsoDebugLine("open window", getSsoDebugUrl(url));
               if (isTrustedSsoNavigationUrl(url)) {
-                ssoCurrentUrlRef.current = url || ssoCurrentUrlRef.current;
                 handleSsoNavigationUrl(url);
                 injectSsoCaptureScript([300, 1000]);
               }
@@ -1277,6 +1318,10 @@ const Login = ({ navigation, route }) => {
               </View>
             )}
             onHttpError={(event) => {
+              addSsoDebugLine(
+                "http error",
+                `${event.nativeEvent?.statusCode || "-"} ${getSsoDebugUrl(event.nativeEvent?.url)}`,
+              );
               if (__DEV__) {
                 console.warn(
                   "[SSO] http error:",
@@ -1286,6 +1331,10 @@ const Login = ({ navigation, route }) => {
               }
             }}
             onError={(event) => {
+              addSsoDebugLine(
+                "webview error",
+                event.nativeEvent?.description || getSsoDebugUrl(event.nativeEvent?.url),
+              );
               if (__DEV__) {
                 console.warn(
                   "[SSO] webview error:",
@@ -1303,6 +1352,27 @@ const Login = ({ navigation, route }) => {
               style={{ top: PT + 52 }}
             >
               <ActivityIndicator size="large" color="#0f7a55" />
+            </View>
+          )}
+          {Platform.OS === "android" && showSsoWebView && ssoDebugLines.length > 0 && (
+            <View
+              pointerEvents="none"
+              className="absolute left-3 right-3 rounded-xl px-3 py-2"
+              style={{
+                bottom: 14,
+                backgroundColor: "rgba(0,0,0,0.72)",
+                zIndex: 50,
+              }}
+            >
+              {ssoDebugLines.map((line, index) => (
+                <Text
+                  key={`${line}-${index}`}
+                  className="text-white text-[10px]"
+                  numberOfLines={1}
+                >
+                  {line}
+                </Text>
+              ))}
             </View>
           )}
         </View>
