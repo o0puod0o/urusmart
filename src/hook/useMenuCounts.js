@@ -41,7 +41,7 @@ const useMenuCounts = () => {
   const refetch = useCallback(async () => {
     if (mounted.current) setLoading(true);
     const results = await Promise.allSettled(
-      MENU_ENDPOINTS.map((e) => api.get(e.path, { suppressAuthRedirect: true }))
+      MENU_ENDPOINTS.map((e) => api.get(e.path))
     );
     const newCounts = {};
     results.forEach((result, i) => {

@@ -129,27 +129,6 @@ const debugSso = (label, url) => {
   if (__DEV__) console.log(`[SSO] ${label}:`, sanitizeSsoUrlForLog(url));
 };
 
-const getSsoDebugUrl = (url = "") => {
-  const parsed = parseUrl(url);
-  if (!parsed) return String(url || "").slice(0, 80);
-  return `${parsed.hostname}${parsed.pathname}`;
-};
-
-const sanitizeSsoMessageForLog = (message = "") => {
-  try {
-    const payload = JSON.parse(String(message || ""));
-    if (payload && typeof payload === "object") {
-      const safePayload = { ...payload };
-      if (safePayload.token) safePayload.token = "[hidden]";
-      if (safePayload.access_token) safePayload.access_token = "[hidden]";
-      return JSON.stringify(safePayload);
-    }
-  } catch {}
-  return String(message || "")
-    .replace(/"token"\s*:\s*"[^"]+"/g, '"token":"[hidden]"')
-    .replace(/"access_token"\s*:\s*"[^"]+"/g, '"access_token":"[hidden]"');
-};
-
 const isTrustedSsoNavigationUrl = (url = "") => {
   const value = String(url);
   if (!value || value === "about:blank") return true;
@@ -172,41 +151,10 @@ const isTrustedSsoMessageUrl = (url = "") => {
   return parsed.hostname === getSsoBackendHost();
 };
 
-const isSsoBackendUrl = (url = "") => {
-  const parsed = parseUrl(url);
-  if (!parsed) return false;
-  if (!["http:", "https:"].includes(parsed.protocol)) return false;
-  return parsed.hostname === getSsoBackendHost();
-};
-
-const isSsoResultUrl = (url = "") => {
-  const parsed = parseUrl(url);
-  if (!parsed) return false;
-  return isSsoBackendUrl(url) && !parsed.pathname.includes("/auth/redirect");
-};
-
 const isSsoCallbackUrl = (url = "") =>
   String(url).includes("/auth/callback") ||
   String(url).includes("token=") ||
   String(url).includes("access_token=");
-
-const getSsoPayloadFromUrl = (url = "") => {
-  const parsed = parseUrl(url);
-  if (!parsed) return null;
-
-  const readToken = (params) =>
-    params.get("token") ||
-    params.get("access_token") ||
-    params.get("ssoToken") ||
-    params.get("passportToken");
-
-  const searchToken = readToken(parsed.searchParams);
-  const hashParams = new URLSearchParams(parsed.hash.replace(/^#/, ""));
-  const hashToken = readToken(hashParams);
-  const token = searchToken || hashToken;
-
-  return token ? { token } : null;
-};
 
 const HIDE_SSO_CALLBACK_SCRIPT = `
   (function () {
@@ -224,152 +172,42 @@ const HIDE_SSO_CALLBACK_SCRIPT = `
 
 const SSO_CAPTURE_SCRIPT = `
   (function () {
-    var sent = false;
-    var attempts = 0;
-
-    function normalizePayload(value) {
-      if (!value) return null;
-      if (typeof value === 'object') {
-        return value.token ? value : null;
-      }
-      try {
-        var parsed = JSON.parse(String(value));
-        if (parsed && typeof parsed === 'object' && parsed.token) return parsed;
-      } catch (error) {}
-      return { token: String(value) };
-    }
-
     function sendPayload(value) {
-      if (sent || !value || !window.ReactNativeWebView) return;
-      var payload = normalizePayload(value);
-      if (!payload || !payload.token) return;
-      sent = true;
-      window.ReactNativeWebView.postMessage(JSON.stringify(payload));
+      if (!value || !window.ReactNativeWebView) return;
+      window.ReactNativeWebView.postMessage(
+        typeof value === 'string' ? value : JSON.stringify(value)
+      );
     }
 
-    function readTokenFromParams(raw) {
-      try {
-        var params = new URLSearchParams(raw || '');
-        return (
-          params.get('token') ||
-          params.get('access_token') ||
-          params.get('ssoToken') ||
-          params.get('passportToken')
-        );
-      } catch (error) {
-        return null;
-      }
-    }
+    var href = String(window.location.href || '');
+    var isCallback =
+      href.indexOf('/auth/callback') !== -1 ||
+      href.indexOf('token=') !== -1 ||
+      href.indexOf('access_token=') !== -1;
 
-    function readTokenFromStorage(storage) {
-      try {
-        if (!storage) return null;
-        var keys = [
-          'token',
-          'access_token',
-          'ssoToken',
-          'passportToken',
-          'urusmart_token'
-        ];
-        for (var i = 0; i < keys.length; i += 1) {
-          var value = storage.getItem(keys[i]);
-          if (value) return normalizePayload(value);
-        }
-      } catch (error) {}
-      return null;
-    }
-
-    function readPayloadFromGlobals() {
-      try {
-        var keys = [
-          '__URUSMART_SSO_PAYLOAD__',
-          'URUSMART_SSO_PAYLOAD',
-          'ssoPayload',
-          'ssoResult'
-        ];
-        for (var i = 0; i < keys.length; i += 1) {
-          var payload = normalizePayload(window[keys[i]]);
-          if (payload) return payload;
-        }
-      } catch (error) {}
-      return null;
-    }
-
-    function readPayloadFromElements() {
-      try {
-        var selectors = [
-          '#sso-payload',
-          '#urusmart-sso-payload',
-          '[data-sso-payload]',
-          'meta[name="sso-payload"]'
-        ];
-        for (var i = 0; i < selectors.length; i += 1) {
-          var node = document.querySelector(selectors[i]);
-          if (!node) continue;
-          var value =
-            node.getAttribute('data-sso-payload') ||
-            node.getAttribute('content') ||
-            node.value ||
-            node.textContent ||
-            node.innerText;
-          var payload = normalizePayload(value);
-          if (payload) return payload;
-        }
-      } catch (error) {}
-      return null;
-    }
-
-    function capture() {
-      if (sent) return true;
-      attempts += 1;
-
-      var href = String(window.location.href || '');
-      var isCallback =
-        href.indexOf('/auth/callback') !== -1 ||
-        href.indexOf('token=') !== -1 ||
-        href.indexOf('access_token=') !== -1;
-
+    try {
+      var params = new URLSearchParams(window.location.search || '');
       var token =
-        readTokenFromParams(window.location.search) ||
-        readTokenFromParams(String(window.location.hash || '').replace(/^#/, ''));
-
+        params.get('token') ||
+        params.get('access_token') ||
+        params.get('ssoToken') ||
+        params.get('passportToken');
       if (token) {
         sendPayload({ token: token });
         return true;
       }
+    } catch (error) {}
 
-      var payload =
-        readPayloadFromGlobals() ||
-        readPayloadFromElements() ||
-        readTokenFromStorage(window.localStorage) ||
-        readTokenFromStorage(window.sessionStorage);
-
-      if (payload) {
-        sendPayload(payload);
-        return true;
-      }
-
-      try {
-        var raw = (document.body && document.body.innerText || '').trim();
-        if (raw && raw.charAt(0) === '{' && raw.indexOf('"token"') !== -1) {
-          if (!isCallback) {
-            document.documentElement.style.opacity = '0';
-            if (document.body) document.body.style.opacity = '0';
-          }
-          sendPayload(raw);
-          return true;
+    try {
+      var raw = (document.body && document.body.innerText || '').trim();
+      if (raw && raw.charAt(0) === '{' && raw.indexOf('"token"') !== -1) {
+        if (!isCallback) {
+          document.documentElement.style.opacity = '0';
+          if (document.body) document.body.style.opacity = '0';
         }
-      } catch (error) {}
-
-      return false;
-    }
-
-    capture();
-    var timer = setInterval(function () {
-      if (capture() || attempts >= 120) {
-        clearInterval(timer);
+        sendPayload(raw);
       }
-    }, 250);
+    } catch (error) {}
 
     return true;
   })();
@@ -418,7 +256,6 @@ const Login = ({ navigation, route }) => {
   const [biometricReady, setBiometricReady] = useState(false);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
-  const [ssoDebugLines, setSsoDebugLines] = useState([]);
   const scrollRef = useRef(null);
   const focusedFieldRef = useRef(null);
   const passwordRef = useRef(null);
@@ -426,7 +263,6 @@ const Login = ({ navigation, route }) => {
   const ssoTimeoutRef = useRef(null);
   const ssoHandledRef = useRef(false);
   const ssoCurrentUrlRef = useRef(SSO_REDIRECT_URL);
-  const ssoLastBackendUrlRef = useRef(SSO_REDIRECT_URL);
   const ssoAccessToken = getSsoAccessTokenFromRoute(route);
 
   // ── Entrance animations ──
@@ -546,22 +382,6 @@ const Login = ({ navigation, route }) => {
     navigation.reset({ index: 0, routes: [{ name: "MainTabs" }] });
   };
 
-  const addSsoDebugLine = (label, detail = "") => {
-    if (Platform.OS !== "android") return;
-    const line = `${label}${detail ? `: ${detail}` : ""}`;
-    console.log(`[SSO APK] ${line}`);
-    setSsoDebugLines((current) => [...current.slice(-5), line]);
-  };
-
-  const rememberSsoUrl = (label, url = "") => {
-    debugSso(label, url);
-    if (!url) return;
-    ssoCurrentUrlRef.current = url;
-    if (isSsoBackendUrl(url)) {
-      ssoLastBackendUrlRef.current = url;
-    }
-  };
-
   const disableBiometricLogin = async () => {
     setBiometricAvailable(false);
     setBiometricReady(false);
@@ -624,23 +444,6 @@ const Login = ({ navigation, route }) => {
     }, 600);
   };
 
-  const debugVerifiedToken = async (token) => {
-    if (!__DEV__) return;
-    try {
-      const response = await fetch(`${API_URL}/me`, {
-        headers: {
-          Accept: "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      const data = await response.json().catch(() => ({}));
-      console.log("[SSO] /api/me status:", response.status);
-      console.log("[SSO] /api/me keys:", Object.keys(data || {}));
-    } catch (error) {
-      console.log("[SSO] /api/me error:", error?.message || String(error));
-    }
-  };
-
   const completeBackendLogin = async (data) => {
     if (!data?.token) {
       Alert.alert(t("login.signInFailedTitle"), t("login.missingToken"));
@@ -648,15 +451,11 @@ const Login = ({ navigation, route }) => {
     }
 
     await saveAuthSession(data.token);
-    if (__DEV__) console.log("[SSO] save token: ok");
     await AsyncStorage.setItem(
       STORAGE_KEYS.USER,
       JSON.stringify(data.user || {}),
     );
-    if (__DEV__) console.log("[SSO] save user: ok");
-    debugVerifiedToken(data.token);
     runPostLoginNotifications();
-    if (__DEV__) console.log("[SSO] navigate: MainTabs");
     navigateToMain();
     promptEnableBiometricAfterNavigation(data.token);
   };
@@ -697,26 +496,22 @@ const Login = ({ navigation, route }) => {
     Keyboard.dismiss();
     ssoHandledRef.current = false;
     ssoCurrentUrlRef.current = SSO_REDIRECT_URL;
-    ssoLastBackendUrlRef.current = SSO_REDIRECT_URL;
-    setSsoDebugLines([]);
-    addSsoDebugLine("open", getSsoDebugUrl(SSO_REDIRECT_URL));
     setHideSsoContent(false);
     setSsoPageLoading(true);
     setShowSsoWebView(true);
   };
 
-  const startSsoCallbackTimeout = (delay = 45000) => {
+  const startSsoCallbackTimeout = () => {
     if (ssoHandledRef.current || ssoTimeoutRef.current) return;
     ssoTimeoutRef.current = setTimeout(() => {
       if (ssoHandledRef.current) return;
-      addSsoDebugLine("timeout", getSsoDebugUrl(ssoLastBackendUrlRef.current));
       setSsoPageLoading(false);
       setHideSsoContent(false);
       Alert.alert(
         "เข้าสู่ระบบใช้เวลานาน",
         "ยังไม่ได้รับข้อมูลยืนยันตัวตนจาก SSO กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองใหม่อีกครั้ง",
       );
-    }, delay);
+    }, 45000);
   };
 
   const closeSsoLogin = () => {
@@ -729,47 +524,11 @@ const Login = ({ navigation, route }) => {
     setSsoPageLoading(false);
   };
 
-  const injectSsoCaptureScript = (delays = [0, 250, 750, 1500, 3000]) => {
-    delays.forEach((delay) => {
-      setTimeout(() => {
-        if (ssoHandledRef.current || !ssoWebViewRef.current) return;
-        ssoWebViewRef.current.injectJavaScript(SSO_CAPTURE_SCRIPT);
-      }, delay);
-    });
-  };
-
   const handleSsoMessage = async (event) => {
     if (ssoHandledRef.current) return;
 
-    const sourceUrlFromEvent = event.nativeEvent?.url || "";
-    const sourceUrl =
-      sourceUrlFromEvent || ssoCurrentUrlRef.current || ssoLastBackendUrlRef.current || "";
-    if (__DEV__) {
-      console.log(
-        "[SSO] raw message:",
-        sanitizeSsoMessageForLog(event.nativeEvent?.data),
-      );
-    }
-    const payload = parseSsoMessage(event.nativeEvent?.data);
-    if (__DEV__) {
-      console.log("[SSO] message payload keys:", Object.keys(payload || {}));
-    }
-    addSsoDebugLine(
-      "message",
-      `keys=${Object.keys(payload || {}).join(",") || "-"} token=${payload?.token ? "yes" : "no"} from=${getSsoDebugUrl(sourceUrl)}`,
-    );
-    if (!payload?.token) return;
-
-    const sourceTrusted = isTrustedSsoMessageUrl(sourceUrl);
-    const currentTrusted = isTrustedSsoMessageUrl(ssoCurrentUrlRef.current);
-    const lastBackendResultTrusted =
-      isSsoResultUrl(ssoLastBackendUrlRef.current) ||
-      isSsoCallbackUrl(ssoLastBackendUrlRef.current);
-    const fallbackTrusted =
-      (!sourceUrlFromEvent || sourceUrlFromEvent === "about:blank") &&
-      (currentTrusted || lastBackendResultTrusted);
-    if (!sourceTrusted && !currentTrusted && !lastBackendResultTrusted && !fallbackTrusted) {
-      addSsoDebugLine("reject", getSsoDebugUrl(sourceUrl));
+    const sourceUrl = event.nativeEvent?.url || ssoCurrentUrlRef.current || "";
+    if (!isTrustedSsoMessageUrl(sourceUrl)) {
       if (__DEV__) {
         console.warn(
           "[SSO] rejected WebView message from:",
@@ -779,14 +538,13 @@ const Login = ({ navigation, route }) => {
       return;
     }
 
-    await completeSsoLogin(payload);
-  };
-
-  const completeSsoLogin = async (payload) => {
-    if (ssoHandledRef.current || !payload?.token) return;
+    const payload = parseSsoMessage(event.nativeEvent?.data);
+    if (__DEV__) {
+      console.log("[SSO] message payload keys:", Object.keys(payload || {}));
+    }
+    if (!payload?.token) return;
 
     ssoHandledRef.current = true;
-    addSsoDebugLine("success", "token received");
     if (ssoTimeoutRef.current) {
       clearTimeout(ssoTimeoutRef.current);
       ssoTimeoutRef.current = null;
@@ -801,19 +559,6 @@ const Login = ({ navigation, route }) => {
     } finally {
       setSsoLoading(false);
     }
-  };
-
-  const handleSsoNavigationUrl = (url = "") => {
-    if (!isSsoBackendUrl(url)) return false;
-
-    const payload = getSsoPayloadFromUrl(url);
-    if (!payload?.token) return false;
-
-    completeSsoLogin(payload).catch((error) => {
-      if (__DEV__) console.warn("[SSO] complete from URL failed:", error);
-      Alert.alert(t("login.signInFailedTitle"), t("login.ssoFailed"));
-    });
-    return true;
   };
 
   const handleLogin = async () => {
@@ -1226,19 +971,14 @@ const Login = ({ navigation, route }) => {
             onMessage={handleSsoMessage}
             injectedJavaScriptBeforeContentLoaded={HIDE_SSO_CALLBACK_SCRIPT}
             injectedJavaScript={SSO_CAPTURE_SCRIPT}
-            originWhitelist={["*"]}
             javaScriptEnabled
             domStorageEnabled
             sharedCookiesEnabled
             thirdPartyCookiesEnabled
-            setSupportMultipleWindows={false}
-            javaScriptCanOpenWindowsAutomatically
-            mixedContentMode="compatibility"
             startInLoadingState
             onShouldStartLoadWithRequest={(request) => {
-              rememberSsoUrl("request", request.url);
+              debugSso("request", request.url);
               if (!isTrustedSsoNavigationUrl(request.url)) {
-                addSsoDebugLine("block", getSsoDebugUrl(request.url));
                 if (__DEV__) {
                   console.warn(
                     "[SSO] blocked untrusted navigation:",
@@ -1247,69 +987,33 @@ const Login = ({ navigation, route }) => {
                 }
                 return false;
               }
-              if (handleSsoNavigationUrl(request.url)) return false;
-              if (
-                isSsoCallbackUrl(request.url) ||
-                isSsoResultUrl(request.url)
-              ) {
-                addSsoDebugLine("result request", getSsoDebugUrl(request.url));
-                setHideSsoContent(isSsoCallbackUrl(request.url));
+              ssoCurrentUrlRef.current = request.url;
+              if (isSsoCallbackUrl(request.url)) {
+                setHideSsoContent(true);
                 setSsoPageLoading(true);
                 startSsoCallbackTimeout();
-                injectSsoCaptureScript([250, 750, 1500]);
               }
               return true;
             }}
-            onNavigationStateChange={(navState) => {
-              const url = navState?.url;
-              rememberSsoUrl("state", url);
-              if (handleSsoNavigationUrl(url)) return;
-              if (isSsoCallbackUrl(url) || isSsoResultUrl(url)) {
-                addSsoDebugLine("result state", getSsoDebugUrl(url));
-                startSsoCallbackTimeout();
-                injectSsoCaptureScript();
-              }
-            }}
-            onLoadProgress={(event) => {
-              const url = event.nativeEvent?.url;
-              const progress = event.nativeEvent?.progress ?? 0;
-              if (progress >= 0.45 && isSsoBackendUrl(url)) {
-                injectSsoCaptureScript([0, 300, 900]);
-              }
-            }}
             onLoadStart={(event) => {
               const url = event.nativeEvent?.url;
-              rememberSsoUrl("load start", url);
-              addSsoDebugLine("load start", getSsoDebugUrl(url));
-              handleSsoNavigationUrl(url);
+              debugSso("load start", url);
+              ssoCurrentUrlRef.current = url || ssoCurrentUrlRef.current;
               setSsoPageLoading(true);
               setHideSsoContent(isSsoCallbackUrl(url));
-              if (isSsoCallbackUrl(url) || isSsoResultUrl(url)) {
+              if (isSsoCallbackUrl(url)) {
                 startSsoCallbackTimeout();
-                injectSsoCaptureScript([500, 1200]);
               }
             }}
             onLoadEnd={(event) => {
               const url = event.nativeEvent?.url;
-              rememberSsoUrl("load end", url);
-              addSsoDebugLine("load end", getSsoDebugUrl(url));
-              handleSsoNavigationUrl(url);
+              debugSso("load end", url);
+              ssoCurrentUrlRef.current = url || ssoCurrentUrlRef.current;
               setSsoPageLoading(false);
               setHideSsoContent(isSsoCallbackUrl(url));
-              if (isSsoBackendUrl(url)) {
-                injectSsoCaptureScript();
-              }
-              if (isSsoCallbackUrl(url) || isSsoResultUrl(url)) {
+              if (isSsoCallbackUrl(url)) {
                 startSsoCallbackTimeout();
-              }
-            }}
-            onOpenWindow={(event) => {
-              const url = event.nativeEvent?.targetUrl;
-              rememberSsoUrl("open window", url);
-              addSsoDebugLine("open window", getSsoDebugUrl(url));
-              if (isTrustedSsoNavigationUrl(url)) {
-                handleSsoNavigationUrl(url);
-                injectSsoCaptureScript([300, 1000]);
+                ssoWebViewRef.current?.injectJavaScript(SSO_CAPTURE_SCRIPT);
               }
             }}
             renderLoading={() => (
@@ -1318,10 +1022,6 @@ const Login = ({ navigation, route }) => {
               </View>
             )}
             onHttpError={(event) => {
-              addSsoDebugLine(
-                "http error",
-                `${event.nativeEvent?.statusCode || "-"} ${getSsoDebugUrl(event.nativeEvent?.url)}`,
-              );
               if (__DEV__) {
                 console.warn(
                   "[SSO] http error:",
@@ -1331,10 +1031,6 @@ const Login = ({ navigation, route }) => {
               }
             }}
             onError={(event) => {
-              addSsoDebugLine(
-                "webview error",
-                event.nativeEvent?.description || getSsoDebugUrl(event.nativeEvent?.url),
-              );
               if (__DEV__) {
                 console.warn(
                   "[SSO] webview error:",
@@ -1352,27 +1048,6 @@ const Login = ({ navigation, route }) => {
               style={{ top: PT + 52 }}
             >
               <ActivityIndicator size="large" color="#0f7a55" />
-            </View>
-          )}
-          {Platform.OS === "android" && showSsoWebView && ssoDebugLines.length > 0 && (
-            <View
-              pointerEvents="none"
-              className="absolute left-3 right-3 rounded-xl px-3 py-2"
-              style={{
-                bottom: 14,
-                backgroundColor: "rgba(0,0,0,0.72)",
-                zIndex: 50,
-              }}
-            >
-              {ssoDebugLines.map((line, index) => (
-                <Text
-                  key={`${line}-${index}`}
-                  className="text-white text-[10px]"
-                  numberOfLines={1}
-                >
-                  {line}
-                </Text>
-              ))}
             </View>
           )}
         </View>

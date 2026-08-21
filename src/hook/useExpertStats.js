@@ -24,9 +24,7 @@ const useExpertStats = () => {
   const refetch = useCallback(async () => {
     try {
       if (mounted.current) setLoading(true);
-      const results = await Promise.allSettled(
-        ENDPOINTS.map((e) => api.get(e.path, { suppressAuthRedirect: true })),
-      );
+      const results = await Promise.allSettled(ENDPOINTS.map((e) => api.get(e.path)));
       const newStats = {};
       results.forEach((result, i) => {
         const key = ENDPOINTS[i].key;
