@@ -5,7 +5,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import api from "../services/api";
 
 const useFetch = (endpoint, options = {}) => {
-  const { params = {}, initialData = null, skip = false } = options;
+  const {
+    params = {},
+    initialData = null,
+    skip = false,
+    suppressAuthRedirect = true,
+  } = options;
 
   const [data, setData] = useState(initialData);
   const [loading, setLoading] = useState(!skip);
@@ -21,7 +26,7 @@ const useFetch = (endpoint, options = {}) => {
     if (skip) return;
     try {
       if (mounted.current) { setLoading(true); setError(null); }
-      const res = await api.get(endpoint, { params });
+      const res = await api.get(endpoint, { params, suppressAuthRedirect });
       const result = res.data?.data ?? res.data;
       if (mounted.current) setData(result);
     } catch (err) {

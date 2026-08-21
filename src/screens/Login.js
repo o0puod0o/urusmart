@@ -129,6 +129,21 @@ const debugSso = (label, url) => {
   if (__DEV__) console.log(`[SSO] ${label}:`, sanitizeSsoUrlForLog(url));
 };
 
+const sanitizeSsoMessageForLog = (message = "") => {
+  try {
+    const payload = JSON.parse(String(message || ""));
+    if (payload && typeof payload === "object") {
+      const safePayload = { ...payload };
+      if (safePayload.token) safePayload.token = "[hidden]";
+      if (safePayload.access_token) safePayload.access_token = "[hidden]";
+      return JSON.stringify(safePayload);
+    }
+  } catch {}
+  return String(message || "")
+    .replace(/"token"\s*:\s*"[^"]+"/g, '"token":"[hidden]"')
+    .replace(/"access_token"\s*:\s*"[^"]+"/g, '"access_token":"[hidden]"');
+};
+
 const isTrustedSsoNavigationUrl = (url = "") => {
   const value = String(url);
   if (!value || value === "about:blank") return true;
@@ -524,6 +539,23 @@ const Login = ({ navigation, route }) => {
     }, 600);
   };
 
+  const debugVerifiedToken = async (token) => {
+    if (!__DEV__) return;
+    try {
+      const response = await fetch(`${API_URL}/me`, {
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const data = await response.json().catch(() => ({}));
+      console.log("[SSO] /api/me status:", response.status);
+      console.log("[SSO] /api/me keys:", Object.keys(data || {}));
+    } catch (error) {
+      console.log("[SSO] /api/me error:", error?.message || String(error));
+    }
+  };
+
   const completeBackendLogin = async (data) => {
     if (!data?.token) {
       Alert.alert(t("login.signInFailedTitle"), t("login.missingToken"));
@@ -531,11 +563,15 @@ const Login = ({ navigation, route }) => {
     }
 
     await saveAuthSession(data.token);
+    if (__DEV__) console.log("[SSO] save token: ok");
     await AsyncStorage.setItem(
       STORAGE_KEYS.USER,
       JSON.stringify(data.user || {}),
     );
+    if (__DEV__) console.log("[SSO] save user: ok");
+    debugVerifiedToken(data.token);
     runPostLoginNotifications();
+    if (__DEV__) console.log("[SSO] navigate: MainTabs");
     navigateToMain();
     promptEnableBiometricAfterNavigation(data.token);
   };
@@ -608,6 +644,12 @@ const Login = ({ navigation, route }) => {
     if (ssoHandledRef.current) return;
 
     const sourceUrl = event.nativeEvent?.url || ssoCurrentUrlRef.current || "";
+    if (__DEV__) {
+      console.log(
+        "[SSO] raw message:",
+        sanitizeSsoMessageForLog(event.nativeEvent?.data),
+      );
+    }
     const payload = parseSsoMessage(event.nativeEvent?.data);
     if (__DEV__) {
       console.log("[SSO] message payload keys:", Object.keys(payload || {}));
