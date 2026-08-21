@@ -221,12 +221,24 @@ const SSO_CAPTURE_SCRIPT = `
     var sent = false;
     var attempts = 0;
 
+    function normalizePayload(value) {
+      if (!value) return null;
+      if (typeof value === 'object') {
+        return value.token ? value : null;
+      }
+      try {
+        var parsed = JSON.parse(String(value));
+        if (parsed && typeof parsed === 'object' && parsed.token) return parsed;
+      } catch (error) {}
+      return { token: String(value) };
+    }
+
     function sendPayload(value) {
       if (sent || !value || !window.ReactNativeWebView) return;
+      var payload = normalizePayload(value);
+      if (!payload || !payload.token) return;
       sent = true;
-      window.ReactNativeWebView.postMessage(
-        typeof value === 'string' ? value : JSON.stringify(value)
-      );
+      window.ReactNativeWebView.postMessage(JSON.stringify(payload));
     }
 
     function readTokenFromParams(raw) {
@@ -255,7 +267,47 @@ const SSO_CAPTURE_SCRIPT = `
         ];
         for (var i = 0; i < keys.length; i += 1) {
           var value = storage.getItem(keys[i]);
-          if (value) return value;
+          if (value) return normalizePayload(value);
+        }
+      } catch (error) {}
+      return null;
+    }
+
+    function readPayloadFromGlobals() {
+      try {
+        var keys = [
+          '__URUSMART_SSO_PAYLOAD__',
+          'URUSMART_SSO_PAYLOAD',
+          'ssoPayload',
+          'ssoResult'
+        ];
+        for (var i = 0; i < keys.length; i += 1) {
+          var payload = normalizePayload(window[keys[i]]);
+          if (payload) return payload;
+        }
+      } catch (error) {}
+      return null;
+    }
+
+    function readPayloadFromElements() {
+      try {
+        var selectors = [
+          '#sso-payload',
+          '#urusmart-sso-payload',
+          '[data-sso-payload]',
+          'meta[name="sso-payload"]'
+        ];
+        for (var i = 0; i < selectors.length; i += 1) {
+          var node = document.querySelector(selectors[i]);
+          if (!node) continue;
+          var value =
+            node.getAttribute('data-sso-payload') ||
+            node.getAttribute('content') ||
+            node.value ||
+            node.textContent ||
+            node.innerText;
+          var payload = normalizePayload(value);
+          if (payload) return payload;
         }
       } catch (error) {}
       return null;
@@ -273,12 +325,21 @@ const SSO_CAPTURE_SCRIPT = `
 
       var token =
         readTokenFromParams(window.location.search) ||
-        readTokenFromParams(String(window.location.hash || '').replace(/^#/, '')) ||
-        readTokenFromStorage(window.localStorage) ||
-        readTokenFromStorage(window.sessionStorage);
+        readTokenFromParams(String(window.location.hash || '').replace(/^#/, ''));
 
       if (token) {
         sendPayload({ token: token });
+        return true;
+      }
+
+      var payload =
+        readPayloadFromGlobals() ||
+        readPayloadFromElements() ||
+        readTokenFromStorage(window.localStorage) ||
+        readTokenFromStorage(window.sessionStorage);
+
+      if (payload) {
+        sendPayload(payload);
         return true;
       }
 
