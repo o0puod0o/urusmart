@@ -17,6 +17,7 @@ import KeyboardAwareScrollView from "../../../components/expert/KeyboardAwareScr
 import InlineDropdown from "../../../components/expert/InlineDropdown";
 import useResource from "../../../hook/useResource";
 import useConfirm from "../../../hook/useConfirm";
+import useSubmitLock from "../../../hook/useSubmitLock";
 import { getExpertLink, getExpertTitle, getExpertYear } from "../../../utils/expertFields";
 import { normalizeOptionalUrl } from "../../../utils/url";
 
@@ -36,6 +37,7 @@ const HumanSubjectsForm = ({ navigation }) => {
     [t],
   );
   const { confirm, ConfirmDialog } = useConfirm();
+  const submitOnce = useSubmitLock();
   const { items, loading, saving, create, update, remove } =
     useResource("/hsps");
   const evidenceUrlRef = useRef(null);
@@ -60,7 +62,7 @@ const HumanSubjectsForm = ({ navigation }) => {
     setForm({ year: "", title: "", evidenceUrl: "" });
   };
 
-  const handleSave = async () => {
+  const handleSave = () => submitOnce(async () => {
     if (!form.year || !form.title.trim() || !form.evidenceUrl.trim()) {
       Alert.alert(t("research.common.warning"), t("research.human.validation"));
       return;
@@ -95,7 +97,7 @@ const HumanSubjectsForm = ({ navigation }) => {
         err.message ?? t("research.common.apiError"),
       );
     }
-  };
+  });
 
   const handleDelete = (entry) => {
     const doDelete = async () => {

@@ -17,6 +17,7 @@ import KeyboardAwareScrollView from "../../../components/expert/KeyboardAwareScr
 import InlineDropdown from "../../../components/expert/InlineDropdown";
 import useResource from "../../../hook/useResource";
 import useConfirm from "../../../hook/useConfirm";
+import useSubmitLock from "../../../hook/useSubmitLock";
 import { getExpertTitle, getExpertYear } from "../../../utils/expertFields";
 
 const currentThaiYear = new Date().getFullYear() + 543;
@@ -39,6 +40,7 @@ const TrainingForm = ({ navigation }) => {
     [t],
   );
   const { confirm, ConfirmDialog } = useConfirm();
+  const submitOnce = useSubmitLock();
   const { items, loading, saving, create, update, remove } =
     useResource("/trainings");
   const [editingItem, setEditingItem] = useState(null);
@@ -58,7 +60,7 @@ const TrainingForm = ({ navigation }) => {
     setForm(INIT_FORM);
   };
 
-  const handleSave = async () => {
+  const handleSave = () => submitOnce(async () => {
     if (!form.year || !form.title.trim()) {
       Alert.alert(
         t("research.common.warning"),
@@ -84,7 +86,7 @@ const TrainingForm = ({ navigation }) => {
         err.message ?? t("research.common.apiError"),
       );
     }
-  };
+  });
 
   const handleDelete = (entry) => {
     const doDelete = async () => {

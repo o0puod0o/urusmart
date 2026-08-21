@@ -15,6 +15,10 @@ const useResource = (endpoint, options = {}) => {
   const [removing, setRemoving] = useState(false);
 
   const mounted = useRef(true);
+  const createLock = useRef(false);
+  const updateLock = useRef(false);
+  const removeLock = useRef(false);
+
   useEffect(() => {
     mounted.current = true;
     return () => { mounted.current = false; };
@@ -63,6 +67,8 @@ const useResource = (endpoint, options = {}) => {
   };
 
   const create = useCallback(async (data) => {
+    if (createLock.current) return null;
+    createLock.current = true;
     setSaving(true);
     try {
       const res = await api.post(endpoint, normalizePayload(data));
@@ -72,11 +78,14 @@ const useResource = (endpoint, options = {}) => {
       if (__DEV__) console.warn(`[useResource] POST ${endpoint} body:`, JSON.stringify(err.response?.data));
       throw new Error(extractMessage(err, "บันทึกไม่สำเร็จ"));
     } finally {
+      createLock.current = false;
       if (mounted.current) setSaving(false);
     }
   }, [endpoint, refetch]);
 
   const update = useCallback(async (id, data) => {
+    if (updateLock.current) return null;
+    updateLock.current = true;
     setSaving(true);
     try {
       const res = await api.put(`${endpoint}/${id}`, normalizePayload(data));
@@ -86,11 +95,14 @@ const useResource = (endpoint, options = {}) => {
       if (__DEV__) console.warn(`[useResource] PUT ${endpoint}/${id} body:`, JSON.stringify(err.response?.data));
       throw new Error(extractMessage(err, "แก้ไขไม่สำเร็จ"));
     } finally {
+      updateLock.current = false;
       if (mounted.current) setSaving(false);
     }
   }, [endpoint, refetch]);
 
   const remove = useCallback(async (id) => {
+    if (removeLock.current) return null;
+    removeLock.current = true;
     setRemoving(true);
     try {
       await api.delete(`${endpoint}/${id}`);
@@ -98,6 +110,7 @@ const useResource = (endpoint, options = {}) => {
     } catch (err) {
       throw new Error(extractMessage(err, "ลบไม่สำเร็จ"));
     } finally {
+      removeLock.current = false;
       if (mounted.current) setRemoving(false);
     }
   }, [endpoint, refetch]);

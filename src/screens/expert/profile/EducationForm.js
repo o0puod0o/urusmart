@@ -9,6 +9,7 @@ import FormField from "../../../components/expert/FormField";
 import InlineDropdown from "../../../components/expert/InlineDropdown";
 import useResource from "../../../hook/useResource";
 import useConfirm from "../../../hook/useConfirm";
+import useSubmitLock from "../../../hook/useSubmitLock";
 
 const currentYear = new Date().getFullYear() + 543;
 const BASE_YEAR_OPTIONS = Array.from({ length: currentYear - 2499 }, (_, i) => {
@@ -21,6 +22,7 @@ const EducationForm = ({ navigation }) => {
   const { items, loading, saving, create, update, remove } = useResource("/educations");
   const sortedItems = useMemo(() => [...items].sort((a, b) => Number(a.id) - Number(b.id)), [items]);
   const { confirm, ConfirmDialog } = useConfirm();
+  const submitOnce = useSubmitLock();
   const universityRef = useRef(null);
   const YEAR_OPTIONS = useMemo(
     () => [{ id: "", label: t("research.common.selectYear") }, ...BASE_YEAR_OPTIONS],
@@ -53,7 +55,7 @@ const EducationForm = ({ navigation }) => {
     return DEGREE_OPTIONS.find((d) => d.id === degId)?.label ?? degId;
   };
 
-  const handleSave = async () => {
+  const handleSave = () => submitOnce(async () => {
     if (!form.year || !form.degree || !form.course || !form.university) {
       Alert.alert(t("research.education.validationTitle"), t("research.education.validationMsg")); return;
     }
@@ -64,7 +66,7 @@ const EducationForm = ({ navigation }) => {
       Alert.alert(editingItem ? t("research.common.editSuccess") : t("research.common.addSuccess"));
       openNewForm();
     } catch (err) { Alert.alert(t("research.common.saveFail"), err.message ?? t("research.common.apiError")); }
-  };
+  });
 
   const handleDelete = (item) => {
     const doDelete = async () => {

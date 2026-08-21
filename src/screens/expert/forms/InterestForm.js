@@ -1,6 +1,7 @@
 //ความสนใจ
 import React, { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   Platform,
   Text,
@@ -17,12 +18,14 @@ import InlineDropdown from "../../../components/expert/InlineDropdown";
 import useResource from "../../../hook/useResource";
 import apiService from "../../../services/api";
 import useConfirm from "../../../hook/useConfirm";
+import useSubmitLock from "../../../hook/useSubmitLock";
 import { getExpertTitle } from "../../../utils/expertFields";
 
 const InterestForm = ({ navigation }) => {
   const { t } = useTranslation();
-  const { items, create, remove } = useResource("/interests");
+  const { items, saving, create, remove } = useResource("/interests");
   const { confirm, ConfirmDialog } = useConfirm();
+  const submitOnce = useSubmitLock();
   const [selectedInterest, setSelectedInterest] = useState("");
   const [customInterest, setCustomInterest] = useState("");
   const [interestOptions, setInterestOptions] = useState([
@@ -46,7 +49,7 @@ const InterestForm = ({ navigation }) => {
       .finally(() => setLoadingOptions(false));
   }, []);
 
-  const handleAdd = async () => {
+  const handleAdd = () => submitOnce(async () => {
     const title = selectedInterest || customInterest.trim();
     if (!title) {
       Alert.alert(t("research.interest.validation"));
@@ -70,7 +73,7 @@ const InterestForm = ({ navigation }) => {
     }
     setSelectedInterest("");
     setCustomInterest("");
-  };
+  });
 
   const handleDelete = (entry) => {
     const doDelete = async () => {
@@ -261,14 +264,21 @@ const InterestForm = ({ navigation }) => {
           <View className="flex-row gap-[10px] p-4 pt-[14px]">
             <TouchableOpacity
               className="flex-1 flex-row items-center justify-center gap-2 bg-[#007a5a] rounded-xl py-[13px]"
-              style={{ elevation: 2 }}
+              style={{ elevation: 2, opacity: saving ? 0.6 : 1 }}
               onPress={handleAdd}
+              disabled={saving}
               activeOpacity={0.85}
             >
-              <Ionicons name="add-circle" size={18} color="#fff" />
-              <Text className="text-white text-[14px] font-black">
-                {t("research.interest.addForm")}
-              </Text>
+              {saving ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <>
+                  <Ionicons name="add-circle" size={18} color="#fff" />
+                  <Text className="text-white text-[14px] font-black">
+                    {t("research.interest.addForm")}
+                  </Text>
+                </>
+              )}
             </TouchableOpacity>
             <TouchableOpacity
               className="bg-[#fef2f2] border-[1.5px] border-[#dc2626] rounded-xl px-[18px] flex-row items-center gap-[6px]"

@@ -17,6 +17,7 @@ import KeyboardAwareScrollView from "../../../components/expert/KeyboardAwareScr
 import InlineDropdown from "../../../components/expert/InlineDropdown";
 import useResource from "../../../hook/useResource";
 import useConfirm from "../../../hook/useConfirm";
+import useSubmitLock from "../../../hook/useSubmitLock";
 import { getExpertLink, getExpertTitle, getExpertYear } from "../../../utils/expertFields";
 import { normalizeOptionalUrl } from "../../../utils/url";
 
@@ -40,6 +41,7 @@ const ServiceForm = ({ navigation }) => {
     [t],
   );
   const { confirm, ConfirmDialog } = useConfirm();
+  const submitOnce = useSubmitLock();
   const { items, loading, saving, create, update, remove } =
     useResource("/academics");
   const linkRef = useRef(null);
@@ -64,7 +66,7 @@ const ServiceForm = ({ navigation }) => {
     setForm(INIT_FORM);
   };
 
-  const handleSave = async () => {
+  const handleSave = () => submitOnce(async () => {
     if (!form.year || !form.name.trim()) {
       Alert.alert(
         t("research.common.warning"),
@@ -102,7 +104,7 @@ const ServiceForm = ({ navigation }) => {
         err.message ?? t("research.common.apiError"),
       );
     }
-  };
+  });
 
   const handleDelete = (entry) => {
     const doDelete = async () => {

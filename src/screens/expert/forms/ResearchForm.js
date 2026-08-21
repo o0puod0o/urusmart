@@ -17,6 +17,7 @@ import KeyboardAwareScrollView from "../../../components/expert/KeyboardAwareScr
 import InlineDropdown from "../../../components/expert/InlineDropdown";
 import useResource from "../../../hook/useResource";
 import useConfirm from "../../../hook/useConfirm";
+import useSubmitLock from "../../../hook/useSubmitLock";
 import useRefs from "../../../hook/useRefs";
 
 const BASE_YEAR_LIST = Array.from({ length: 2569 - 2533 + 1 }, (_, i) => {
@@ -115,6 +116,7 @@ const ResearchForm = ({ navigation }) => {
     [t],
   );
   const { confirm, ConfirmDialog } = useConfirm();
+  const submitOnce = useSubmitLock();
   const {
     items,
     loading: loadingItems,
@@ -193,7 +195,7 @@ const ResearchForm = ({ navigation }) => {
     setForm({ year: "", title: "", type: "", pmu: "", level: "" });
   };
 
-  const handleSave = async () => {
+  const handleSave = () => submitOnce(async () => {
     if (!form.year || !form.title.trim()) {
       Alert.alert(
         t("research.common.warning"),
@@ -227,7 +229,7 @@ const ResearchForm = ({ navigation }) => {
         err.message ?? t("research.common.apiError"),
       );
     }
-  };
+  });
 
   const handleDelete = (entry) => {
     const doDelete = async () => {

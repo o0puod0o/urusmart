@@ -17,6 +17,7 @@ import KeyboardAwareScrollView from "../../../components/expert/KeyboardAwareScr
 import InlineDropdown from "../../../components/expert/InlineDropdown";
 import useResource from "../../../hook/useResource";
 import useConfirm from "../../../hook/useConfirm";
+import useSubmitLock from "../../../hook/useSubmitLock";
 import { getExpertTitle, getExpertYear } from "../../../utils/expertFields";
 
 const BASE_YEAR_LIST = Array.from({ length: 2569 - 2533 + 1 }, (_, i) => ({
@@ -34,6 +35,7 @@ const BookForm = ({ navigation }) => {
     [t],
   );
   const { confirm, ConfirmDialog } = useConfirm();
+  const submitOnce = useSubmitLock();
   const { items, loading, saving, create, update, remove } =
     useResource("/books");
   const [editingItem, setEditingItem] = useState(null);
@@ -53,7 +55,7 @@ const BookForm = ({ navigation }) => {
     setForm({ year: "", title: "" });
   };
 
-  const handleSave = async () => {
+  const handleSave = () => submitOnce(async () => {
     if (!form.year || !form.title.trim()) {
       Alert.alert(t("research.common.warning"), t("research.book.validation"));
       return;
@@ -76,7 +78,7 @@ const BookForm = ({ navigation }) => {
         err.message ?? t("research.common.apiError"),
       );
     }
-  };
+  });
 
   const handleDelete = (entry) => {
     const doDelete = async () => {

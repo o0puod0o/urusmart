@@ -1,16 +1,43 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Animated, FlatList, KeyboardAvoidingView,
-  Platform, StatusBar, Text, TextInput, TouchableOpacity, View,
+  Alert,
+  Animated,
+  FlatList,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  StatusBar,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  useWindowDimensions,
+  View,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import HeaderBar from "../components/HeaderBar";
 import useCurrentUser from "../hook/useCurrentUser";
-import { sendChatMessage } from "../services/chatbot";
-
-const makeId = () => `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+import {
+  createChatConversation,
+  deleteChatConversationRemote,
+  fetchChatConversationMessages,
+  fetchChatConversations,
+  fetchChatHistory,
+  sendChatMessage,
+  updateChatConversationRemote,
+} from "../services/chatbot";
+import {
+  clearChatHistory,
+  createChatMessage,
+  loadActiveChat,
+  loadChatConversations,
+  loadChatMessages,
+  saveChatHistory,
+  setActiveChat,
+  updateChatConversation,
+} from "../services/chatHistoryService";
 
 // ── Typing indicator (3 dots) ──────────────────────────────
 const TypingDot = ({ delay }) => {
@@ -90,15 +117,395 @@ const ChatBubble = ({ item, onRetry }) => {
   );
 };
 
+const formatChatTime = (value) => {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleDateString("th-TH", {
+    day: "2-digit",
+    month: "short",
+    year: "2-digit",
+  });
+};
+
+const getFirstTextValue = (source, keys) => {
+  for (const key of keys) {
+    const value = source?.[key];
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return "";
+};
+
+const extractRemoteHistoryItems = (payload) => {
+  const root = payload?.data ?? payload;
+  const candidates = [
+    root?.data?.data,
+    root?.data,
+    root?.history?.data,
+    root?.history,
+    root?.messages?.data,
+    root?.messages,
+    root,
+  ];
+  return candidates.find(Array.isArray) ?? [];
+};
+
+const normalizeRemoteHistoryItem = (item) => {
+  if (!item || typeof item !== "object") return [];
+
+  if (Array.isArray(item.messages)) {
+    return item.messages.flatMap(normalizeRemoteHistoryItem);
+  }
+
+  const createdAt =
+    item.created_at ??
+    item.createdAt ??
+    item.updated_at ??
+    item.updatedAt ??
+    new Date().toISOString();
+
+  if (item.role) {
+    const text = getFirstTextValue(item, ["text", "content", "message", "reply", "answer"]);
+    if (!text) return [];
+    const role = item.role === "assistant" || item.role === "bot" ? "bot" : "user";
+    return [createChatMessage(role, text, { createdAt })];
+  }
+
+  const userText = getFirstTextValue(item, [
+    "question",
+    "user_message",
+    "prompt",
+    "input",
+    "message",
+  ]);
+  const botText = getFirstTextValue(item, [
+    "answer",
+    "bot_reply",
+    "assistant_message",
+    "response",
+    "reply",
+    "output",
+  ]);
+
+  return [
+    userText ? createChatMessage("user", userText, { createdAt }) : null,
+    botText ? createChatMessage("bot", botText, { createdAt }) : null,
+  ].filter(Boolean);
+};
+
+const normalizeRemoteChatHistory = (payload) =>
+  extractRemoteHistoryItems(payload).flatMap(normalizeRemoteHistoryItem);
+
+const extractRemoteList = (payload, keys = []) => {
+  const root = payload?.data ?? payload;
+  const keyedCandidates = keys.flatMap((key) => [
+    root?.[key]?.data,
+    root?.[key],
+    root?.data?.[key]?.data,
+    root?.data?.[key],
+  ]);
+  const candidates = [
+    ...keyedCandidates,
+    root?.data?.data,
+    root?.data,
+    root,
+  ];
+  return candidates.find(Array.isArray) ?? [];
+};
+
+const normalizeRemoteConversation = (item) => {
+  if (!item || typeof item !== "object" || item.id == null) return null;
+  const title = getFirstTextValue(item, ["title", "name", "conversation_title"]) || "แชทใหม่";
+  const preview = getFirstTextValue(item, [
+    "preview",
+    "last_message",
+    "lastMessage",
+    "latest_message",
+    "latestMessage",
+  ]);
+  const updatedAt =
+    item.updated_at ??
+    item.updatedAt ??
+    item.last_message_at ??
+    item.lastMessageAt ??
+    item.created_at ??
+    item.createdAt ??
+    new Date().toISOString();
+
+  return {
+    id: String(item.id),
+    title,
+    preview,
+    messageCount: Number(item.message_count ?? item.messageCount ?? item.messages_count ?? 0),
+    pinned: Boolean(item.pinned ?? item.is_pinned ?? item.isPinned),
+    customTitle: Boolean(item.custom_title ?? item.customTitle ?? item.title),
+    createdAt: item.created_at ?? item.createdAt ?? updatedAt,
+    updatedAt,
+  };
+};
+
+const normalizeRemoteConversations = (payload) =>
+  extractRemoteList(payload, ["conversations"])
+    .map(normalizeRemoteConversation)
+    .filter(Boolean)
+    .sort((a, b) => {
+      if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
+      return new Date(b.updatedAt) - new Date(a.updatedAt);
+    });
+
+const normalizeRemoteMessage = (item) => {
+  if (!item || typeof item !== "object") return null;
+  const roleValue = String(item.role ?? item.sender ?? item.type ?? "").toLowerCase();
+  const role =
+    roleValue === "assistant" || roleValue === "bot" || roleValue === "ai"
+      ? "bot"
+      : "user";
+  const text = getFirstTextValue(item, [
+    "text",
+    "content",
+    "message",
+    "reply",
+    "answer",
+  ]);
+  if (!text) return null;
+  return createChatMessage(role, text, {
+    id: item.id != null ? String(item.id) : undefined,
+    createdAt: item.created_at ?? item.createdAt ?? new Date().toISOString(),
+  });
+};
+
+const normalizeRemoteMessages = (payload) =>
+  extractRemoteList(payload, ["messages"])
+    .flatMap((item) => {
+      const normalized = normalizeRemoteMessage(item);
+      return normalized ? [normalized] : normalizeRemoteHistoryItem(item);
+    })
+    .filter(Boolean);
+
+const extractRemoteConversationId = (payload) => {
+  const root = payload?.data ?? payload ?? {};
+  return (
+    root.id ??
+    root.conversation_id ??
+    root.conversationId ??
+    root.conversation?.id ??
+    root.data?.id ??
+    root.data?.conversation_id ??
+    root.data?.conversationId ??
+    root.data?.conversation?.id ??
+    null
+  );
+};
+
+const extractRemoteReply = (payload) => {
+  const root = payload?.data ?? payload ?? {};
+  return (
+    getFirstTextValue(root, ["reply", "answer", "message", "response"]) ||
+    getFirstTextValue(root.data, ["reply", "answer", "message", "response"]) ||
+    "—"
+  );
+};
+
+const HistoryRow = ({ item, active, onPress, onMenu }) => (
+  <View
+    style={{
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      backgroundColor: active ? "#e6f5ef" : "#fff",
+      borderRadius: 18,
+      borderWidth: 1,
+      borderColor: active ? "#b7dece" : "#edf2ef",
+    }}
+  >
+    <TouchableOpacity
+      onPress={onPress}
+      onLongPress={onMenu}
+      activeOpacity={0.78}
+      style={{
+        flex: 1,
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 12,
+        minWidth: 0,
+      }}
+    >
+      <View
+        style={{
+          width: 42,
+          height: 42,
+          borderRadius: 14,
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: active ? "#0f7a55" : "#f1f7f4",
+        }}
+      >
+        <Ionicons
+          name={active ? "chatbubble" : "chatbubble-outline"}
+          size={18}
+          color={active ? "#fff" : "#0f7a55"}
+        />
+      </View>
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text
+          numberOfLines={1}
+          style={{ color: "#102019", fontSize: 15, fontWeight: "800" }}
+        >
+          {item.title}
+        </Text>
+        {!!item.preview && (
+          <Text
+            numberOfLines={1}
+            style={{ color: "#6a7b74", fontSize: 12, fontWeight: "600", marginTop: 4 }}
+          >
+            {item.preview}
+          </Text>
+        )}
+      </View>
+      <Text style={{ color: "#8fa198", fontSize: 11, fontWeight: "700" }}>
+        {formatChatTime(item.updatedAt)}
+      </Text>
+    </TouchableOpacity>
+    {item.pinned && (
+      <Ionicons name="pin" size={15} color="#0f7a55" />
+    )}
+    <TouchableOpacity
+      onPress={(event) => {
+        event?.stopPropagation?.();
+        onMenu(event);
+      }}
+      activeOpacity={0.75}
+      hitSlop={{ top: 14, bottom: 14, left: 14, right: 14 }}
+      style={{
+        width: 44,
+        height: 44,
+        borderRadius: 15,
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: "#f5faf7",
+        borderWidth: 1,
+        borderColor: "#dce8e2",
+      }}
+    >
+      <Ionicons name="ellipsis-horizontal" size={18} color="#5f746b" />
+    </TouchableOpacity>
+  </View>
+);
+
 // ── Main ───────────────────────────────────────────────────
 export default function ChatbotPage({ navigation }) {
   const { t } = useTranslation();
   const { user, logout } = useCurrentUser(navigation);
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const listRef = useRef(null);
+  const messagesRef = useRef([]);
+  const historyReadyRef = useRef(false);
+  const usingRemoteHistoryRef = useRef(false);
+  const skipNextSaveRef = useRef(false);
 
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
+  const [loadingHistory, setLoadingHistory] = useState(true);
+  const [conversationId, setConversationId] = useState(null);
+  const [conversations, setConversations] = useState([]);
+  const [historyVisible, setHistoryVisible] = useState(false);
+  const [selectedConversation, setSelectedConversation] = useState(null);
+  const [renameConversationId, setRenameConversationId] = useState(null);
+  const [renameVisible, setRenameVisible] = useState(false);
+  const [renameTitle, setRenameTitle] = useState("");
+
+  useEffect(() => {
+    let mounted = true;
+    setLoadingHistory(true);
+    (async () => {
+      try {
+        const [remoteResponse, localChat] = await Promise.all([
+          fetchChatConversations(),
+          loadActiveChat(),
+        ]);
+        if (!mounted) return;
+
+        const remoteConversations = normalizeRemoteConversations(remoteResponse?.data);
+        const activeRemoteId = remoteConversations.some(
+          (item) => item.id === localChat.conversationId,
+        )
+          ? localChat.conversationId
+          : remoteConversations[0]?.id ?? null;
+
+        let remoteMessages = [];
+        if (activeRemoteId) {
+          const messagesResponse = await fetchChatConversationMessages(activeRemoteId);
+          remoteMessages = normalizeRemoteMessages(messagesResponse?.data);
+          await setActiveChat(activeRemoteId);
+          if (remoteMessages.length) {
+            await saveChatHistory(remoteMessages, activeRemoteId);
+          }
+        }
+
+        if (!mounted) return;
+        messagesRef.current = remoteMessages;
+        setMessages(remoteMessages);
+        setConversationId(activeRemoteId);
+        setConversations(remoteConversations);
+        usingRemoteHistoryRef.current = true;
+        historyReadyRef.current = true;
+      } catch (_) {
+        const chat = await loadActiveChat();
+        if (!mounted) return;
+        messagesRef.current = chat.messages;
+        setMessages(chat.messages);
+        setConversationId(chat.conversationId);
+        setConversations(chat.conversations);
+        usingRemoteHistoryRef.current = false;
+        historyReadyRef.current = true;
+
+        if (chat.conversations.length) return;
+
+        try {
+          const remoteHistory = await fetchChatHistory(50);
+          const remoteMessages = normalizeRemoteChatHistory(remoteHistory?.data);
+          if (!mounted || !remoteMessages.length || messagesRef.current.length) return;
+          const saved = await saveChatHistory(remoteMessages, null);
+          if (!mounted) return;
+          messagesRef.current = remoteMessages;
+          setMessages(remoteMessages);
+          setConversationId(saved.conversationId);
+          setConversations(saved.conversations);
+        } catch {
+          // local history still works when backend history is unavailable
+        }
+      } finally {
+        if (!mounted) return;
+        historyReadyRef.current = true;
+        setLoadingHistory(false);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    messagesRef.current = messages;
+    if (!historyReadyRef.current) return;
+    if (skipNextSaveRef.current) {
+      skipNextSaveRef.current = false;
+      return;
+    }
+    saveChatHistory(messages, conversationId)
+      .then((result) => {
+        if (result.conversationId && result.conversationId !== conversationId) {
+          setConversationId(result.conversationId);
+        }
+        if (!usingRemoteHistoryRef.current) {
+          setConversations(result.conversations);
+        }
+      })
+      .catch(() => {});
+  }, [messages, conversationId]);
 
   // scroll to bottom on new message
   useEffect(() => {
@@ -106,41 +513,488 @@ export default function ChatbotPage({ navigation }) {
     return () => clearTimeout(timer);
   }, [messages, sending]);
 
+  const refreshConversations = useCallback(async () => {
+    try {
+      const response = await fetchChatConversations();
+      const remoteConversations = normalizeRemoteConversations(response?.data);
+      usingRemoteHistoryRef.current = true;
+      setConversations(remoteConversations);
+      return remoteConversations;
+    } catch (_) {
+      const nextConversations = await loadChatConversations();
+      usingRemoteHistoryRef.current = false;
+      setConversations(nextConversations);
+      return nextConversations;
+    }
+  }, []);
+
   const sendMessage = useCallback(async (preset) => {
     const text = (preset ?? input).trim();
     if (!text || sending) return;
-    const userMsg = { id: makeId(), role: "user", text };
+    const userMsg = createChatMessage("user", text);
     setMessages((cur) => [...cur, userMsg]);
     setInput("");
     setSending(true);
     try {
-      // แปลง messages → history format ที่ backend ต้องการ (สูงสุด 10 คู่ล่าสุด)
-      const history = messages
-        .filter((m) => !m.error)
-        .slice(-20)
-        .map((m) => ({ role: m.role === "bot" ? "assistant" : "user", content: m.text }));
+      let targetConversationId = conversationId;
+      if (!targetConversationId) {
+        const created = await createChatConversation(text.slice(0, 48));
+        targetConversationId = String(extractRemoteConversationId(created?.data) ?? created?.data?.id ?? "");
+        if (targetConversationId) {
+          setConversationId(targetConversationId);
+          await setActiveChat(targetConversationId);
+        }
+      }
 
-      const res = await sendChatMessage(text, history);
-      const reply = res.data?.data?.reply ?? res.data?.reply ?? "—";
-      setMessages((cur) => [...cur, { id: makeId(), role: "bot", text: reply }]);
+      const res = await sendChatMessage(text, targetConversationId);
+      const nextConversationId =
+        extractRemoteConversationId(res?.data) ?? targetConversationId;
+      if (nextConversationId && String(nextConversationId) !== conversationId) {
+        setConversationId(String(nextConversationId));
+        await setActiveChat(String(nextConversationId));
+      }
+      const reply = extractRemoteReply(res?.data);
+      setMessages((cur) => [...cur, createChatMessage("bot", reply)]);
+      refreshConversations().catch(() => {});
     } catch (e) {
       const serverReply = e?.response?.data?.data?.reply ?? e?.response?.data?.reply;
       if (serverReply) {
         // backend ส่ง reply message กลับมาแม้ status 5xx → แสดงเป็น bot bubble ปกติ
-        setMessages((cur) => [...cur, { id: makeId(), role: "bot", text: serverReply }]);
+        setMessages((cur) => [...cur, createChatMessage("bot", serverReply)]);
       } else {
-        setMessages((cur) => [...cur, { id: makeId(), role: "bot", error: true, retryText: text, text: "" }]);
+        setMessages((cur) => [
+          ...cur,
+          { id: `${Date.now()}-error`, role: "bot", error: true, retryText: text, text: "" },
+        ]);
       }
     } finally {
       setSending(false);
     }
-  }, [input, sending, messages]);
+  }, [conversationId, input, refreshConversations, sending]);
 
   const retryMessage = useCallback((text) => {
     setMessages((cur) => cur.filter((m) => !m.error));
     sendMessage(text);
   }, [sendMessage]);
 
+  const startNewChat = useCallback(() => {
+    messagesRef.current = [];
+    skipNextSaveRef.current = true;
+    setConversationId(null);
+    setMessages([]);
+    setHistoryVisible(false);
+    setSelectedConversation(null);
+    setActiveChat(null).catch(() => {});
+  }, []);
+
+  const openConversation = useCallback((item) => {
+    setHistoryVisible(false);
+    setSelectedConversation(null);
+    skipNextSaveRef.current = true;
+    setConversationId(item.id);
+
+    requestAnimationFrame(() => {
+      fetchChatConversationMessages(item.id)
+        .then(async (nextMessages) => {
+          const remoteMessages = normalizeRemoteMessages(nextMessages?.data);
+          await setActiveChat(item.id);
+          if (remoteMessages.length) {
+            await saveChatHistory(remoteMessages, item.id);
+          }
+          skipNextSaveRef.current = true;
+          messagesRef.current = remoteMessages;
+          setConversationId(item.id);
+          setMessages(remoteMessages);
+        })
+        .catch(async () => {
+          try {
+            const localMessages = await loadChatMessages(item.id);
+            await setActiveChat(item.id);
+            skipNextSaveRef.current = true;
+            messagesRef.current = localMessages;
+            setConversationId(item.id);
+            setMessages(localMessages);
+          } catch {
+            skipNextSaveRef.current = false;
+            Alert.alert(t("chatbot.historyTitle"), t("chatbot.noHistoryHint"));
+          }
+        });
+    });
+  }, [t]);
+
+  const openConversationMenu = useCallback((item, event) => {
+    const nativeEvent = event?.nativeEvent ?? {};
+    setSelectedConversation({
+      ...item,
+      menuPosition: {
+        x: nativeEvent.pageX ?? screenWidth - 72,
+        y: nativeEvent.pageY ?? 180,
+      },
+    });
+  }, [screenWidth]);
+
+  const closeConversationMenu = useCallback(() => {
+    setSelectedConversation(null);
+  }, []);
+
+  const togglePinConversation = useCallback(async () => {
+    if (!selectedConversation) return;
+    const target = selectedConversation;
+    const nextPinned = !target.pinned;
+    setSelectedConversation(null);
+    setConversations((current) =>
+      current.map((item) =>
+        item.id === target.id ? { ...item, pinned: nextPinned } : item,
+      ),
+    );
+    try {
+      await updateChatConversationRemote(target.id, { pinned: nextPinned });
+      await updateChatConversation(target.id, { pinned: nextPinned });
+      await refreshConversations();
+    } catch (_) {
+      updateChatConversation(target.id, {
+        pinned: nextPinned,
+      }).then(setConversations).catch(() => {
+        refreshConversations();
+      });
+    }
+  }, [refreshConversations, selectedConversation]);
+
+  const openRenameConversation = useCallback(() => {
+    if (!selectedConversation) return;
+    setRenameConversationId(selectedConversation.id);
+    setRenameTitle(selectedConversation.title);
+    setRenameVisible(true);
+    setSelectedConversation(null);
+  }, [selectedConversation]);
+
+  const saveRenameConversation = useCallback(async () => {
+    const title = renameTitle.trim();
+    const targetId = renameConversationId;
+    if (!targetId || !title) {
+      setRenameVisible(false);
+      setRenameConversationId(null);
+      return;
+    }
+    setRenameVisible(false);
+    setRenameConversationId(null);
+    setRenameTitle("");
+    setConversations((current) =>
+      current.map((item) =>
+        item.id === targetId ? { ...item, title, customTitle: true } : item,
+      ),
+    );
+    try {
+      await updateChatConversationRemote(targetId, { title });
+      await updateChatConversation(targetId, { title });
+      await refreshConversations();
+    } catch (_) {
+      updateChatConversation(targetId, { title }).then(setConversations).catch(() => {
+        refreshConversations();
+      });
+    }
+  }, [refreshConversations, renameConversationId, renameTitle]);
+
+  const deleteConversation = useCallback((item) => {
+    Alert.alert(t("chatbot.deleteChat"), t("chatbot.deleteChatConfirm"), [
+      { text: t("chatbot.cancel"), style: "cancel" },
+      {
+        text: t("chatbot.deleteChat"),
+        style: "destructive",
+        onPress: async () => {
+          setConversations((current) =>
+            current.filter((conversation) => conversation.id !== item.id),
+          );
+          if (item.id === conversationId) {
+            skipNextSaveRef.current = true;
+            messagesRef.current = [];
+            setMessages([]);
+            setConversationId(null);
+          }
+          setSelectedConversation(null);
+          try {
+            await deleteChatConversationRemote(item.id);
+            await clearChatHistory(item.id);
+            await refreshConversations();
+          } catch (_) {
+            clearChatHistory(item.id).then(setConversations).catch(() => {
+              refreshConversations();
+            });
+          }
+        },
+      },
+    ]);
+  }, [conversationId, refreshConversations, t]);
+
+  const confirmClearHistory = useCallback(() => {
+    if (!messages.length) return;
+    Alert.alert(t("chatbot.clearHistory"), t("chatbot.clearConfirm"), [
+      { text: t("chatbot.cancel"), style: "cancel" },
+      {
+        text: t("chatbot.clearHistory"),
+        style: "destructive",
+        onPress: async () => {
+          skipNextSaveRef.current = true;
+          messagesRef.current = [];
+          setMessages([]);
+          setConversationId(null);
+          try {
+            if (conversationId) {
+              await deleteChatConversationRemote(conversationId);
+            }
+            await clearChatHistory(conversationId);
+            await refreshConversations();
+          } catch (_) {
+            clearChatHistory(conversationId).then(setConversations).catch(() => {
+              refreshConversations();
+            });
+          }
+        },
+      },
+    ]);
+  }, [conversationId, messages.length, refreshConversations, t]);
+
+  const renderConversationMenu = () => {
+    if (!selectedConversation) return null;
+
+    const menuWidth = Math.min(236, screenWidth - 32);
+    const menuHeight = 224;
+    const triggerX = selectedConversation.menuPosition?.x ?? screenWidth - 72;
+    const triggerY = selectedConversation.menuPosition?.y ?? 180;
+    const menuLeft = Math.max(
+      16,
+      Math.min(triggerX - menuWidth + 24, screenWidth - menuWidth - 16),
+    );
+    const menuTop = Math.max(
+      82,
+      Math.min(triggerY + 10, screenHeight - menuHeight - 28),
+    );
+
+    return (
+      <View
+        pointerEvents="box-none"
+        style={{
+          position: "absolute",
+          top: 0,
+          right: 0,
+          bottom: 0,
+          left: 0,
+        }}
+      >
+        <Pressable
+          onPress={closeConversationMenu}
+          style={{
+            position: "absolute",
+            top: 0,
+            right: 0,
+            bottom: 0,
+            left: 0,
+            backgroundColor: "rgba(11, 31, 24, 0.18)",
+          }}
+        />
+        <View
+          style={{
+            position: "absolute",
+            top: menuTop,
+            left: menuLeft,
+            width: menuWidth,
+            backgroundColor: "#fff",
+            borderRadius: 22,
+            padding: 8,
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 10 },
+            shadowOpacity: 0.16,
+            shadowRadius: 22,
+            elevation: 14,
+          }}
+        >
+          <Text
+            numberOfLines={1}
+            style={{
+              color: "#102019",
+              fontSize: 15,
+              fontWeight: "900",
+              paddingHorizontal: 10,
+              paddingTop: 6,
+              paddingBottom: 8,
+            }}
+          >
+            {selectedConversation.title}
+          </Text>
+
+          <Pressable
+            onPress={togglePinConversation}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 10,
+              paddingHorizontal: 12,
+              paddingVertical: 12,
+              borderRadius: 16,
+            }}
+          >
+            <Ionicons
+              name={selectedConversation.pinned ? "pin" : "pin-outline"}
+              size={22}
+              color="#0f7a55"
+            />
+            <Text style={{ color: "#102019", fontSize: 16, fontWeight: "800" }}>
+              {selectedConversation.pinned ? t("chatbot.unpinChat") : t("chatbot.pinChat")}
+            </Text>
+          </Pressable>
+
+          <Pressable
+            onPress={openRenameConversation}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 10,
+              paddingHorizontal: 12,
+              paddingVertical: 12,
+              borderRadius: 16,
+            }}
+          >
+            <Ionicons name="pencil-outline" size={22} color="#0f7a55" />
+            <Text style={{ color: "#102019", fontSize: 16, fontWeight: "800" }}>
+              {t("chatbot.renameChat")}
+            </Text>
+          </Pressable>
+
+          <Pressable
+            onPress={() => {
+              const item = selectedConversation;
+              setSelectedConversation(null);
+              deleteConversation(item);
+            }}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 10,
+              paddingHorizontal: 12,
+              paddingVertical: 12,
+              borderRadius: 16,
+            }}
+          >
+            <Ionicons name="trash-outline" size={22} color="#dc2626" />
+            <Text style={{ color: "#dc2626", fontSize: 16, fontWeight: "900" }}>
+              {t("chatbot.deleteChat")}
+            </Text>
+          </Pressable>
+        </View>
+      </View>
+    );
+  };
+
+  const renderRenameDialog = () => {
+    if (!renameVisible) return null;
+
+    return (
+      <View
+        pointerEvents="box-none"
+        style={{
+          position: "absolute",
+          top: 0,
+          right: 0,
+          bottom: 0,
+          left: 0,
+          justifyContent: "center",
+          paddingHorizontal: 22,
+        }}
+      >
+        <Pressable
+          onPress={() => {
+            setRenameVisible(false);
+            setRenameConversationId(null);
+          }}
+          style={{
+            position: "absolute",
+            top: 0,
+            right: 0,
+            bottom: 0,
+            left: 0,
+            backgroundColor: "rgba(11, 31, 24, 0.38)",
+          }}
+        />
+        <View
+          style={{
+            backgroundColor: "#fff",
+            borderRadius: 26,
+            padding: 18,
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 8 },
+            shadowOpacity: 0.18,
+            shadowRadius: 24,
+            elevation: 14,
+          }}
+        >
+          <Text style={{ color: "#102019", fontSize: 20, fontWeight: "900" }}>
+            {t("chatbot.renameChat")}
+          </Text>
+          <Text style={{ color: "#6a7b74", fontSize: 13, fontWeight: "600", marginTop: 4 }}>
+            {t("chatbot.renameChatHint")}
+          </Text>
+          <TextInput
+            value={renameTitle}
+            onChangeText={setRenameTitle}
+            autoFocus
+            maxLength={48}
+            returnKeyType="done"
+            onSubmitEditing={saveRenameConversation}
+            style={{
+              height: 52,
+              borderRadius: 16,
+              borderWidth: 1,
+              borderColor: "#cfe0d8",
+              backgroundColor: "#f8fbf9",
+              color: "#102019",
+              paddingHorizontal: 14,
+              fontSize: 16,
+              fontWeight: "700",
+              marginTop: 16,
+            }}
+          />
+          <View style={{ flexDirection: "row", justifyContent: "flex-end", gap: 10, marginTop: 16 }}>
+            <TouchableOpacity
+              onPress={() => {
+                setRenameVisible(false);
+                setRenameConversationId(null);
+              }}
+              activeOpacity={0.75}
+              style={{
+                height: 44,
+                paddingHorizontal: 16,
+                borderRadius: 14,
+                alignItems: "center",
+                justifyContent: "center",
+                backgroundColor: "#f1f7f4",
+              }}
+            >
+              <Text style={{ color: "#5f746b", fontSize: 14, fontWeight: "900" }}>
+                {t("chatbot.cancel")}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={saveRenameConversation}
+              activeOpacity={0.85}
+              disabled={!renameTitle.trim()}
+              style={{
+                height: 44,
+                paddingHorizontal: 18,
+                borderRadius: 14,
+                alignItems: "center",
+                justifyContent: "center",
+                backgroundColor: renameTitle.trim() ? "#0f7a55" : "#8fa89f",
+              }}
+            >
+              <Text style={{ color: "#fff", fontSize: 14, fontWeight: "900" }}>
+                {t("chatbot.save")}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    );
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: "#f0f6f2" }}>
@@ -163,6 +1017,61 @@ export default function ChatbotPage({ navigation }) {
             <Text style={{ color: "#102019", fontSize: 17, fontWeight: "800" }}>{t("chatbot.title")}</Text>
             <Text style={{ color: "#587066", fontSize: 12, fontWeight: "600", marginTop: 2 }}>{t("chatbot.subtitle")}</Text>
           </View>
+          <TouchableOpacity
+            onPress={() => {
+              refreshConversations();
+              setHistoryVisible(true);
+            }}
+            activeOpacity={0.75}
+            style={{
+              width: 42,
+              height: 42,
+              borderRadius: 14,
+              alignItems: "center",
+              justifyContent: "center",
+              backgroundColor: "#f8fbf9",
+              borderWidth: 1,
+              borderColor: "#dce8e2",
+            }}
+          >
+            <Ionicons name="time-outline" size={19} color="#5f746b" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={startNewChat}
+            disabled={!messages.length && !conversationId}
+            activeOpacity={0.75}
+            style={{
+              width: 42,
+              height: 42,
+              borderRadius: 14,
+              alignItems: "center",
+              justifyContent: "center",
+              backgroundColor: "#f8fbf9",
+              borderWidth: 1,
+              borderColor: "#dce8e2",
+              opacity: !messages.length && !conversationId ? 0.55 : 1,
+            }}
+          >
+            <Ionicons name="create-outline" size={19} color="#5f746b" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={confirmClearHistory}
+            disabled={!messages.length}
+            activeOpacity={0.75}
+            style={{
+              width: 42,
+              height: 42,
+              borderRadius: 14,
+              alignItems: "center",
+              justifyContent: "center",
+              backgroundColor: messages.length ? "#f8fbf9" : "#f3f6f4",
+              borderWidth: 1,
+              borderColor: "#dce8e2",
+              opacity: messages.length ? 1 : 0.55,
+            }}
+          >
+            <Ionicons name="trash-outline" size={18} color="#5f746b" />
+          </TouchableOpacity>
         </View>
 
         <FlatList
@@ -177,9 +1086,15 @@ export default function ChatbotPage({ navigation }) {
           ListEmptyComponent={
             <View style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingTop: 60, gap: 12 }}>
               <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: "#e6f5ef", alignItems: "center", justifyContent: "center" }}>
-                <Ionicons name="chatbubbles-outline" size={34} color="#0f7a55" />
+                <Ionicons
+                  name={loadingHistory ? "time-outline" : "chatbubbles-outline"}
+                  size={34}
+                  color="#0f7a55"
+                />
               </View>
-              <Text style={{ color: "#587066", fontSize: 14, fontWeight: "600", textAlign: "center" }}>{t("chatbot.emptyHint")}</Text>
+              <Text style={{ color: "#587066", fontSize: 14, fontWeight: "600", textAlign: "center" }}>
+                {loadingHistory ? t("chatbot.loadingHistory") : t("chatbot.emptyHint")}
+              </Text>
             </View>
           }
           ListFooterComponent={sending ? <TypingBubble /> : null}
@@ -208,6 +1123,106 @@ export default function ChatbotPage({ navigation }) {
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
+
+      <Modal
+        visible={historyVisible}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setHistoryVisible(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: "#f0f6f2" }}>
+          <StatusBar barStyle="dark-content" backgroundColor="#f0f6f2" />
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 12,
+              paddingHorizontal: 18,
+              paddingTop: Platform.OS === "ios" ? 18 : 14,
+              paddingBottom: 14,
+              backgroundColor: "#fff",
+              borderBottomWidth: 1,
+              borderBottomColor: "#dce8e2",
+            }}
+          >
+            <TouchableOpacity
+              onPress={() => setHistoryVisible(false)}
+              activeOpacity={0.75}
+              style={{
+                width: 42,
+                height: 42,
+                borderRadius: 15,
+                alignItems: "center",
+                justifyContent: "center",
+                backgroundColor: "#f1f7f4",
+              }}
+            >
+              <Ionicons name="close" size={22} color="#102019" />
+            </TouchableOpacity>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: "#102019", fontSize: 22, fontWeight: "900" }}>
+                {t("chatbot.historyTitle")}
+              </Text>
+              <Text style={{ color: "#6a7b74", fontSize: 12, fontWeight: "700", marginTop: 2 }}>
+                {t("chatbot.historySubtitle")}
+              </Text>
+            </View>
+            <TouchableOpacity
+              onPress={startNewChat}
+              activeOpacity={0.86}
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 6,
+                height: 42,
+                paddingHorizontal: 14,
+                borderRadius: 15,
+                backgroundColor: "#0f7a55",
+              }}
+            >
+              <Ionicons name="add" size={18} color="#fff" />
+              <Text style={{ color: "#fff", fontSize: 13, fontWeight: "900" }}>
+                {t("chatbot.newChat")}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          <FlatList
+            data={conversations}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => (
+              <HistoryRow
+                item={item}
+                active={item.id === conversationId}
+                onPress={() => openConversation(item)}
+                onMenu={(event) => openConversationMenu(item, event)}
+              />
+            )}
+            contentContainerStyle={{
+              paddingHorizontal: 16,
+              paddingTop: 16,
+              paddingBottom: 28,
+              gap: 10,
+              flexGrow: conversations.length ? 0 : 1,
+            }}
+            ListEmptyComponent={
+              <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 12, paddingHorizontal: 28 }}>
+                <View style={{ width: 78, height: 78, borderRadius: 28, backgroundColor: "#e6f5ef", alignItems: "center", justifyContent: "center" }}>
+                  <Ionicons name="chatbubbles-outline" size={36} color="#0f7a55" />
+                </View>
+                <Text style={{ color: "#102019", fontSize: 18, fontWeight: "900", textAlign: "center" }}>
+                  {t("chatbot.noHistory")}
+                </Text>
+                <Text style={{ color: "#6a7b74", fontSize: 13, fontWeight: "600", lineHeight: 20, textAlign: "center" }}>
+                  {t("chatbot.noHistoryHint")}
+                </Text>
+              </View>
+            }
+          />
+          {renderConversationMenu()}
+          {renderRenameDialog()}
+        </View>
+      </Modal>
     </View>
   );
 }

@@ -12,6 +12,7 @@ export const STORAGE_KEYS = {
   NOTIF_PERMISSION_PROMPTED: "@notif_permission_prompted",
   NOTIFICATION_INBOX: "@notification_inbox",
   LAST_NOTIFICATION_RESPONSE: "@last_notification_response",
+  CHAT_HISTORY_PREFIX: "@chat_history:",
   BIOMETRIC: "@biometric_enabled",
   BIOMETRIC_FALLBACK: "@biometric_token_fallback",
 };

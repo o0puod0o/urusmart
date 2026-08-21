@@ -9,6 +9,7 @@ import InlineDropdown from "../../../components/expert/InlineDropdown";
 import FormField from "../../../components/expert/FormField";
 import useResource from "../../../hook/useResource";
 import useConfirm from "../../../hook/useConfirm";
+import useSubmitLock from "../../../hook/useSubmitLock";
 
 const currentYear = new Date().getFullYear() + 543;
 const BASE_YEAR_LIST = Array.from({ length: currentYear - 2529 }, (_, i) => ({ id: String(currentYear - i), label: String(currentYear - i) }));
@@ -22,6 +23,7 @@ const WorkHistoryForm = ({ navigation, route }) => {
   const workplaceRef = useRef(null);
 
   const { confirm, ConfirmDialog } = useConfirm();
+  const submitOnce = useSubmitLock();
   const [editingItem, setEditingItem] = useState(item);
   const [form, setForm] = useState({ position: item?.position || "", workplace: item?.workplace || "", year_start: item?.year_start || "", year_end: item?.year_end || "" });
 
@@ -29,7 +31,7 @@ const WorkHistoryForm = ({ navigation, route }) => {
   const openNew = () => { setEditingItem(null); setForm({ position: "", workplace: "", year_start: "", year_end: "" }); };
   const openEdit = (e) => { setEditingItem(e); setForm({ position: e.position, workplace: e.workplace, year_start: e.year_start, year_end: e.year_end }); };
 
-  const handleSave = async () => {
+  const handleSave = () => submitOnce(async () => {
     if (!form.position || !form.workplace || !form.year_start || !form.year_end) {
       Alert.alert(t("research.workHistory.validation")); return;
     }
@@ -39,7 +41,7 @@ const WorkHistoryForm = ({ navigation, route }) => {
       Alert.alert(editingItem ? t("research.common.editSuccess") : t("research.common.addSuccess"), t("research.common.savedMsg"));
       openNew();
     } catch (err) { Alert.alert(t("research.common.saveFail"), err.message ?? t("research.common.apiError")); }
-  };
+  });
 
   const handleDelete = (entry) => {
     const doDelete = async () => { try { await remove(entry.id); } catch (err) { Alert.alert(t("research.common.deleteFail"), err.message); } };

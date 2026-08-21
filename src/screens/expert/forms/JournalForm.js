@@ -17,6 +17,7 @@ import KeyboardAwareScrollView from "../../../components/expert/KeyboardAwareScr
 import InlineDropdown from "../../../components/expert/InlineDropdown";
 import useResource from "../../../hook/useResource";
 import useConfirm from "../../../hook/useConfirm";
+import useSubmitLock from "../../../hook/useSubmitLock";
 import useRefs from "../../../hook/useRefs";
 import { getExpertLink, getExpertTitle, getExpertYear } from "../../../utils/expertFields";
 import { normalizeOptionalUrl } from "../../../utils/url";
@@ -37,6 +38,7 @@ const JournalForm = ({ navigation }) => {
     [t],
   );
   const { confirm, ConfirmDialog } = useConfirm();
+  const submitOnce = useSubmitLock();
   const { items, loading, saving, create, update, remove } =
     useResource("/journals");
   const [editingItem, setEditingItem] = useState(null);
@@ -73,7 +75,7 @@ const JournalForm = ({ navigation }) => {
     setForm(INIT_FORM);
   };
 
-  const handleSave = async () => {
+  const handleSave = () => submitOnce(async () => {
     if (!form.year || !form.reference.trim()) {
       Alert.alert(
         t("research.common.warning"),
@@ -116,7 +118,7 @@ const JournalForm = ({ navigation }) => {
         err.message ?? t("research.common.apiError"),
       );
     }
-  };
+  });
 
   const handleDelete = (entry) => {
     const doDelete = async () => {

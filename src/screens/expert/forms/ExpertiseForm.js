@@ -15,6 +15,7 @@ import KeyboardAwareScrollView from "../../../components/expert/KeyboardAwareScr
 import InlineDropdown from "../../../components/expert/InlineDropdown";
 import useResource from "../../../hook/useResource";
 import useConfirm from "../../../hook/useConfirm";
+import useSubmitLock from "../../../hook/useSubmitLock";
 import {
   getExpertGroupLabel,
   getExpertGroupSelectOptions,
@@ -43,6 +44,7 @@ const ExpertiseForm = ({ navigation, route }) => {
   });
   const [saving, setSaving] = useState(false);
   const { confirm, ConfirmDialog } = useConfirm();
+  const submitOnce = useSubmitLock();
 
   const openNew = () => {
     setEditingItem(null);
@@ -54,7 +56,7 @@ const ExpertiseForm = ({ navigation, route }) => {
     setForm({ group_id: e.group_id ? String(e.group_id) : "" });
   };
 
-  const handleSave = async () => {
+  const handleSave = () => submitOnce(async () => {
     if (!form.group_id) {
       Alert.alert(t("research.common.warning"), t("research.expertise.validation"));
       return;
@@ -80,7 +82,7 @@ const ExpertiseForm = ({ navigation, route }) => {
     } finally {
       setSaving(false);
     }
-  };
+  });
 
   const handleDelete = (entry) => {
     const doDelete = async () => {
