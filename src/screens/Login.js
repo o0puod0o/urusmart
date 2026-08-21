@@ -203,49 +203,91 @@ const HIDE_SSO_CALLBACK_SCRIPT = `
 
 const SSO_CAPTURE_SCRIPT = `
   (function () {
+    var sent = false;
+    var attempts = 0;
+
     function sendPayload(value) {
-      if (!value || !window.ReactNativeWebView) return;
+      if (sent || !value || !window.ReactNativeWebView) return;
+      sent = true;
       window.ReactNativeWebView.postMessage(
         typeof value === 'string' ? value : JSON.stringify(value)
       );
     }
 
-    var href = String(window.location.href || '');
-    var isCallback =
-      href.indexOf('/auth/callback') !== -1 ||
-      href.indexOf('token=') !== -1 ||
-      href.indexOf('access_token=') !== -1;
+    function readTokenFromParams(raw) {
+      try {
+        var params = new URLSearchParams(raw || '');
+        return (
+          params.get('token') ||
+          params.get('access_token') ||
+          params.get('ssoToken') ||
+          params.get('passportToken')
+        );
+      } catch (error) {
+        return null;
+      }
+    }
 
-    try {
-      var params = new URLSearchParams(window.location.search || '');
-      var hashParams = new URLSearchParams(
-        String(window.location.hash || '').replace(/^#/, '')
-      );
+    function readTokenFromStorage(storage) {
+      try {
+        if (!storage) return null;
+        var keys = [
+          'token',
+          'access_token',
+          'ssoToken',
+          'passportToken',
+          'urusmart_token'
+        ];
+        for (var i = 0; i < keys.length; i += 1) {
+          var value = storage.getItem(keys[i]);
+          if (value) return value;
+        }
+      } catch (error) {}
+      return null;
+    }
+
+    function capture() {
+      if (sent) return true;
+      attempts += 1;
+
+      var href = String(window.location.href || '');
+      var isCallback =
+        href.indexOf('/auth/callback') !== -1 ||
+        href.indexOf('token=') !== -1 ||
+        href.indexOf('access_token=') !== -1;
+
       var token =
-        params.get('token') ||
-        params.get('access_token') ||
-        params.get('ssoToken') ||
-        params.get('passportToken') ||
-        hashParams.get('token') ||
-        hashParams.get('access_token') ||
-        hashParams.get('ssoToken') ||
-        hashParams.get('passportToken');
+        readTokenFromParams(window.location.search) ||
+        readTokenFromParams(String(window.location.hash || '').replace(/^#/, '')) ||
+        readTokenFromStorage(window.localStorage) ||
+        readTokenFromStorage(window.sessionStorage);
+
       if (token) {
         sendPayload({ token: token });
         return true;
       }
-    } catch (error) {}
 
-    try {
-      var raw = (document.body && document.body.innerText || '').trim();
-      if (raw && raw.charAt(0) === '{' && raw.indexOf('"token"') !== -1) {
-        if (!isCallback) {
-          document.documentElement.style.opacity = '0';
-          if (document.body) document.body.style.opacity = '0';
+      try {
+        var raw = (document.body && document.body.innerText || '').trim();
+        if (raw && raw.charAt(0) === '{' && raw.indexOf('"token"') !== -1) {
+          if (!isCallback) {
+            document.documentElement.style.opacity = '0';
+            if (document.body) document.body.style.opacity = '0';
+          }
+          sendPayload(raw);
+          return true;
         }
-        sendPayload(raw);
+      } catch (error) {}
+
+      return false;
+    }
+
+    capture();
+    var timer = setInterval(function () {
+      if (capture() || attempts >= 120) {
+        clearInterval(timer);
       }
-    } catch (error) {}
+    }, 250);
 
     return true;
   })();
@@ -566,7 +608,17 @@ const Login = ({ navigation, route }) => {
     if (ssoHandledRef.current) return;
 
     const sourceUrl = event.nativeEvent?.url || ssoCurrentUrlRef.current || "";
-    if (!isTrustedSsoMessageUrl(sourceUrl)) {
+    const payload = parseSsoMessage(event.nativeEvent?.data);
+    if (__DEV__) {
+      console.log("[SSO] message payload keys:", Object.keys(payload || {}));
+    }
+    if (!payload?.token) return;
+
+    const sourceTrusted = isTrustedSsoMessageUrl(sourceUrl);
+    const fallbackTrusted =
+      (!sourceUrl || sourceUrl === "about:blank") &&
+      isTrustedSsoMessageUrl(ssoCurrentUrlRef.current);
+    if (!sourceTrusted && !fallbackTrusted) {
       if (__DEV__) {
         console.warn(
           "[SSO] rejected WebView message from:",
@@ -575,12 +627,6 @@ const Login = ({ navigation, route }) => {
       }
       return;
     }
-
-    const payload = parseSsoMessage(event.nativeEvent?.data);
-    if (__DEV__) {
-      console.log("[SSO] message payload keys:", Object.keys(payload || {}));
-    }
-    if (!payload?.token) return;
 
     await completeSsoLogin(payload);
   };
@@ -1047,12 +1093,25 @@ const Login = ({ navigation, route }) => {
               }
               ssoCurrentUrlRef.current = request.url;
               if (handleSsoNavigationUrl(request.url)) return false;
-              if (isSsoCallbackUrl(request.url) || isSsoResultUrl(request.url)) {
-                setHideSsoContent(true);
+              if (
+                isSsoCallbackUrl(request.url) ||
+                isSsoResultUrl(request.url)
+              ) {
+                setHideSsoContent(isSsoCallbackUrl(request.url));
                 setSsoPageLoading(true);
                 startSsoCallbackTimeout();
               }
               return true;
+            }}
+            onNavigationStateChange={(navState) => {
+              const url = navState?.url;
+              debugSso("state", url);
+              ssoCurrentUrlRef.current = url || ssoCurrentUrlRef.current;
+              if (handleSsoNavigationUrl(url)) return;
+              if (isSsoCallbackUrl(url) || isSsoResultUrl(url)) {
+                startSsoCallbackTimeout();
+                ssoWebViewRef.current?.injectJavaScript(SSO_CAPTURE_SCRIPT);
+              }
             }}
             onLoadStart={(event) => {
               const url = event.nativeEvent?.url;
@@ -1060,7 +1119,7 @@ const Login = ({ navigation, route }) => {
               ssoCurrentUrlRef.current = url || ssoCurrentUrlRef.current;
               handleSsoNavigationUrl(url);
               setSsoPageLoading(true);
-              setHideSsoContent(isSsoCallbackUrl(url) || isSsoResultUrl(url));
+              setHideSsoContent(isSsoCallbackUrl(url));
               if (isSsoCallbackUrl(url) || isSsoResultUrl(url)) {
                 startSsoCallbackTimeout();
               }
@@ -1071,7 +1130,7 @@ const Login = ({ navigation, route }) => {
               ssoCurrentUrlRef.current = url || ssoCurrentUrlRef.current;
               handleSsoNavigationUrl(url);
               setSsoPageLoading(false);
-              setHideSsoContent(isSsoCallbackUrl(url) || isSsoResultUrl(url));
+              setHideSsoContent(isSsoCallbackUrl(url));
               if (isSsoCallbackUrl(url) || isSsoResultUrl(url)) {
                 startSsoCallbackTimeout();
                 ssoWebViewRef.current?.injectJavaScript(SSO_CAPTURE_SCRIPT);
