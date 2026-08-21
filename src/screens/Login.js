@@ -169,6 +169,24 @@ const isSsoCallbackUrl = (url = "") =>
   String(url).includes("token=") ||
   String(url).includes("access_token=");
 
+const getSsoPayloadFromUrl = (url = "") => {
+  const parsed = parseUrl(url);
+  if (!parsed) return null;
+
+  const readToken = (params) =>
+    params.get("token") ||
+    params.get("access_token") ||
+    params.get("ssoToken") ||
+    params.get("passportToken");
+
+  const searchToken = readToken(parsed.searchParams);
+  const hashParams = new URLSearchParams(parsed.hash.replace(/^#/, ""));
+  const hashToken = readToken(hashParams);
+  const token = searchToken || hashToken;
+
+  return token ? { token } : null;
+};
+
 const HIDE_SSO_CALLBACK_SCRIPT = `
   (function () {
     if (
@@ -200,11 +218,18 @@ const SSO_CAPTURE_SCRIPT = `
 
     try {
       var params = new URLSearchParams(window.location.search || '');
+      var hashParams = new URLSearchParams(
+        String(window.location.hash || '').replace(/^#/, '')
+      );
       var token =
         params.get('token') ||
         params.get('access_token') ||
         params.get('ssoToken') ||
-        params.get('passportToken');
+        params.get('passportToken') ||
+        hashParams.get('token') ||
+        hashParams.get('access_token') ||
+        hashParams.get('ssoToken') ||
+        hashParams.get('passportToken');
       if (token) {
         sendPayload({ token: token });
         return true;
@@ -557,6 +582,12 @@ const Login = ({ navigation, route }) => {
     }
     if (!payload?.token) return;
 
+    await completeSsoLogin(payload);
+  };
+
+  const completeSsoLogin = async (payload) => {
+    if (ssoHandledRef.current || !payload?.token) return;
+
     ssoHandledRef.current = true;
     if (ssoTimeoutRef.current) {
       clearTimeout(ssoTimeoutRef.current);
@@ -572,6 +603,19 @@ const Login = ({ navigation, route }) => {
     } finally {
       setSsoLoading(false);
     }
+  };
+
+  const handleSsoNavigationUrl = (url = "") => {
+    if (!isSsoBackendUrl(url)) return false;
+
+    const payload = getSsoPayloadFromUrl(url);
+    if (!payload?.token) return false;
+
+    completeSsoLogin(payload).catch((error) => {
+      if (__DEV__) console.warn("[SSO] complete from URL failed:", error);
+      Alert.alert(t("login.signInFailedTitle"), t("login.ssoFailed"));
+    });
+    return true;
   };
 
   const handleLogin = async () => {
@@ -984,6 +1028,7 @@ const Login = ({ navigation, route }) => {
             onMessage={handleSsoMessage}
             injectedJavaScriptBeforeContentLoaded={HIDE_SSO_CALLBACK_SCRIPT}
             injectedJavaScript={SSO_CAPTURE_SCRIPT}
+            originWhitelist={["*"]}
             javaScriptEnabled
             domStorageEnabled
             sharedCookiesEnabled
@@ -1001,6 +1046,7 @@ const Login = ({ navigation, route }) => {
                 return false;
               }
               ssoCurrentUrlRef.current = request.url;
+              if (handleSsoNavigationUrl(request.url)) return false;
               if (isSsoCallbackUrl(request.url) || isSsoResultUrl(request.url)) {
                 setHideSsoContent(true);
                 setSsoPageLoading(true);
@@ -1012,6 +1058,7 @@ const Login = ({ navigation, route }) => {
               const url = event.nativeEvent?.url;
               debugSso("load start", url);
               ssoCurrentUrlRef.current = url || ssoCurrentUrlRef.current;
+              handleSsoNavigationUrl(url);
               setSsoPageLoading(true);
               setHideSsoContent(isSsoCallbackUrl(url) || isSsoResultUrl(url));
               if (isSsoCallbackUrl(url) || isSsoResultUrl(url)) {
@@ -1022,6 +1069,7 @@ const Login = ({ navigation, route }) => {
               const url = event.nativeEvent?.url;
               debugSso("load end", url);
               ssoCurrentUrlRef.current = url || ssoCurrentUrlRef.current;
+              handleSsoNavigationUrl(url);
               setSsoPageLoading(false);
               setHideSsoContent(isSsoCallbackUrl(url) || isSsoResultUrl(url));
               if (isSsoCallbackUrl(url) || isSsoResultUrl(url)) {
