@@ -640,6 +640,15 @@ const Login = ({ navigation, route }) => {
     setSsoPageLoading(false);
   };
 
+  const injectSsoCaptureScript = (delays = [0, 250, 750, 1500, 3000]) => {
+    delays.forEach((delay) => {
+      setTimeout(() => {
+        if (ssoHandledRef.current || !ssoWebViewRef.current) return;
+        ssoWebViewRef.current.injectJavaScript(SSO_CAPTURE_SCRIPT);
+      }, delay);
+    });
+  };
+
   const handleSsoMessage = async (event) => {
     if (ssoHandledRef.current) return;
 
@@ -1121,6 +1130,9 @@ const Login = ({ navigation, route }) => {
             domStorageEnabled
             sharedCookiesEnabled
             thirdPartyCookiesEnabled
+            setSupportMultipleWindows={false}
+            javaScriptCanOpenWindowsAutomatically
+            mixedContentMode="compatibility"
             startInLoadingState
             onShouldStartLoadWithRequest={(request) => {
               debugSso("request", request.url);
@@ -1142,6 +1154,7 @@ const Login = ({ navigation, route }) => {
                 setHideSsoContent(isSsoCallbackUrl(request.url));
                 setSsoPageLoading(true);
                 startSsoCallbackTimeout();
+                injectSsoCaptureScript([250, 750, 1500]);
               }
               return true;
             }}
@@ -1152,7 +1165,14 @@ const Login = ({ navigation, route }) => {
               if (handleSsoNavigationUrl(url)) return;
               if (isSsoCallbackUrl(url) || isSsoResultUrl(url)) {
                 startSsoCallbackTimeout();
-                ssoWebViewRef.current?.injectJavaScript(SSO_CAPTURE_SCRIPT);
+                injectSsoCaptureScript();
+              }
+            }}
+            onLoadProgress={(event) => {
+              const url = event.nativeEvent?.url;
+              const progress = event.nativeEvent?.progress ?? 0;
+              if (progress >= 0.45 && isSsoBackendUrl(url)) {
+                injectSsoCaptureScript([0, 300, 900]);
               }
             }}
             onLoadStart={(event) => {
@@ -1164,6 +1184,7 @@ const Login = ({ navigation, route }) => {
               setHideSsoContent(isSsoCallbackUrl(url));
               if (isSsoCallbackUrl(url) || isSsoResultUrl(url)) {
                 startSsoCallbackTimeout();
+                injectSsoCaptureScript([500, 1200]);
               }
             }}
             onLoadEnd={(event) => {
@@ -1173,9 +1194,20 @@ const Login = ({ navigation, route }) => {
               handleSsoNavigationUrl(url);
               setSsoPageLoading(false);
               setHideSsoContent(isSsoCallbackUrl(url));
+              if (isSsoBackendUrl(url)) {
+                injectSsoCaptureScript();
+              }
               if (isSsoCallbackUrl(url) || isSsoResultUrl(url)) {
                 startSsoCallbackTimeout();
-                ssoWebViewRef.current?.injectJavaScript(SSO_CAPTURE_SCRIPT);
+              }
+            }}
+            onOpenWindow={(event) => {
+              const url = event.nativeEvent?.targetUrl;
+              debugSso("open window", url);
+              if (isTrustedSsoNavigationUrl(url)) {
+                ssoCurrentUrlRef.current = url || ssoCurrentUrlRef.current;
+                handleSsoNavigationUrl(url);
+                injectSsoCaptureScript([300, 1000]);
               }
             }}
             renderLoading={() => (
