@@ -49,6 +49,7 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const status = error.response?.status;
+    const errorLabel = status ?? error.code ?? "NETWORK_ERROR";
 
     if (status === 401 && !error.config?.suppressAuthRedirect) {
       await clearAuthSession();
@@ -60,7 +61,7 @@ api.interceptors.response.use(
     }
 
     if (__DEV__ && !error.config?.suppressErrorLog) {
-      console.warn(`[API] ${status} ${error.config?.method?.toUpperCase()} ${error.config?.url}`, error.message);
+      console.warn(`[API] ${errorLabel} ${error.config?.method?.toUpperCase()} ${error.config?.url}`, error.message);
       if (error.response?.data) console.warn("[API] response body:", JSON.stringify(error.response.data, null, 2));
     }
 

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useState } from "react";
 import { ActivityIndicator, Alert, Image, ScrollView, StatusBar, Text, TouchableOpacity, View } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
@@ -168,13 +168,6 @@ export default function EResearch({ navigation }) {
       });
     } catch (_) {}
     finally { setProfileLoading(false); }
-  }, [canLoadLrd]);
-
-  useEffect(() => {
-    if (!canLoadLrd) return;
-    refetchProfile();
-    refetchEducation();
-    refetchExpertise();
   }, [canLoadLrd]);
 
   useFocusEffect(

@@ -55,9 +55,17 @@ export default function App() {
       const Notifications = require('expo-notifications');
 
       // ผู้ใช้แตะ notification ขณะ app ปิดอยู่ (killed state)
+      // รอให้ auth + navigation พร้อมก่อน (5s) เพื่อไม่ให้ทับ navigateToMain
       Notifications.getLastNotificationResponseAsync()
         .then((response) => {
-          if (response) handleNotificationResponse(response);
+          if (!response) return;
+          setTimeout(() => {
+            // เช็คว่าอยู่หน้าหลักแล้วค่อย navigate ไป Notifications
+            const currentRoute = navigationRef.getCurrentRoute?.()?.name;
+            if (currentRoute && currentRoute !== "Login") {
+              handleNotificationResponse(response);
+            }
+          }, 5000);
         })
         .catch((error) => {
           if (__DEV__) {

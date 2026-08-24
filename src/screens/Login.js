@@ -2,7 +2,6 @@ import React, { useState, useRef, useEffect } from "react";
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   Platform,
   ActivityIndicator,
@@ -21,7 +20,6 @@ import Animated, {
   withSpring,
   withTiming,
   withDelay,
-  withSequence,
 } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
@@ -44,8 +42,6 @@ const API_URL = API_BASE_URL;
 const SSO_BASE_URL =
   API_URL?.replace(/\/api\/?$/, "") || "https://urusmart.uru.ac.th";
 const SSO_REDIRECT_URL = `${SSO_BASE_URL}/auth/redirect`;
-const ENABLE_PASSWORD_LOGIN =
-  process.env.EXPO_PUBLIC_ENABLE_PASSWORD_LOGIN === "true";
 
 // ถ้าเพิ่ม URL scheme ใน app.json ในอนาคต ต้อง validate origin ก่อนรับ token
 const getSsoAccessTokenFromRoute = (route) =>
@@ -54,21 +50,6 @@ const getSsoAccessTokenFromRoute = (route) =>
   route?.params?.ssoToken ??
   route?.params?.passportToken ??
   "";
-
-const getLoginErrorMessage = (message, t) => {
-  const normalized = String(message || "")
-    .trim()
-    .toLowerCase();
-  if (
-    normalized.includes("invalid email or password") ||
-    normalized.includes("invalid username or password") ||
-    normalized.includes("invalid credentials")
-  ) {
-    return t("login.invalidCredentials");
-  }
-
-  return t("login.genericLoginError");
-};
 
 const parseSsoMessage = (message) => {
   try {
@@ -229,51 +210,21 @@ const SSO_CAPTURE_SCRIPT = `
   true;
 `;
 
-// ── Field ปกติ ไม่ใช้ Reanimated (ป้องกัน crash) ──────────────
-const Field = ({ label, icon, children, focused }) => (
-  <View className="mb-4">
-    <Text className="text-[12px] font-bold text-[#374151] mb-[6px] ml-1">
-      {label}
-    </Text>
-    <View
-      className="flex-row items-center bg-[#f5faf7] rounded-[14px] px-3 h-[54px]"
-      style={{
-        borderWidth: focused ? 2 : 1.5,
-        borderColor: focused ? "#0f7a55" : "#e3efe8",
-      }}
-    >
-      <View className="w-[34px] h-[34px] rounded-[10px] bg-[#e6f2ec] items-center justify-center mr-[10px]">
-        <Ionicons name={icon} size={18} color="#0f7a55" />
-      </View>
-      {children}
-    </View>
-  </View>
-);
-
 const Login = ({ navigation, route }) => {
   const { t } = useTranslation();
   const { top } = useSafeAreaInsets();
   const PT = top + 16;
   const PB = Platform.OS === "ios" ? 48 : 32;
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [ssoLoading, setSsoLoading] = useState(false);
   const [ssoPageLoading, setSsoPageLoading] = useState(false);
   const [hideSsoContent, setHideSsoContent] = useState(false);
   const [showSsoWebView, setShowSsoWebView] = useState(false);
-  const [emailFocused, setEmailFocused] = useState(false);
-  const [passFocused, setPassFocused] = useState(false);
   const [biometricAvailable, setBiometricAvailable] = useState(false);
   const [biometricLabel, setBiometricLabel] = useState("Biometric");
   const [biometricIcon, setBiometricIcon] = useState("finger-print-outline");
   const [biometricReady, setBiometricReady] = useState(false);
-  const [keyboardVisible, setKeyboardVisible] = useState(false);
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
   const scrollRef = useRef(null);
-  const focusedFieldRef = useRef(null);
-  const passwordRef = useRef(null);
   const ssoWebViewRef = useRef(null);
   const ssoTimeoutRef = useRef(null);
   const ssoHandledRef = useRef(false);
@@ -287,7 +238,6 @@ const Login = ({ navigation, route }) => {
   const textOpacity = useSharedValue(0);
   const cardY = useSharedValue(50);
   const cardOpacity = useSharedValue(0);
-  const btnScale = useSharedValue(1);
 
   useEffect(() => {
     logoScale.value = withSpring(1, { damping: 12, stiffness: 120 });
@@ -333,47 +283,6 @@ const Login = ({ navigation, route }) => {
     [],
   );
 
-  useEffect(() => {
-    const showEvent =
-      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
-    const hideEvent =
-      Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
-    const showSub = Keyboard.addListener(showEvent, (event) => {
-      setKeyboardVisible(true);
-      setKeyboardHeight(event.endCoordinates?.height ?? 0);
-
-      if (Platform.OS === "android") {
-        const targetY = focusedFieldRef.current === "password" ? 230 : 150;
-        setTimeout(() => {
-          scrollRef.current?.scrollTo({ y: targetY, animated: true });
-        }, 50);
-      }
-    });
-    const hideSub = Keyboard.addListener(hideEvent, () => {
-      setKeyboardVisible(false);
-      setKeyboardHeight(0);
-      focusedFieldRef.current = null;
-    });
-
-    return () => {
-      showSub.remove();
-      hideSub.remove();
-    };
-  }, []);
-
-  const scrollFocusedInputIntoView = (field, y = 0) => {
-    if (Platform.OS !== "android") return;
-    focusedFieldRef.current = field;
-    requestAnimationFrame(() => {
-      setTimeout(
-        () => {
-          scrollRef.current?.scrollTo({ y, animated: true });
-        },
-        keyboardVisible ? 80 : 260,
-      );
-    });
-  };
-
   const logoStyle = useAnimatedStyle(() => ({
     transform: [{ scale: logoScale.value }],
     opacity: logoOpacity.value,
@@ -386,10 +295,6 @@ const Login = ({ navigation, route }) => {
     transform: [{ translateY: cardY.value }],
     opacity: cardOpacity.value,
   }));
-  const btnStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: btnScale.value }],
-  }));
-
   const getBiometricLabel = (support) =>
     support?.hasFaceId ? t("login.faceId") : t("login.fingerprint");
 
@@ -576,50 +481,6 @@ const Login = ({ navigation, route }) => {
     }
   };
 
-  const handleLogin = async () => {
-    Keyboard.dismiss();
-    const trimmedEmail = email.trim();
-    const trimmedPassword = password.trim();
-    if (!trimmedEmail || !trimmedPassword) {
-      cardY.value = withSequence(
-        withTiming(-6, { duration: 60 }),
-        withTiming(6, { duration: 60 }),
-        withTiming(-4, { duration: 60 }),
-        withTiming(4, { duration: 60 }),
-        withSpring(0),
-      );
-      Alert.alert(t("login.alertTitle"), t("login.missingFields"));
-      return;
-    }
-    setLoading(true);
-    try {
-      const response = await fetch(`${API_URL}/auth/login`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify({
-          email: trimmedEmail,
-          password: trimmedPassword,
-        }),
-      });
-      const data = await response.json();
-      if (response.ok) {
-        await completeBackendLogin(data);
-      } else {
-        Alert.alert(
-          t("login.signInFailedTitle"),
-          getLoginErrorMessage(data.message, t),
-        );
-      }
-    } catch (_) {
-      Alert.alert(t("login.errorTitle"), t("login.networkError"));
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const triggerBiometric = async () => {
     let token;
     try {
@@ -659,13 +520,6 @@ const Login = ({ navigation, route }) => {
     navigateToMain();
   };
 
-  const onPressIn = () => {
-    btnScale.value = withSpring(0.96, { damping: 12 });
-  };
-  const onPressOut = () => {
-    btnScale.value = withSpring(1, { damping: 12 });
-  };
-
   return (
     <KeyboardAvoidingView
       className="flex-1"
@@ -703,12 +557,10 @@ const Login = ({ navigation, route }) => {
         contentContainerStyle={{
           flexGrow: 1,
           alignItems: "center",
-          justifyContent: keyboardVisible ? "flex-start" : "center",
+          justifyContent: "center",
           paddingHorizontal: 24,
-          paddingTop: keyboardVisible ? 8 : PT,
-          paddingBottom: keyboardVisible
-            ? Math.max(keyboardHeight + 20, PB)
-            : PB,
+          paddingTop: PT,
+          paddingBottom: PB,
         }}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
@@ -804,138 +656,10 @@ const Login = ({ navigation, route }) => {
               </LinearGradient>
             </TouchableOpacity>
 
-            {ENABLE_PASSWORD_LOGIN && (
-              <>
-                <View className="flex-row items-center my-4">
-                  <View className="flex-1 h-[1px] bg-[#e5eee9]" />
-                  <Text className="mx-3 text-[12px] font-bold text-[#8a9a94]">
-                    {t("login.or")}
-                  </Text>
-                  <View className="flex-1 h-[1px] bg-[#e5eee9]" />
-                </View>
-
-                {/* Email */}
-                <Field
-                  label={t("login.usernameLabel")}
-                  icon="person-outline"
-                  focused={emailFocused}
-                >
-                  <TextInput
-                    className="flex-1 text-[15px] text-[#1f2937] font-medium"
-                    style={{ height: 54, paddingVertical: 0 }}
-                    placeholder={t("login.usernamePlaceholder")}
-                    placeholderTextColor="#9ca3af"
-                    value={email}
-                    onChangeText={setEmail}
-                    onFocus={() => {
-                      setEmailFocused(true);
-                      scrollFocusedInputIntoView("email", 150);
-                    }}
-                    onBlur={() => setEmailFocused(false)}
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    spellCheck={false}
-                    keyboardType="default"
-                    returnKeyType="next"
-                    onSubmitEditing={() => passwordRef.current?.focus()}
-                    blurOnSubmit={false}
-                    underlineColorAndroid="transparent"
-                    textContentType="username"
-                  />
-                </Field>
-
-                {/* Password */}
-                <Field
-                  label={t("login.passwordLabel")}
-                  icon="lock-closed-outline"
-                  focused={passFocused}
-                >
-                  <TextInput
-                    ref={passwordRef}
-                    className="flex-1 text-[15px] text-[#1f2937] font-medium"
-                    style={{ height: 54, paddingVertical: 0 }}
-                    placeholder={t("login.passwordPlaceholder")}
-                    placeholderTextColor="#9ca3af"
-                    value={password}
-                    onChangeText={setPassword}
-                    onFocus={() => {
-                      setPassFocused(true);
-                      scrollFocusedInputIntoView("password", 230);
-                    }}
-                    onBlur={() => setPassFocused(false)}
-                    secureTextEntry={!showPassword}
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    spellCheck={false}
-                    keyboardType="default"
-                    returnKeyType="done"
-                    onSubmitEditing={handleLogin}
-                    underlineColorAndroid="transparent"
-                    textContentType="none"
-                  />
-                  <TouchableOpacity
-                    onPress={() => setShowPassword(!showPassword)}
-                    hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                  >
-                    <Ionicons
-                      name={showPassword ? "eye-outline" : "eye-off-outline"}
-                      size={20}
-                      color="#6b7a82"
-                    />
-                  </TouchableOpacity>
-                </Field>
-
-                {/* Sign in button */}
-                <Animated.View style={btnStyle}>
-                  <TouchableOpacity
-                    onPress={handleLogin}
-                    onPressIn={onPressIn}
-                    onPressOut={onPressOut}
-                    disabled={loading}
-                    activeOpacity={1}
-                  >
-                    <LinearGradient
-                      colors={
-                        loading
-                          ? ["#7bb8a4", "#7bb8a4"]
-                          : ["#0a6644", "#0f7a55", "#1a9068"]
-                      }
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 0 }}
-                      style={{
-                        height: 56,
-                        borderRadius: 16,
-                        alignItems: "center",
-                        justifyContent: "center",
-                        marginTop: 4,
-                        elevation: 4,
-                      }}
-                    >
-                      {loading ? (
-                        <ActivityIndicator color="#fff" />
-                      ) : (
-                        <View className="flex-row items-center gap-2">
-                          <Text className="text-white text-[16px] font-extrabold tracking-[0.8px]">
-                            {t("login.signIn")}
-                          </Text>
-                          <Ionicons
-                            name="arrow-forward"
-                            size={18}
-                            color="rgba(255,255,255,0.85)"
-                          />
-                        </View>
-                      )}
-                    </LinearGradient>
-                  </TouchableOpacity>
-                </Animated.View>
-              </>
-            )}
 
             {/* Biometric button */}
             {biometricAvailable && (
               <TouchableOpacity
-                onPressIn={onPressIn}
-                onPressOut={onPressOut}
                 className="flex-row items-center justify-center gap-2 mt-3 py-[14px] rounded-2xl border border-[#d4ece2]"
                 style={{ backgroundColor: "rgba(14,122,85,0.06)" }}
                 onPress={triggerBiometric}
@@ -990,6 +714,9 @@ const Login = ({ navigation, route }) => {
             domStorageEnabled
             sharedCookiesEnabled
             thirdPartyCookiesEnabled
+            originWhitelist={["*"]}
+            mixedContentMode="always"
+            cacheEnabled={false}
             startInLoadingState
             onShouldStartLoadWithRequest={(request) => {
               debugSso("request", request.url);

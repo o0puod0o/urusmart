@@ -5,6 +5,7 @@ const lrdUrl = (path) => `${LRD_API_BASE_URL.replace(/\/$/, "")}${path}`;
 
 const withLrdConfig = (config = {}) => ({
   ...config,
+  timeout: config.timeout ?? 30000,
   suppressAuthRedirect: config.suppressAuthRedirect ?? true,
 });
 
