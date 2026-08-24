@@ -38,6 +38,13 @@ import HumanSubjectsForm from "../screens/expert/forms/HumanSubjectsForm";
 import NotificationsScreen from "../screens/notifications/Notifications";
 import InAppBrowser from "../screens/shared/InAppBrowser";
 import EResearch from "../screens/e-research/EResearch";
+import ResearcherForm from "../screens/e-research/ResearcherForm";
+import ProjectList from "../screens/e-research/ProjectList";
+import ProjectForm from "../screens/e-research/ProjectForm";
+import ArticleList from "../screens/e-research/ArticleList";
+import ArticleForm from "../screens/e-research/ArticleForm";
+import ProfilePrint from "../screens/e-research/ProfilePrint";
+import ResearchDocumentDetail from "../screens/e-research/ResearchDocumentDetail";
 import ProfileDetail from "../screens/expert/ProfileDetail";
 import { colors } from "../theme/tokens";
 
@@ -244,6 +251,16 @@ export default function AppNavigator() {
       />
       <RootStack.Screen name="InAppBrowser" component={InAppBrowser} />
       <RootStack.Screen name="EResearch" component={EResearch} />
+      <RootStack.Screen name="ResearcherForm" component={ResearcherForm} />
+      <RootStack.Screen name="ProjectList" component={ProjectList} />
+      <RootStack.Screen name="ProjectForm" component={ProjectForm} />
+      <RootStack.Screen name="ArticleList" component={ArticleList} />
+      <RootStack.Screen name="ArticleForm" component={ArticleForm} />
+      <RootStack.Screen name="ProfilePrint" component={ProfilePrint} />
+      <RootStack.Screen
+        name="ResearchDocumentDetail"
+        component={ResearchDocumentDetail}
+      />
       <RootStack.Screen name="ProfileDetail" component={ProfileDetail} />
     </RootStack.Navigator>
   );

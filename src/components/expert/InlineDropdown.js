@@ -33,6 +33,7 @@ const InlineDropdown = ({
   selectedTextStyle,
   placeholderTextStyle,
   panelStyle,
+  compact = false,
 }) => {
   const { t } = useTranslation();
   const { height: screenHeight } = useWindowDimensions();
@@ -194,7 +195,7 @@ const InlineDropdown = ({
           >
             {hasValue ? (
               <View style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 7 }}>
-                <View style={styles.selectedDot} />
+                {!compact && <View style={styles.selectedDot} />}
                 <Text style={[styles.selectedText, selectedTextStyle]} numberOfLines={1}>{selected.label}</Text>
               </View>
             ) : (
@@ -272,17 +273,20 @@ const InlineDropdown = ({
                                 activeOpacity={0.65}
                                 style={[
                                   styles.optionRow,
+                                  compact && styles.optionRowCompact,
                                   isSelected && styles.optionRowSelected,
                                   i === filteredOptions.length - 1 && { borderBottomWidth: 0 },
                                 ]}
                               >
-                                <View style={styles.checkCircle}>
-                                  {isSelected && (
-                                    <View style={styles.checkCircleFilled}>
-                                      <Ionicons name="checkmark" size={10} color="#fff" />
-                                    </View>
-                                  )}
-                                </View>
+                                {!compact && (
+                                  <View style={styles.checkCircle}>
+                                    {isSelected && (
+                                      <View style={styles.checkCircleFilled}>
+                                        <Ionicons name="checkmark" size={10} color="#fff" />
+                                      </View>
+                                    )}
+                                  </View>
+                                )}
                                 <Text
                                   style={[
                                     styles.optionText,
@@ -293,6 +297,9 @@ const InlineDropdown = ({
                                 >
                                   {opt.label}
                                 </Text>
+                                {compact && isSelected && (
+                                  <Ionicons name="checkmark" size={16} color={colors.primary} />
+                                )}
                               </TouchableOpacity>
                             );
                           })
@@ -402,6 +409,12 @@ const styles = {
     borderBottomWidth: 1,
     borderBottomColor: "#edf3f0",
     gap: 10,
+  },
+  optionRowCompact: {
+    minHeight: 48,
+    paddingHorizontal: 10,
+    paddingVertical: 10,
+    gap: 4,
   },
   optionRowSelected: {
     backgroundColor: colors.primarySoft,

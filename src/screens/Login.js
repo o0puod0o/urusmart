@@ -156,6 +156,21 @@ const isSsoCallbackUrl = (url = "") =>
   String(url).includes("token=") ||
   String(url).includes("access_token=");
 
+const extractTokenFromUrl = (url = "") => {
+  try {
+    const parsed = new URL(String(url));
+    return (
+      parsed.searchParams.get("token") ||
+      parsed.searchParams.get("access_token") ||
+      parsed.searchParams.get("ssoToken") ||
+      parsed.searchParams.get("passportToken") ||
+      null
+    );
+  } catch {
+    return null;
+  }
+};
+
 const HIDE_SSO_CALLBACK_SCRIPT = `
   (function () {
     if (
@@ -988,6 +1003,20 @@ const Login = ({ navigation, route }) => {
                 return false;
               }
               ssoCurrentUrlRef.current = request.url;
+              // ดัก token จาก URL ตรงๆ (Android มักไม่ fire onMessage)
+              const urlToken = extractTokenFromUrl(request.url);
+              if (urlToken && !ssoHandledRef.current) {
+                ssoHandledRef.current = true;
+                if (ssoTimeoutRef.current) {
+                  clearTimeout(ssoTimeoutRef.current);
+                  ssoTimeoutRef.current = null;
+                }
+                setHideSsoContent(true);
+                setSsoLoading(true);
+                closeSsoLogin();
+                loginWithSsoToken(urlToken).finally(() => setSsoLoading(false));
+                return false;
+              }
               if (isSsoCallbackUrl(request.url)) {
                 setHideSsoContent(true);
                 setSsoPageLoading(true);
@@ -1000,16 +1029,34 @@ const Login = ({ navigation, route }) => {
               debugSso("load start", url);
               ssoCurrentUrlRef.current = url || ssoCurrentUrlRef.current;
               setSsoPageLoading(true);
-              setHideSsoContent(isSsoCallbackUrl(url));
-              if (isSsoCallbackUrl(url)) {
-                startSsoCallbackTimeout();
+              const urlToken = extractTokenFromUrl(url);
+              if (urlToken && !ssoHandledRef.current) {
+                ssoHandledRef.current = true;
+                if (ssoTimeoutRef.current) { clearTimeout(ssoTimeoutRef.current); ssoTimeoutRef.current = null; }
+                setHideSsoContent(true);
+                setSsoLoading(true);
+                closeSsoLogin();
+                loginWithSsoToken(urlToken).finally(() => setSsoLoading(false));
+                return;
               }
+              setHideSsoContent(isSsoCallbackUrl(url));
+              if (isSsoCallbackUrl(url)) startSsoCallbackTimeout();
             }}
             onLoadEnd={(event) => {
               const url = event.nativeEvent?.url;
               debugSso("load end", url);
               ssoCurrentUrlRef.current = url || ssoCurrentUrlRef.current;
               setSsoPageLoading(false);
+              const urlToken = extractTokenFromUrl(url);
+              if (urlToken && !ssoHandledRef.current) {
+                ssoHandledRef.current = true;
+                if (ssoTimeoutRef.current) { clearTimeout(ssoTimeoutRef.current); ssoTimeoutRef.current = null; }
+                setHideSsoContent(true);
+                setSsoLoading(true);
+                closeSsoLogin();
+                loginWithSsoToken(urlToken).finally(() => setSsoLoading(false));
+                return;
+              }
               setHideSsoContent(isSsoCallbackUrl(url));
               if (isSsoCallbackUrl(url)) {
                 startSsoCallbackTimeout();

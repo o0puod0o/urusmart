@@ -18,15 +18,58 @@ export const toISODate = (date) => {
   return `${y}-${m}-${d}`;
 };
 
-/** แสดงวันที่เป็น วว/ดด/ปปปป พ.ศ. — ใช้แสดงผลเท่านั้น ไม่เก็บ */
-export const formatThaiDate = (isoDateStr) => {
+/** แสดงวันที่เป็น วว/ดด/ปปปป พ.ศ. หรือ ค.ศ. — ใช้แสดงผลเท่านั้น ไม่เก็บ */
+export const formatThaiDate = (isoDateStr, language = "th") => {
   if (!isoDateStr || isoDateStr.startsWith("0000")) return "";
+  const isEnglish = String(language).toLowerCase().startsWith("en");
   const m = isoDateStr.match(/^(\d{4})-(\d{2})-(\d{2})/);
   if (m) {
-    const beYear = parseInt(m[1], 10) + 543;
-    return `${m[3]}/${m[2]}/${beYear}`;
+    const year = parseInt(m[1], 10) + (isEnglish ? 0 : 543);
+    return `${m[3]}/${m[2]}/${year}`;
   }
   const d = new Date(isoDateStr);
   if (isNaN(d.getTime())) return "";
-  return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear() + 543}`;
+  const year = d.getFullYear() + (isEnglish ? 0 : 543);
+  return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${year}`;
+};
+
+const THAI_MONTHS = [
+  "มกราคม",
+  "กุมภาพันธ์",
+  "มีนาคม",
+  "เมษายน",
+  "พฤษภาคม",
+  "มิถุนายน",
+  "กรกฎาคม",
+  "สิงหาคม",
+  "กันยายน",
+  "ตุลาคม",
+  "พฤศจิกายน",
+  "ธันวาคม",
+];
+
+const ENGLISH_MONTHS = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
+
+/** แสดงวันที่แบบไทยเต็ม เช่น 22 สิงหาคม 2569 */
+export const formatThaiDateLong = (isoDateStr, language = "th") => {
+  if (!isoDateStr || isoDateStr.startsWith("0000")) return "";
+  const date = parseISOToDate(isoDateStr);
+  if (isNaN(date.getTime())) return "";
+  const isEnglish = String(language).toLowerCase().startsWith("en");
+  const months = isEnglish ? ENGLISH_MONTHS : THAI_MONTHS;
+  const year = date.getFullYear() + (isEnglish ? 0 : 543);
+  return `${date.getDate()} ${months[date.getMonth()]} ${year}`;
 };
