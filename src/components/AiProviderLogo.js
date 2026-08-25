@@ -1,5 +1,6 @@
 import React from "react";
 import { Image } from "react-native";
+import { Asset } from "expo-asset";
 
 // normalize provider name จาก backend ให้ตรงกับ key ที่ใช้
 const PROVIDER_ALIAS = {
@@ -41,6 +42,9 @@ const LOGOS = {
   Nova:      require("../assets/ai-logo/nova_aws.png"),
   xAI:       require("../assets/ai-logo/xai.png"),
 };
+
+// โหลด logo ทั้งหมดล่วงหน้าตอน app เริ่ม กัน modal เลือกโมเดลขึ้นแบบทยอยโหลด
+Asset.loadAsync(Object.values(LOGOS)).catch(() => {});
 
 export default function AiProviderLogo({ provider, size = 24 }) {
   const normalized = normalizeProvider(provider);

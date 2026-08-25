@@ -7,7 +7,7 @@ export const fetchChatModels = () =>
     suppressErrorLog: true,
   });
 
-export const sendChatMessage = (message, conversationId = null, model = null) =>
+export const sendChatMessage = (message, conversationId = null, model = null, signal = null) =>
   api.post(
     "/chat",
     {
@@ -15,7 +15,7 @@ export const sendChatMessage = (message, conversationId = null, model = null) =>
       ...(conversationId ? { conversation_id: conversationId } : {}),
       ...(model ? { model } : {}),
     },
-    { timeout: 30000 },
+    { timeout: 30000, ...(signal ? { signal } : {}) },
   );
 
 export const fetchChatConversations = () =>

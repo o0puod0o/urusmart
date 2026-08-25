@@ -16,8 +16,10 @@ import {
   View,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import * as Clipboard from "expo-clipboard";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
+import { colors, shadows } from "../theme/tokens";
 import HeaderBar from "../components/HeaderBar";
 import AiProviderLogo, { normalizeProvider } from "../components/AiProviderLogo";
 import useCurrentUser from "../hook/useCurrentUser";
@@ -76,9 +78,48 @@ const TypingBubble = () => (
 );
 
 // ── Chat bubble ────────────────────────────────────────────
-const ChatBubble = ({ item, onRetry }) => {
+const ChatBubble = ({ item, onRetry, onEdit }) => {
   const { t } = useTranslation();
   const isUser = item.role === "user";
+  const [menuVisible, setMenuVisible] = useState(false);
+  const [menuPos, setMenuPos] = useState({ top: 0, left: 0 });
+  const bubbleRef = useRef(null);
+  const { width: SCREEN_W, height: SCREEN_H } = useWindowDimensions();
+  const MENU_W = Math.min(218, SCREEN_W - 32);
+
+  const formatBubbleTime = (value) => {
+    if (!value) return "";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "";
+    return date.toLocaleString("th-TH", {
+      day: "2-digit", month: "short", year: "2-digit",
+      hour: "2-digit", minute: "2-digit",
+    });
+  };
+
+  const handleCopy = async () => {
+    await Clipboard.setStringAsync(item.text ?? "");
+    setMenuVisible(false);
+  };
+
+  const handleEdit = () => {
+    setMenuVisible(false);
+    onEdit?.(item.id, item.text ?? "");
+  };
+
+  const menuHeight = isUser ? 158 : 102;
+
+  const openMenu = () => {
+    bubbleRef.current?.measureInWindow((x, y, w, h) => {
+      let top = y + h + 8;
+      if (top + menuHeight > SCREEN_H - 24) top = y - menuHeight - 8;
+      top = Math.max(24, top);
+      let left = isUser ? x + w - MENU_W : x;
+      left = Math.max(12, Math.min(left, SCREEN_W - MENU_W - 12));
+      setMenuPos({ top, left });
+      setMenuVisible(true);
+    });
+  };
 
   if (item.error) {
     return (
@@ -98,25 +139,114 @@ const ChatBubble = ({ item, onRetry }) => {
   }
 
   return (
-    <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 8, justifyContent: isUser ? "flex-end" : "flex-start" }}>
-      {!isUser && (
-        <LinearGradient colors={["#0a6644", "#0f7a55"]} style={{ width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center" }}>
-          <Ionicons name="sparkles" size={15} color="rgba(255,255,255,0.95)" />
-        </LinearGradient>
-      )}
-      {isUser ? (
-        <LinearGradient
-          colors={["#0f7a55", "#1a9068"]}
-          start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-          style={{ maxWidth: "78%", borderRadius: 18, borderBottomRightRadius: 6, paddingHorizontal: 14, paddingVertical: 11 }}
-        >
-          <Text style={{ color: "#fff", fontSize: 14, lineHeight: 21, fontWeight: "500" }}>{item.text}</Text>
-        </LinearGradient>
-      ) : (
-        <View style={{ maxWidth: "78%", backgroundColor: "#fff", borderRadius: 18, borderBottomLeftRadius: 6, paddingHorizontal: 14, paddingVertical: 11, borderWidth: 1, borderColor: "#e8ede9", elevation: 1, shadowColor: "#064e35", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4 }}>
-          <Text style={{ color: "#102019", fontSize: 14, lineHeight: 21, fontWeight: "500" }}>{item.text}</Text>
+    <View style={{ width: "100%" }}>
+      <View
+        style={{
+          width: "100%",
+          flexDirection: "row",
+          alignItems: "flex-end",
+          gap: 8,
+          justifyContent: isUser ? "flex-end" : "flex-start",
+        }}
+      >
+        {!isUser && (
+          <LinearGradient colors={["#0a6644", "#0f7a55"]} style={{ width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center" }}>
+            <Ionicons name="sparkles" size={15} color="rgba(255,255,255,0.95)" />
+          </LinearGradient>
+        )}
+        {isUser ? (
+          <Pressable
+            ref={bubbleRef}
+            onLongPress={openMenu}
+            delayLongPress={350}
+            style={{ maxWidth: "66%", minWidth: 88, flexShrink: 1, alignSelf: "flex-end" }}
+          >
+            <LinearGradient
+              colors={[colors.primary, "#1a9068"]}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+              style={{ borderRadius: 22, borderBottomRightRadius: 7, paddingHorizontal: 16, paddingVertical: 12 }}
+            >
+              <Text style={{ color: "#fff", fontSize: 15, lineHeight: 22, fontWeight: "500" }}>{item.text}</Text>
+            </LinearGradient>
+          </Pressable>
+        ) : (
+          <Pressable ref={bubbleRef} onLongPress={openMenu} delayLongPress={350} style={{ maxWidth: "78%", backgroundColor: "#fff", borderRadius: 18, borderBottomLeftRadius: 6, paddingHorizontal: 14, paddingVertical: 11, borderWidth: 1, borderColor: "#e8ede9", elevation: 1, shadowColor: "#064e35", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4 }}>
+            <Text style={{ color: "#102019", fontSize: 14, lineHeight: 21, fontWeight: "500" }}>{item.text}</Text>
+          </Pressable>
+        )}
+      </View>
+
+      {/* Inline action row under stopped user bubble */}
+      {item.stopped && isUser && (
+        <View style={{ flexDirection: "row", justifyContent: "flex-end", marginTop: 5, gap: 6 }}>
+          <TouchableOpacity onPress={handleEdit} activeOpacity={0.75}
+            style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "#f0f9f4", borderWidth: 1, borderColor: "#b8d9c8", borderRadius: 20, paddingHorizontal: 11, paddingVertical: 5 }}>
+            <Ionicons name="pencil-outline" size={13} color="#0f7a55" />
+            <Text style={{ color: "#0f7a55", fontSize: 12, fontWeight: "700" }}>แก้ไข</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={handleCopy} activeOpacity={0.75}
+            style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "#f0f9f4", borderWidth: 1, borderColor: "#b8d9c8", borderRadius: 20, paddingHorizontal: 11, paddingVertical: 5 }}>
+            <Ionicons name="copy-outline" size={13} color="#0f7a55" />
+            <Text style={{ color: "#0f7a55", fontSize: 12, fontWeight: "700" }}>คัดลอก</Text>
+          </TouchableOpacity>
         </View>
       )}
+
+      {/* Long press popup */}
+      <Modal visible={menuVisible} transparent animationType="fade" statusBarTranslucent onRequestClose={() => setMenuVisible(false)}>
+        <View style={{ flex: 1 }}>
+          <Pressable
+            style={{ position: "absolute", top: 0, right: 0, bottom: 0, left: 0, backgroundColor: "rgba(8, 30, 22, 0.30)" }}
+            onPress={() => setMenuVisible(false)}
+          />
+          <View
+            style={{
+            position: "absolute",
+            top: menuPos.top,
+            left: menuPos.left,
+            width: MENU_W,
+            borderRadius: 24,
+            overflow: "hidden",
+            backgroundColor: "#fbfcfd",
+            ...shadows.floating,
+          }}
+          >
+            <View style={{ height: 46, justifyContent: "center", paddingHorizontal: 18 }}>
+              <Text style={{ color: "#7a7f87", fontSize: 15, fontWeight: "500" }} numberOfLines={1}>
+                {formatBubbleTime(item.createdAt) || "ข้อความ"}
+              </Text>
+            </View>
+
+            <TouchableOpacity
+              onPress={handleCopy}
+              activeOpacity={0.68}
+              style={{
+                height: 56,
+                justifyContent: "center",
+                backgroundColor: "#fbfcfd",
+              }}
+            >
+              <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 18 }}>
+                <Ionicons name="copy-outline" size={25} color="#111827" />
+                <Text style={{ color: "#111827", fontSize: 18, fontWeight: "500", marginLeft: 18 }}>คัดลอก</Text>
+              </View>
+            </TouchableOpacity>
+
+            {isUser && (
+              <TouchableOpacity
+                onPress={handleEdit}
+                activeOpacity={0.68}
+                style={{ height: 56, justifyContent: "center", backgroundColor: "#fbfcfd" }}
+              >
+                <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 18 }}>
+                  <Ionicons name="pencil-outline" size={25} color="#111827" />
+                  <Text style={{ color: "#111827", fontSize: 18, fontWeight: "500", marginLeft: 18 }}>แก้ไข</Text>
+                </View>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -423,6 +553,7 @@ export default function ChatbotPage({ navigation }) {
   const { user, logout } = useCurrentUser(navigation);
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const listRef = useRef(null);
+  const inputRef = useRef(null);
   const messagesRef = useRef([]);
   const historyReadyRef = useRef(false);
   const usingRemoteHistoryRef = useRef(false);
@@ -546,9 +677,16 @@ export default function ChatbotPage({ navigation }) {
       .catch(() => {});
   }, [messages, conversationId]);
 
-  // scroll to bottom on new message
+  const scrollToBottom = useCallback((animated = true) => {
+    // สอง pass: ทันทีและรอ layout เสร็จ
+    listRef.current?.scrollToEnd?.({ animated });
+    const t = setTimeout(() => listRef.current?.scrollToEnd?.({ animated }), 120);
+    return () => clearTimeout(t);
+  }, []);
+
+  // scroll to bottom on new message or typing indicator
   useEffect(() => {
-    const timer = setTimeout(() => listRef.current?.scrollToEnd?.({ animated: true }), 80);
+    const timer = setTimeout(() => listRef.current?.scrollToEnd?.({ animated: true }), 60);
     return () => clearTimeout(timer);
   }, [messages, sending]);
 
@@ -571,15 +709,27 @@ export default function ChatbotPage({ navigation }) {
     abortControllerRef.current?.abort();
     abortControllerRef.current = null;
     setSending(false);
+    // ทำเครื่องหมาย stopped บน user message ล่าสุด
+    setMessages((cur) => {
+      const last = cur[cur.length - 1];
+      if (last?.role === "user") {
+        return [...cur.slice(0, -1), { ...last, stopped: true }];
+      }
+      return cur;
+    });
   }, []);
 
   const sendMessage = useCallback(async (preset) => {
     const text = (preset ?? input).trim();
     if (!text || sending) return;
     const userMsg = createChatMessage("user", text);
-    setMessages((cur) => [...cur, userMsg]);
+    // ล้าง stopped bubble ก่อนที่จะส่งข้อความใหม่
+    setMessages((cur) => [...cur.filter((m) => !m.stopped), userMsg]);
     setInput("");
     setSending(true);
+    scrollToBottom();
+    // abort request เก่าที่ค้างอยู่ก่อนเสมอ
+    abortControllerRef.current?.abort();
     const controller = new AbortController();
     abortControllerRef.current = controller;
     try {
@@ -593,7 +743,7 @@ export default function ChatbotPage({ navigation }) {
         }
       }
 
-      const res = await sendChatMessage(text, targetConversationId, selectedModel);
+      const res = await sendChatMessage(text, targetConversationId, selectedModel, controller.signal);
       const nextConversationId =
         extractRemoteConversationId(res?.data) ?? targetConversationId;
       if (nextConversationId && String(nextConversationId) !== conversationId) {
@@ -1266,10 +1416,33 @@ export default function ChatbotPage({ navigation }) {
           ref={listRef}
           data={messages}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }) => <ChatBubble item={item} onRetry={retryMessage} />}
+          renderItem={({ item }) => (
+            <ChatBubble
+              item={item}
+              onRetry={retryMessage}
+              onEdit={(id, text) => {
+                // abort request ที่ค้างอยู่ก่อนเสมอ
+                abortControllerRef.current?.abort();
+                abortControllerRef.current = null;
+                setSending(false);
+                setMessages((cur) => {
+                  const idx = cur.findIndex((m) => m.id === id);
+                  if (idx === -1) return cur;
+                  // ลบ user bubble นี้ + AI replies ทั้งหมดที่ตามมา จนถึง user bubble ถัดไป
+                  let end = idx + 1;
+                  while (end < cur.length && cur[end].role !== "user") end++;
+                  return [...cur.slice(0, idx), ...cur.slice(end)];
+                });
+                setInput(text);
+                inputRef.current?.focus();
+              }}
+            />
+          )}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
+          onContentSizeChange={() => listRef.current?.scrollToEnd?.({ animated: true })}
+          onLayout={() => listRef.current?.scrollToEnd?.({ animated: false })}
           contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 12, gap: 12 }}
           ListEmptyComponent={
             <View style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingTop: 60, gap: 12 }}>
@@ -1291,6 +1464,7 @@ export default function ChatbotPage({ navigation }) {
         {/* Composer */}
         <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 10, backgroundColor: "#fff", paddingHorizontal: 16, paddingTop: 10, paddingBottom: Platform.OS === "ios" ? 18 : 14 }}>
           <TextInput
+            ref={inputRef}
             style={{ flex: 1, minHeight: 44, maxHeight: 110, borderRadius: 16, borderWidth: 1, borderColor: "#dce8e2", backgroundColor: "#f8fbf9", color: "#102019", paddingHorizontal: 14, paddingTop: 11, paddingBottom: 10, fontSize: 14, fontWeight: "500" }}
             value={input}
             onChangeText={setInput}

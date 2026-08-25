@@ -218,6 +218,7 @@ export async function syncNotificationInboxFromBackend() {
   try {
     const response = await api.get("/notifications", {
       params: { page: 1, per_page: NOTIFICATION_INBOX_LIMIT },
+      timeout: 5000,
       suppressErrorLog: true,
       suppressAuthRedirect: true,
     });
