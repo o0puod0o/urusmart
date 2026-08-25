@@ -399,20 +399,22 @@ const HistoryRow = ({ item, active, onPress, onMenu }) => (
 );
 
 const FALLBACK_MODELS = [
-  { provider: "Claude", id: "claude-sonnet-5", display_name: "Claude Sonnet 5" },
-  { provider: "Claude", id: "claude-opus-5", display_name: "Claude Opus 5" },
-  { provider: "Claude", id: "claude-haiku-4-5-20251001", display_name: "Claude Haiku 4.5" },
-  { provider: "OpenAI", id: "gpt-4o", display_name: "GPT-4o" },
-  { provider: "OpenAI", id: "gpt-4o-mini", display_name: "GPT-4o mini" },
-  { provider: "Gemini", id: "gemini-2.0-flash", display_name: "Gemini 2.0 Flash" },
-  { provider: "Gemini", id: "gemini-2.5-pro", display_name: "Gemini 2.5 Pro" },
-  { provider: "DeepSeek", id: "deepseek-chat", display_name: "DeepSeek Chat" },
-  { provider: "DeepSeek", id: "deepseek-reasoner", display_name: "DeepSeek Reasoner" },
-  { provider: "Meta AI", id: "meta-llama/llama-4-scout", display_name: "Llama 4 Scout" },
-  { provider: "Mistral", id: "mistral-large-latest", display_name: "Mistral Large" },
-  { provider: "Nova", id: "amazon.nova-pro-v1:0", display_name: "Amazon Nova Pro" },
-  { provider: "Qwen", id: "qwen-max", display_name: "Qwen Max" },
-  { provider: "xAI", id: "grok-3", display_name: "Grok 3" },
+  { provider: "Claude",     id: "claude-sonnet-5",        display_name: "Claude Sonnet 5" },
+  { provider: "Claude",     id: "claude-sonnet-4.6",      display_name: "Claude Sonnet 4.6" },
+  { provider: "Deepseek",   id: "deepseek-v4-pro",        display_name: "DeepSeek V4 Pro" },
+  { provider: "Deepseek",   id: "deepseek-v4-flash",      display_name: "DeepSeek V4 Flash" },
+  { provider: "Gemini",     id: "gemini-3.7-flash",       display_name: "Gemini 3.7 Flash" },
+  { provider: "Gemini",     id: "gemini-2.5-flash-lite",  display_name: "Gemini 2.5 Flash Lite" },
+  { provider: "Meta AI",    id: "llama-4-maverick",       display_name: "Llama 4 Maverick" },
+  { provider: "Meta AI",    id: "llama-4-scout",          display_name: "Llama 4 Scout" },
+  { provider: "Mistral",    id: "mistral-medium-3",       display_name: "Mistral Medium 3" },
+  { provider: "Nova (AWS)", id: "nova-2-lite-v1",         display_name: "Nova 2 Lite" },
+  { provider: "OpenAI",     id: "gpt-5.6-terra-pro",      display_name: "GPT-5.6 Terra Pro" },
+  { provider: "OpenAI",     id: "gpt-5.4",                display_name: "GPT-5.4" },
+  { provider: "Qwen",       id: "qwen3.7-max",            display_name: "Qwen 3.7 Max" },
+  { provider: "Qwen",       id: "qwen3.7-plus",           display_name: "Qwen 3.7 Plus" },
+  { provider: "xAI",        id: "grok-4.5",               display_name: "Grok 4.5" },
+  { provider: "xAI",        id: "grok-4.3",               display_name: "Grok 4.3" },
 ];
 
 // ── Main ───────────────────────────────────────────────────
