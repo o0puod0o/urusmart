@@ -1012,7 +1012,7 @@ export default function ChatbotPage({ navigation }) {
                     keyExtractor={(m) => m.id ?? m.name}
                     horizontal
                     showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={{ paddingHorizontal: 20, gap: 8 }}
+                    contentContainerStyle={{ paddingHorizontal: 20, gap: 10 }}
                     renderItem={({ item: m }) => {
                       const modelId = m.id ?? m.model_id ?? m.name;
                       const label = m.display_name ?? m.name ?? modelId;
@@ -1026,14 +1026,19 @@ export default function ChatbotPage({ navigation }) {
                             gap: 6,
                             paddingHorizontal: 16,
                             paddingVertical: 10,
-                            borderRadius: 99,
-                            backgroundColor: isSelected ? ps.color : pressed ? "#f0f5f2" : "#f5f8f6",
-                            borderWidth: isSelected ? 0 : 1.5,
-                            borderColor: "#e0ebe5",
+                            borderRadius: 12,
+                            backgroundColor: isSelected ? ps.color + "18" : pressed ? "#f0f5f2" : "#fff",
+                            borderWidth: isSelected ? 2 : 1.5,
+                            borderColor: isSelected ? ps.color : "#dde8e3",
+                            shadowColor: "#000",
+                            shadowOffset: { width: 0, height: 1 },
+                            shadowOpacity: 0.06,
+                            shadowRadius: 3,
+                            elevation: 1,
                           })}
                         >
-                          {isSelected && <Ionicons name="checkmark" size={14} color="#fff" />}
-                          <Text style={{ color: isSelected ? "#fff" : "#2d4840", fontSize: 14, fontWeight: "700" }}>
+                          {isSelected && <Ionicons name="checkmark-circle" size={15} color={ps.color} />}
+                          <Text style={{ color: isSelected ? ps.color : "#2d4840", fontSize: 14, fontWeight: isSelected ? "800" : "600" }}>
                             {label}
                           </Text>
                         </Pressable>
