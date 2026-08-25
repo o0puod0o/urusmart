@@ -972,17 +972,18 @@ export default function ChatbotPage({ navigation }) {
     return (
       <Modal
         visible={modelSelectorVisible}
-        animationType="fade"
+        animationType="slide"
         transparent
         onRequestClose={() => setModelSelectorVisible(false)}
       >
-        {/* Backdrop */}
-        <Pressable
-          style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "flex-end" }}
-          onPress={() => setModelSelectorVisible(false)}
-        >
+        <View style={{ flex: 1, justifyContent: "flex-end" }}>
+          {/* Backdrop — แยกออกจาก sheet ไม่ให้ block scroll */}
+          <Pressable
+            style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.45)" }}
+            onPress={() => setModelSelectorVisible(false)}
+          />
           {/* Sheet */}
-          <View style={{ backgroundColor: "#fff", borderTopLeftRadius: 28, borderTopRightRadius: 28, maxHeight: "80%", paddingBottom: Platform.OS === "ios" ? 36 : 24 }}>
+          <View style={{ backgroundColor: "#fff", borderTopLeftRadius: 28, borderTopRightRadius: 28, maxHeight: "82%", paddingBottom: Platform.OS === "ios" ? 36 : 20 }}>
 
             {/* Handle */}
             <View style={{ alignItems: "center", paddingTop: 12, paddingBottom: 4 }}>
@@ -1048,7 +1049,7 @@ export default function ChatbotPage({ navigation }) {
               })}
             </ScrollView>
           </View>
-        </Pressable>
+        </View>
       </Modal>
     );
   };
