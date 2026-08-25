@@ -1,6 +1,6 @@
 import React from "react";
 import { View } from "react-native";
-import Svg, { Circle, Ellipse, G, Path, Polygon, Rect } from "react-native-svg";
+import Svg, { Circle, Defs, LinearGradient, Path, Rect, Stop } from "react-native-svg";
 
 // ── Claude (Anthropic) ─────────────────────────────────────
 const LogoClaude = ({ size = 24 }) => (
@@ -25,17 +25,17 @@ const LogoOpenAI = ({ size = 24 }) => (
 // ── Google Gemini ──────────────────────────────────────────
 const LogoGemini = ({ size = 24 }) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Defs>
+      <LinearGradient id="gemini-grad" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse">
+        <Stop offset="0" stopColor="#4285F4" />
+        <Stop offset="0.5" stopColor="#9B72CB" />
+        <Stop offset="1" stopColor="#D96570" />
+      </LinearGradient>
+    </Defs>
     <Path
       d="M12 24A14.304 14.304 0 000 12 14.304 14.304 0 0012 0a14.304 14.304 0 0012 12 14.304 14.304 0 00-12 12"
       fill="url(#gemini-grad)"
     />
-    <defs>
-      <linearGradient id="gemini-grad" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse">
-        <stop offset="0%" stopColor="#4285F4" />
-        <stop offset="50%" stopColor="#9B72CB" />
-        <stop offset="100%" stopColor="#D96570" />
-      </linearGradient>
-    </defs>
   </Svg>
 );
 
