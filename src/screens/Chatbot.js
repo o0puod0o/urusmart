@@ -19,7 +19,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import HeaderBar from "../components/HeaderBar";
-import AiProviderLogo from "../components/AiProviderLogo";
+import AiProviderLogo, { normalizeProvider } from "../components/AiProviderLogo";
 import useCurrentUser from "../hook/useCurrentUser";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
@@ -945,9 +945,9 @@ export default function ChatbotPage({ navigation }) {
   const groupModelsByProvider = (models) => {
     const groups = {};
     models.forEach((m) => {
-      const provider = m.provider ?? "Other";
+      const provider = normalizeProvider(m.provider) ?? "Other";
       if (!groups[provider]) groups[provider] = [];
-      groups[provider].push(m);
+      groups[provider].push({ ...m, provider });
     });
     return Object.entries(groups).sort(([a], [b]) => a.localeCompare(b));
   };
