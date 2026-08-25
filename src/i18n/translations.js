@@ -79,6 +79,7 @@ export const th = {
     title: 'URU Smart Assistant',
     subtitle: 'ผู้ช่วยถามตอบสำหรับอาจารย์',
     placeholder: 'พิมพ์คำถามของคุณ...',
+    waitingReply: 'กำลังรอคำตอบ...',
     typing: 'กำลังคิดคำตอบ...',
     welcome:
       'สวัสดีครับ ผมคือ URU Smart Assistant ถามเรื่องตารางงาน งานวิจัย การตั้งค่า หรือการใช้งานแอปได้เลยครับ',
@@ -642,6 +643,7 @@ export const en = {
     title: 'URU Smart Assistant',
     subtitle: 'Staff Q&A Assistant',
     placeholder: 'Type your question...',
+    waitingReply: 'Waiting for reply...',
     typing: 'Thinking...',
     welcome:
       "Hello! I'm the URU Smart Assistant. Ask me about schedules, research, settings, or app usage.",

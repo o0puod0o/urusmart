@@ -442,6 +442,7 @@ export default function ChatbotPage({ navigation }) {
   const [modelSelectorVisible, setModelSelectorVisible] = useState(false);
   const [availableModels, setAvailableModels] = useState([]);
   const [selectedModel, setSelectedModel] = useState("claude-sonnet-5");
+  const abortControllerRef = useRef(null);
 
   useEffect(() => {
     let mounted = true;
@@ -566,6 +567,12 @@ export default function ChatbotPage({ navigation }) {
     }
   }, []);
 
+  const stopMessage = useCallback(() => {
+    abortControllerRef.current?.abort();
+    abortControllerRef.current = null;
+    setSending(false);
+  }, []);
+
   const sendMessage = useCallback(async (preset) => {
     const text = (preset ?? input).trim();
     if (!text || sending) return;
@@ -573,6 +580,8 @@ export default function ChatbotPage({ navigation }) {
     setMessages((cur) => [...cur, userMsg]);
     setInput("");
     setSending(true);
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
     try {
       let targetConversationId = conversationId;
       if (!targetConversationId) {
@@ -595,17 +604,21 @@ export default function ChatbotPage({ navigation }) {
       setMessages((cur) => [...cur, createChatMessage("bot", reply)]);
       refreshConversations().catch(() => {});
     } catch (e) {
-      const serverReply = e?.response?.data?.data?.reply ?? e?.response?.data?.reply;
-      if (serverReply) {
-        // backend ส่ง reply message กลับมาแม้ status 5xx → แสดงเป็น bot bubble ปกติ
-        setMessages((cur) => [...cur, createChatMessage("bot", serverReply)]);
+      if (e?.name === "AbortError" || e?.code === "ERR_CANCELED") {
+        // user กด stop — ไม่ต้องแสดง error
       } else {
-        setMessages((cur) => [
-          ...cur,
-          { id: `${Date.now()}-error`, role: "bot", error: true, retryText: text, text: "" },
-        ]);
+        const serverReply = e?.response?.data?.data?.reply ?? e?.response?.data?.reply;
+        if (serverReply) {
+          setMessages((cur) => [...cur, createChatMessage("bot", serverReply)]);
+        } else {
+          setMessages((cur) => [
+            ...cur,
+            { id: `${Date.now()}-error`, role: "bot", error: true, retryText: text, text: "" },
+          ]);
+        }
       }
     } finally {
+      abortControllerRef.current = null;
       setSending(false);
     }
   }, [conversationId, input, refreshConversations, selectedModel, sending]);
@@ -1281,21 +1294,30 @@ export default function ChatbotPage({ navigation }) {
             style={{ flex: 1, minHeight: 44, maxHeight: 110, borderRadius: 16, borderWidth: 1, borderColor: "#dce8e2", backgroundColor: "#f8fbf9", color: "#102019", paddingHorizontal: 14, paddingTop: 11, paddingBottom: 10, fontSize: 14, fontWeight: "500" }}
             value={input}
             onChangeText={setInput}
-            placeholder={t("chatbot.placeholder")}
+            placeholder={sending ? t("chatbot.waitingReply") : t("chatbot.placeholder")}
             placeholderTextColor="#8fa89f"
             multiline
             maxLength={2000}
-            editable={!sending}
-            onSubmitEditing={() => sendMessage()}
+            onSubmitEditing={() => { if (!sending) sendMessage(); }}
           />
-          <TouchableOpacity
-            style={{ width: 44, height: 44, borderRadius: 15, alignItems: "center", justifyContent: "center", backgroundColor: !input.trim() || sending ? "#8fa89f" : "#0f7a55" }}
-            onPress={() => sendMessage()}
-            activeOpacity={0.85}
-            disabled={!input.trim() || sending}
-          >
-            <Ionicons name="send" size={19} color="#fff" />
-          </TouchableOpacity>
+          {sending ? (
+            <TouchableOpacity
+              style={{ width: 44, height: 44, borderRadius: 15, alignItems: "center", justifyContent: "center", backgroundColor: "#f0f5f2", borderWidth: 1.5, borderColor: "#c8d9d2" }}
+              onPress={stopMessage}
+              activeOpacity={0.75}
+            >
+              <Ionicons name="stop" size={18} color="#0f7a55" />
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={{ width: 44, height: 44, borderRadius: 15, alignItems: "center", justifyContent: "center", backgroundColor: !input.trim() ? "#c8d9d2" : "#0f7a55" }}
+              onPress={() => sendMessage()}
+              activeOpacity={0.85}
+              disabled={!input.trim()}
+            >
+              <Ionicons name="send" size={19} color="#fff" />
+            </TouchableOpacity>
+          )}
         </View>
       </KeyboardAvoidingView>
 
