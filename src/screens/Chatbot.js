@@ -19,12 +19,14 @@ import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import HeaderBar from "../components/HeaderBar";
 import useCurrentUser from "../hook/useCurrentUser";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   createChatConversation,
   deleteChatConversationRemote,
   fetchChatConversationMessages,
   fetchChatConversations,
   fetchChatHistory,
+  fetchChatModels,
   sendChatMessage,
   updateChatConversationRemote,
 } from "../services/chatbot";
@@ -394,6 +396,23 @@ const HistoryRow = ({ item, active, onPress, onMenu }) => (
   </View>
 );
 
+const FALLBACK_MODELS = [
+  { provider: "Claude", id: "claude-sonnet-5", display_name: "Claude Sonnet 5" },
+  { provider: "Claude", id: "claude-opus-5", display_name: "Claude Opus 5" },
+  { provider: "Claude", id: "claude-haiku-4-5-20251001", display_name: "Claude Haiku 4.5" },
+  { provider: "OpenAI", id: "gpt-4o", display_name: "GPT-4o" },
+  { provider: "OpenAI", id: "gpt-4o-mini", display_name: "GPT-4o mini" },
+  { provider: "Gemini", id: "gemini-2.0-flash", display_name: "Gemini 2.0 Flash" },
+  { provider: "Gemini", id: "gemini-2.5-pro", display_name: "Gemini 2.5 Pro" },
+  { provider: "DeepSeek", id: "deepseek-chat", display_name: "DeepSeek Chat" },
+  { provider: "DeepSeek", id: "deepseek-reasoner", display_name: "DeepSeek Reasoner" },
+  { provider: "Meta AI", id: "meta-llama/llama-4-scout", display_name: "Llama 4 Scout" },
+  { provider: "Mistral", id: "mistral-large-latest", display_name: "Mistral Large" },
+  { provider: "Nova", id: "amazon.nova-pro-v1:0", display_name: "Amazon Nova Pro" },
+  { provider: "Qwen", id: "qwen-max", display_name: "Qwen Max" },
+  { provider: "xAI", id: "grok-3", display_name: "Grok 3" },
+];
+
 // ── Main ───────────────────────────────────────────────────
 export default function ChatbotPage({ navigation }) {
   const { t } = useTranslation();
@@ -416,6 +435,9 @@ export default function ChatbotPage({ navigation }) {
   const [renameConversationId, setRenameConversationId] = useState(null);
   const [renameVisible, setRenameVisible] = useState(false);
   const [renameTitle, setRenameTitle] = useState("");
+  const [modelSelectorVisible, setModelSelectorVisible] = useState(false);
+  const [availableModels, setAvailableModels] = useState([]);
+  const [selectedModel, setSelectedModel] = useState("claude-sonnet-5");
 
   useEffect(() => {
     let mounted = true;
@@ -489,6 +511,18 @@ export default function ChatbotPage({ navigation }) {
   }, []);
 
   useEffect(() => {
+    AsyncStorage.getItem("chatbot_selected_model")
+      .then((saved) => { if (saved) setSelectedModel(saved); })
+      .catch(() => {});
+    fetchChatModels()
+      .then((res) => {
+        const list = res?.data?.data ?? res?.data ?? [];
+        if (Array.isArray(list) && list.length) setAvailableModels(list);
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
     messagesRef.current = messages;
     if (!historyReadyRef.current) return;
     if (skipNextSaveRef.current) {
@@ -546,7 +580,7 @@ export default function ChatbotPage({ navigation }) {
         }
       }
 
-      const res = await sendChatMessage(text, targetConversationId);
+      const res = await sendChatMessage(text, targetConversationId, selectedModel);
       const nextConversationId =
         extractRemoteConversationId(res?.data) ?? targetConversationId;
       if (nextConversationId && String(nextConversationId) !== conversationId) {
@@ -570,7 +604,7 @@ export default function ChatbotPage({ navigation }) {
     } finally {
       setSending(false);
     }
-  }, [conversationId, input, refreshConversations, sending]);
+  }, [conversationId, input, refreshConversations, selectedModel, sending]);
 
   const retryMessage = useCallback((text) => {
     setMessages((cur) => cur.filter((m) => !m.error));
@@ -885,6 +919,121 @@ export default function ChatbotPage({ navigation }) {
     );
   };
 
+  const selectModel = useCallback((modelId) => {
+    setSelectedModel(modelId);
+    setModelSelectorVisible(false);
+    AsyncStorage.setItem("chatbot_selected_model", modelId).catch(() => {});
+  }, []);
+
+  const getModelDisplayName = (modelId) => {
+    const found = availableModels.find((m) => (m.id ?? m.model_id ?? m.name) === modelId);
+    if (found) return found.display_name ?? found.name ?? modelId;
+    // fallback labels for common models
+    const labels = {
+      "claude-sonnet-5": "Sonnet 5",
+      "claude-opus-5": "Opus 5",
+      "claude-haiku-4-5": "Haiku 4.5",
+      "gpt-4o": "GPT-4o",
+      "gemini-2.0-flash": "Gemini Flash",
+      "deepseek-chat": "DeepSeek",
+    };
+    return labels[modelId] ?? modelId.split("/").pop() ?? modelId;
+  };
+
+  const groupModelsByProvider = (models) => {
+    const groups = {};
+    models.forEach((m) => {
+      const provider = m.provider ?? "Other";
+      if (!groups[provider]) groups[provider] = [];
+      groups[provider].push(m);
+    });
+    return Object.entries(groups).sort(([a], [b]) => a.localeCompare(b));
+  };
+
+  const PROVIDER_ICONS = {
+    Claude: { icon: "sparkles", color: "#c96430" },
+    OpenAI: { icon: "logo-react", color: "#10a37f" },
+    Google: { icon: "planet-outline", color: "#4285f4" },
+    Gemini: { icon: "planet-outline", color: "#4285f4" },
+    DeepSeek: { icon: "water-outline", color: "#4d6bfe" },
+    "Meta AI": { icon: "infinite-outline", color: "#0064e1" },
+    Mistral: { icon: "flame-outline", color: "#f05c28" },
+    Nova: { icon: "star-outline", color: "#ff9900" },
+    Qwen: { icon: "aperture-outline", color: "#615fff" },
+    xAI: { icon: "thunderstorm-outline", color: "#1c1c1c" },
+  };
+
+  const renderModelSelector = () => (
+    <Modal
+      visible={modelSelectorVisible}
+      animationType="slide"
+      presentationStyle="pageSheet"
+      onRequestClose={() => setModelSelectorVisible(false)}
+    >
+      <View style={{ flex: 1, backgroundColor: "#f0f6f2" }}>
+        <StatusBar barStyle="dark-content" backgroundColor="#f0f6f2" />
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 18, paddingTop: Platform.OS === "ios" ? 18 : 14, paddingBottom: 14, backgroundColor: "#fff", borderBottomWidth: 1, borderBottomColor: "#dce8e2" }}>
+          <TouchableOpacity onPress={() => setModelSelectorVisible(false)} activeOpacity={0.75} style={{ width: 42, height: 42, borderRadius: 15, alignItems: "center", justifyContent: "center", backgroundColor: "#f1f7f4" }}>
+            <Ionicons name="close" size={22} color="#102019" />
+          </TouchableOpacity>
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: "#102019", fontSize: 22, fontWeight: "900" }}>เลือกโมเดล AI</Text>
+            <Text style={{ color: "#6a7b74", fontSize: 12, fontWeight: "700", marginTop: 2 }}>โมเดลที่เลือกจะใช้กับแชทนี้</Text>
+          </View>
+        </View>
+
+        <FlatList
+          data={availableModels.length ? groupModelsByProvider(availableModels) : groupModelsByProvider(FALLBACK_MODELS)}
+          keyExtractor={([provider]) => provider}
+          contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 28, gap: 14 }}
+          renderItem={({ item: [provider, models] }) => {
+            const providerStyle = PROVIDER_ICONS[provider] ?? { icon: "hardware-chip-outline", color: "#0f7a55" };
+            return (
+              <View>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                  <View style={{ width: 28, height: 28, borderRadius: 8, backgroundColor: providerStyle.color + "1a", alignItems: "center", justifyContent: "center" }}>
+                    <Ionicons name={providerStyle.icon} size={15} color={providerStyle.color} />
+                  </View>
+                  <Text style={{ color: "#102019", fontSize: 14, fontWeight: "900", letterSpacing: 0.2 }}>{provider}</Text>
+                </View>
+                <View style={{ backgroundColor: "#fff", borderRadius: 18, overflow: "hidden", borderWidth: 1, borderColor: "#dce8e2" }}>
+                  {models.map((m, idx) => {
+                    const modelId = m.id ?? m.model_id ?? m.name;
+                    const label = m.display_name ?? m.name ?? modelId;
+                    const desc = m.description ?? "";
+                    const isSelected = selectedModel === modelId;
+                    return (
+                      <Pressable
+                        key={modelId}
+                        onPress={() => selectModel(modelId)}
+                        style={({ pressed }) => ({
+                          flexDirection: "row",
+                          alignItems: "center",
+                          paddingHorizontal: 16,
+                          paddingVertical: 14,
+                          gap: 12,
+                          backgroundColor: pressed ? "#f1f7f4" : isSelected ? "#e6f5ef" : "#fff",
+                          borderTopWidth: idx > 0 ? 1 : 0,
+                          borderTopColor: "#f0f4f2",
+                        })}
+                      >
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ color: isSelected ? "#0f7a55" : "#102019", fontSize: 15, fontWeight: isSelected ? "900" : "700" }}>{label}</Text>
+                          {!!desc && <Text style={{ color: "#8fa89f", fontSize: 12, fontWeight: "500", marginTop: 2 }} numberOfLines={1}>{desc}</Text>}
+                        </View>
+                        {isSelected && <Ionicons name="checkmark-circle" size={22} color="#0f7a55" />}
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
+            );
+          }}
+        />
+      </View>
+    </Modal>
+  );
+
   const renderRenameDialog = () => {
     if (!renameVisible) return null;
 
@@ -1015,7 +1164,11 @@ export default function ChatbotPage({ navigation }) {
           </View>
           <View style={{ flex: 1 }}>
             <Text style={{ color: "#102019", fontSize: 17, fontWeight: "800" }}>{t("chatbot.title")}</Text>
-            <Text style={{ color: "#587066", fontSize: 12, fontWeight: "600", marginTop: 2 }}>{t("chatbot.subtitle")}</Text>
+            <TouchableOpacity onPress={() => setModelSelectorVisible(true)} activeOpacity={0.7} style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 2 }}>
+              <Ionicons name="sparkles" size={11} color="#0f7a55" />
+              <Text style={{ color: "#0f7a55", fontSize: 12, fontWeight: "700" }} numberOfLines={1}>{getModelDisplayName(selectedModel)}</Text>
+              <Ionicons name="chevron-down" size={11} color="#0f7a55" />
+            </TouchableOpacity>
           </View>
           <TouchableOpacity
             onPress={() => {
@@ -1223,6 +1376,8 @@ export default function ChatbotPage({ navigation }) {
           {renderRenameDialog()}
         </View>
       </Modal>
+
+      {renderModelSelector()}
     </View>
   );
 }

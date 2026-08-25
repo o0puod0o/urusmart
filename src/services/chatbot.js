@@ -1,11 +1,19 @@
 import api from "./api";
 
-export const sendChatMessage = (message, conversationId = null) =>
+export const fetchChatModels = () =>
+  api.get("/chat/models", {
+    timeout: 15000,
+    suppressAuthRedirect: true,
+    suppressErrorLog: true,
+  });
+
+export const sendChatMessage = (message, conversationId = null, model = null) =>
   api.post(
     "/chat",
     {
       message,
       ...(conversationId ? { conversation_id: conversationId } : {}),
+      ...(model ? { model } : {}),
     },
     { timeout: 30000 },
   );
