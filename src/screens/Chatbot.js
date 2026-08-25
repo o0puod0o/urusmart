@@ -1023,22 +1023,18 @@ export default function ChatbotPage({ navigation }) {
                           style={({ pressed }) => ({
                             flexDirection: "row",
                             alignItems: "center",
-                            gap: 6,
-                            paddingHorizontal: 16,
-                            paddingVertical: 10,
-                            borderRadius: 12,
-                            backgroundColor: isSelected ? ps.color + "18" : pressed ? "#f0f5f2" : "#fff",
-                            borderWidth: isSelected ? 2 : 1.5,
-                            borderColor: isSelected ? ps.color : "#dde8e3",
-                            shadowColor: "#000",
-                            shadowOffset: { width: 0, height: 1 },
-                            shadowOpacity: 0.06,
-                            shadowRadius: 3,
-                            elevation: 1,
+                            justifyContent: "center",
+                            gap: 5,
+                            height: 40,
+                            paddingHorizontal: 14,
+                            borderRadius: 10,
+                            backgroundColor: isSelected ? ps.color : pressed ? "#f0f5f2" : "#f7faf8",
+                            borderWidth: 1.5,
+                            borderColor: isSelected ? ps.color : "#d4e3dc",
                           })}
                         >
-                          {isSelected && <Ionicons name="checkmark-circle" size={15} color={ps.color} />}
-                          <Text style={{ color: isSelected ? ps.color : "#2d4840", fontSize: 14, fontWeight: isSelected ? "800" : "600" }}>
+                          {isSelected && <Ionicons name="checkmark" size={13} color="#fff" />}
+                          <Text style={{ color: isSelected ? "#fff" : "#2d4840", fontSize: 14, fontWeight: "700" }}>
                             {label}
                           </Text>
                         </Pressable>
