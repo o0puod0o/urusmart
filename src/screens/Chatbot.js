@@ -963,76 +963,110 @@ export default function ChatbotPage({ navigation }) {
     xAI: { icon: "thunderstorm-outline", color: "#1c1c1c" },
   };
 
-  const renderModelSelector = () => (
-    <Modal
-      visible={modelSelectorVisible}
-      animationType="slide"
-      presentationStyle="pageSheet"
-      onRequestClose={() => setModelSelectorVisible(false)}
-    >
-      <View style={{ flex: 1, backgroundColor: "#f0f6f2" }}>
-        <StatusBar barStyle="dark-content" backgroundColor="#f0f6f2" />
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 18, paddingTop: Platform.OS === "ios" ? 18 : 14, paddingBottom: 14, backgroundColor: "#fff", borderBottomWidth: 1, borderBottomColor: "#dce8e2" }}>
-          <TouchableOpacity onPress={() => setModelSelectorVisible(false)} activeOpacity={0.75} style={{ width: 42, height: 42, borderRadius: 15, alignItems: "center", justifyContent: "center", backgroundColor: "#f1f7f4" }}>
-            <Ionicons name="close" size={22} color="#102019" />
-          </TouchableOpacity>
-          <View style={{ flex: 1 }}>
-            <Text style={{ color: "#102019", fontSize: 22, fontWeight: "900" }}>เลือกโมเดล AI</Text>
-            <Text style={{ color: "#6a7b74", fontSize: 12, fontWeight: "700", marginTop: 2 }}>โมเดลที่เลือกจะใช้กับแชทนี้</Text>
-          </View>
-        </View>
+  const renderModelSelector = () => {
+    const modelList = availableModels.length ? availableModels : FALLBACK_MODELS;
+    const grouped = groupModelsByProvider(modelList);
+    // flatten to sections array for SectionList-style rendering via FlatList
+    const flatItems = [];
+    grouped.forEach(([provider, models]) => {
+      flatItems.push({ type: "header", provider });
+      models.forEach((m) => flatItems.push({ type: "model", ...m, _provider: provider }));
+    });
 
-        <FlatList
-          data={availableModels.length ? groupModelsByProvider(availableModels) : groupModelsByProvider(FALLBACK_MODELS)}
-          keyExtractor={([provider]) => provider}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 28, gap: 14 }}
-          renderItem={({ item: [provider, models] }) => {
-            const providerStyle = PROVIDER_ICONS[provider] ?? { icon: "hardware-chip-outline", color: "#0f7a55" };
-            return (
-              <View>
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                  <View style={{ width: 28, height: 28, borderRadius: 8, backgroundColor: providerStyle.color + "1a", alignItems: "center", justifyContent: "center" }}>
-                    <Ionicons name={providerStyle.icon} size={15} color={providerStyle.color} />
+    return (
+      <Modal
+        visible={modelSelectorVisible}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setModelSelectorVisible(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: "#f5f8f6" }}>
+          <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+
+          {/* Header */}
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 20, paddingTop: Platform.OS === "ios" ? 20 : 16, paddingBottom: 16, backgroundColor: "#fff", borderBottomWidth: 1, borderBottomColor: "#e8ede9" }}>
+            <TouchableOpacity onPress={() => setModelSelectorVisible(false)} activeOpacity={0.75} style={{ width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center", backgroundColor: "#f0f5f2" }}>
+              <Ionicons name="chevron-down" size={22} color="#102019" />
+            </TouchableOpacity>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: "#102019", fontSize: 20, fontWeight: "900" }}>เลือกโมเดล AI</Text>
+              <Text style={{ color: "#7a9186", fontSize: 13, fontWeight: "600", marginTop: 1 }}>
+                กำลังใช้: <Text style={{ color: "#0f7a55", fontWeight: "800" }}>{getModelDisplayName(selectedModel)}</Text>
+              </Text>
+            </View>
+          </View>
+
+          <FlatList
+            data={flatItems}
+            keyExtractor={(item, idx) => item.type === "header" ? `h-${item.provider}` : `m-${item.id ?? item.name ?? idx}`}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 20, paddingBottom: 40 }}
+            renderItem={({ item, index }) => {
+              if (item.type === "header") {
+                const ps = PROVIDER_ICONS[item.provider] ?? { icon: "hardware-chip-outline", color: "#0f7a55" };
+                return (
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginTop: index === 0 ? 0 : 24, marginBottom: 10, paddingHorizontal: 4 }}>
+                    <View style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: ps.color + "22", alignItems: "center", justifyContent: "center" }}>
+                      <Ionicons name={ps.icon} size={16} color={ps.color} />
+                    </View>
+                    <Text style={{ color: "#3d5248", fontSize: 13, fontWeight: "800", letterSpacing: 0.5, textTransform: "uppercase" }}>{item.provider}</Text>
                   </View>
-                  <Text style={{ color: "#102019", fontSize: 14, fontWeight: "900", letterSpacing: 0.2 }}>{provider}</Text>
-                </View>
-                <View style={{ backgroundColor: "#fff", borderRadius: 18, overflow: "hidden", borderWidth: 1, borderColor: "#dce8e2" }}>
-                  {models.map((m, idx) => {
-                    const modelId = m.id ?? m.model_id ?? m.name;
-                    const label = m.display_name ?? m.name ?? modelId;
-                    const desc = m.description ?? "";
-                    const isSelected = selectedModel === modelId;
-                    return (
-                      <Pressable
-                        key={modelId}
-                        onPress={() => selectModel(modelId)}
-                        style={({ pressed }) => ({
-                          flexDirection: "row",
-                          alignItems: "center",
-                          paddingHorizontal: 16,
-                          paddingVertical: 14,
-                          gap: 12,
-                          backgroundColor: pressed ? "#f1f7f4" : isSelected ? "#e6f5ef" : "#fff",
-                          borderTopWidth: idx > 0 ? 1 : 0,
-                          borderTopColor: "#f0f4f2",
-                        })}
-                      >
-                        <View style={{ flex: 1 }}>
-                          <Text style={{ color: isSelected ? "#0f7a55" : "#102019", fontSize: 15, fontWeight: isSelected ? "900" : "700" }}>{label}</Text>
-                          {!!desc && <Text style={{ color: "#8fa89f", fontSize: 12, fontWeight: "500", marginTop: 2 }} numberOfLines={1}>{desc}</Text>}
-                        </View>
-                        {isSelected && <Ionicons name="checkmark-circle" size={22} color="#0f7a55" />}
-                      </Pressable>
-                    );
+                );
+              }
+
+              const modelId = item.id ?? item.model_id ?? item.name;
+              const label = item.display_name ?? item.name ?? modelId;
+              const desc = item.description ?? "";
+              const isSelected = selectedModel === modelId;
+              const ps = PROVIDER_ICONS[item._provider] ?? { icon: "hardware-chip-outline", color: "#0f7a55" };
+
+              return (
+                <Pressable
+                  onPress={() => selectModel(modelId)}
+                  style={({ pressed }) => ({
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 14,
+                    marginBottom: 8,
+                    paddingHorizontal: 16,
+                    paddingVertical: 14,
+                    borderRadius: 16,
+                    backgroundColor: isSelected ? "#e4f4ec" : pressed ? "#edf5f1" : "#fff",
+                    borderWidth: isSelected ? 1.5 : 1,
+                    borderColor: isSelected ? "#0f7a55" : "#e4ebe7",
+                    shadowColor: isSelected ? "#0f7a55" : "#000",
+                    shadowOffset: { width: 0, height: isSelected ? 2 : 1 },
+                    shadowOpacity: isSelected ? 0.12 : 0.04,
+                    shadowRadius: isSelected ? 8 : 4,
+                    elevation: isSelected ? 3 : 1,
                   })}
-                </View>
-              </View>
-            );
-          }}
-        />
-      </View>
-    </Modal>
-  );
+                >
+                  {/* Model icon */}
+                  <View style={{ width: 42, height: 42, borderRadius: 13, backgroundColor: isSelected ? ps.color + "22" : "#f3f7f5", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <Ionicons name={ps.icon} size={20} color={isSelected ? ps.color : "#7a9186"} />
+                  </View>
+
+                  {/* Labels */}
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: isSelected ? "#0a5c3f" : "#102019", fontSize: 15, fontWeight: "800" }}>{label}</Text>
+                    {!!desc && (
+                      <Text style={{ color: "#8fa89f", fontSize: 12, fontWeight: "500", marginTop: 3, lineHeight: 17 }} numberOfLines={2}>{desc}</Text>
+                    )}
+                  </View>
+
+                  {/* Checkmark */}
+                  {isSelected
+                    ? <Ionicons name="checkmark-circle" size={24} color="#0f7a55" />
+                    : <Ionicons name="chevron-forward" size={18} color="#c8d8d2" />
+                  }
+                </Pressable>
+              );
+            }}
+          />
+        </View>
+      </Modal>
+    );
+  };
 
   const renderRenameDialog = () => {
     if (!renameVisible) return null;
