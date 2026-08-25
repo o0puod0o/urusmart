@@ -19,6 +19,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import HeaderBar from "../components/HeaderBar";
+import AiProviderLogo from "../components/AiProviderLogo";
 import useCurrentUser from "../hook/useCurrentUser";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
@@ -1001,14 +1002,14 @@ export default function ChatbotPage({ navigation }) {
               {grouped.map(([provider, models]) => {
                 const ps = PROVIDER_ICONS[provider] ?? { icon: "hardware-chip-outline", color: "#0f7a55" };
                 return (
-                  <View key={provider} style={{ marginBottom: 16 }}>
-                    {/* Provider label */}
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 20, marginBottom: 10 }}>
-                      <Ionicons name={ps.icon} size={13} color={ps.color} />
-                      <Text style={{ color: ps.color, fontSize: 11, fontWeight: "800", letterSpacing: 0.6, textTransform: "uppercase" }}>{provider}</Text>
+                  <View key={provider} style={{ marginBottom: 18 }}>
+                    {/* Provider label with real logo */}
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 20, marginBottom: 10 }}>
+                      <AiProviderLogo provider={provider} size={18} />
+                      <Text style={{ color: "#3d5248", fontSize: 12, fontWeight: "800", letterSpacing: 0.5, textTransform: "uppercase" }}>{provider}</Text>
                     </View>
 
-                    {/* Model chips — wrap ในแนวนอน */}
+                    {/* Model chips — wrap row */}
                     <View style={{ flexDirection: "row", flexWrap: "wrap", paddingHorizontal: 20, gap: 8 }}>
                       {models.map((m) => {
                         const modelId = m.id ?? m.model_id ?? m.name;
@@ -1022,7 +1023,7 @@ export default function ChatbotPage({ navigation }) {
                             style={{
                               flexDirection: "row",
                               alignItems: "center",
-                              gap: 5,
+                              gap: 6,
                               height: 40,
                               paddingHorizontal: 14,
                               borderRadius: 10,
@@ -1031,7 +1032,10 @@ export default function ChatbotPage({ navigation }) {
                               borderColor: isSelected ? ps.color : "#c8d9d2",
                             }}
                           >
-                            {isSelected && <Ionicons name="checkmark" size={13} color="#fff" />}
+                            {isSelected
+                              ? <Ionicons name="checkmark" size={13} color="#fff" />
+                              : <AiProviderLogo provider={provider} size={15} />
+                            }
                             <Text style={{ color: isSelected ? "#fff" : "#2d4840", fontSize: 14, fontWeight: "700" }}>
                               {label}
                             </Text>
@@ -1179,8 +1183,8 @@ export default function ChatbotPage({ navigation }) {
           </View>
           <View style={{ flex: 1 }}>
             <Text style={{ color: "#102019", fontSize: 17, fontWeight: "800" }}>{t("chatbot.title")}</Text>
-            <TouchableOpacity onPress={() => setModelSelectorVisible(true)} activeOpacity={0.7} style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 2 }}>
-              <Ionicons name="sparkles" size={11} color="#0f7a55" />
+            <TouchableOpacity onPress={() => setModelSelectorVisible(true)} activeOpacity={0.7} style={{ flexDirection: "row", alignItems: "center", gap: 5, marginTop: 3 }}>
+              <AiProviderLogo provider={(() => { const m = (availableModels.length ? availableModels : FALLBACK_MODELS).find(x => (x.id ?? x.name) === selectedModel); return m?.provider ?? "Claude"; })()} size={14} />
               <Text style={{ color: "#0f7a55", fontSize: 12, fontWeight: "700" }} numberOfLines={1}>{getModelDisplayName(selectedModel)}</Text>
               <Ionicons name="chevron-down" size={11} color="#0f7a55" />
             </TouchableOpacity>
