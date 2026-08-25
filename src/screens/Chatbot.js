@@ -7,6 +7,7 @@ import {
   Modal,
   Platform,
   Pressable,
+  ScrollView,
   StatusBar,
   Text,
   TextInput,
@@ -979,8 +980,8 @@ export default function ChatbotPage({ navigation }) {
           style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "flex-end" }}
           onPress={() => setModelSelectorVisible(false)}
         >
-          {/* Sheet — stop propagation so tapping inside doesn't close */}
-          <Pressable onPress={() => {}} style={{ backgroundColor: "#fff", borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingBottom: Platform.OS === "ios" ? 36 : 24 }}>
+          {/* Sheet */}
+          <View style={{ backgroundColor: "#fff", borderTopLeftRadius: 28, borderTopRightRadius: 28, maxHeight: "80%", paddingBottom: Platform.OS === "ios" ? 36 : 24 }}>
 
             {/* Handle */}
             <View style={{ alignItems: "center", paddingTop: 12, paddingBottom: 4 }}>
@@ -995,57 +996,54 @@ export default function ChatbotPage({ navigation }) {
               </Text>
             </View>
 
-            {/* Provider tabs (horizontal scroll) */}
-            {grouped.map(([provider, models]) => {
-              const ps = PROVIDER_ICONS[provider] ?? { icon: "hardware-chip-outline", color: "#0f7a55" };
-              return (
-                <View key={provider} style={{ marginBottom: 4 }}>
-                  {/* Provider label */}
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 20, marginBottom: 8 }}>
-                    <Ionicons name={ps.icon} size={13} color={ps.color} />
-                    <Text style={{ color: ps.color, fontSize: 11, fontWeight: "800", letterSpacing: 0.6, textTransform: "uppercase" }}>{provider}</Text>
-                  </View>
+            {/* Provider sections — vertical scroll */}
+            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+              {grouped.map(([provider, models]) => {
+                const ps = PROVIDER_ICONS[provider] ?? { icon: "hardware-chip-outline", color: "#0f7a55" };
+                return (
+                  <View key={provider} style={{ marginBottom: 16 }}>
+                    {/* Provider label */}
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 20, marginBottom: 10 }}>
+                      <Ionicons name={ps.icon} size={13} color={ps.color} />
+                      <Text style={{ color: ps.color, fontSize: 11, fontWeight: "800", letterSpacing: 0.6, textTransform: "uppercase" }}>{provider}</Text>
+                    </View>
 
-                  {/* Model chips — horizontal scroll */}
-                  <FlatList
-                    data={models}
-                    keyExtractor={(m) => m.id ?? m.name}
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={{ paddingHorizontal: 20, gap: 10 }}
-                    renderItem={({ item: m }) => {
-                      const modelId = m.id ?? m.model_id ?? m.name;
-                      const label = m.display_name ?? m.name ?? modelId;
-                      const isSelected = selectedModel === modelId;
-                      return (
-                        <Pressable
-                          onPress={() => selectModel(modelId)}
-                          style={({ pressed }) => ({
-                            flexDirection: "row",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            gap: 5,
-                            height: 40,
-                            paddingHorizontal: 14,
-                            borderRadius: 10,
-                            backgroundColor: isSelected ? ps.color : pressed ? "#f0f5f2" : "#f7faf8",
-                            borderWidth: 1.5,
-                            borderColor: isSelected ? ps.color : "#d4e3dc",
-                          })}
-                        >
-                          {isSelected && <Ionicons name="checkmark" size={13} color="#fff" />}
-                          <Text style={{ color: isSelected ? "#fff" : "#2d4840", fontSize: 14, fontWeight: "700" }}>
-                            {label}
-                          </Text>
-                        </Pressable>
-                      );
-                    }}
-                  />
-                  <View style={{ height: 14 }} />
-                </View>
-              );
-            })}
-          </Pressable>
+                    {/* Model chips — wrap ในแนวนอน */}
+                    <View style={{ flexDirection: "row", flexWrap: "wrap", paddingHorizontal: 20, gap: 8 }}>
+                      {models.map((m) => {
+                        const modelId = m.id ?? m.model_id ?? m.name;
+                        const label = m.display_name ?? m.name ?? modelId;
+                        const isSelected = selectedModel === modelId;
+                        return (
+                          <TouchableOpacity
+                            key={modelId}
+                            onPress={() => selectModel(modelId)}
+                            activeOpacity={0.75}
+                            style={{
+                              flexDirection: "row",
+                              alignItems: "center",
+                              gap: 5,
+                              height: 40,
+                              paddingHorizontal: 14,
+                              borderRadius: 10,
+                              backgroundColor: isSelected ? ps.color : "#f7faf8",
+                              borderWidth: 1.5,
+                              borderColor: isSelected ? ps.color : "#c8d9d2",
+                            }}
+                          >
+                            {isSelected && <Ionicons name="checkmark" size={13} color="#fff" />}
+                            <Text style={{ color: isSelected ? "#fff" : "#2d4840", fontSize: 14, fontWeight: "700" }}>
+                              {label}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  </View>
+                );
+              })}
+            </ScrollView>
+          </View>
         </Pressable>
       </Modal>
     );
