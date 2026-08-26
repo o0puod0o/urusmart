@@ -1,6 +1,18 @@
 import React, { useState } from "react";
 import { View, Text, TextInput, Platform } from "react-native";
 import { colors, radius, spacing, typography } from "../../theme/tokens";
+import {
+  sanitizeAcademicText,
+  sanitizeLinkInput,
+  sanitizeEmailInput,
+} from "../../utils/inputSanitize";
+
+const getSanitizer = (keyboardType) => {
+  if (keyboardType === "url") return sanitizeLinkInput;
+  if (keyboardType === "email-address") return sanitizeEmailInput;
+  if (keyboardType === "numeric" || keyboardType === "phone-pad") return null;
+  return sanitizeAcademicText;
+};
 
 const FormField = React.forwardRef(
   (
@@ -27,6 +39,9 @@ const FormField = React.forwardRef(
       focused && styles.inputFocused,
       multiline && styles.inputMultiline,
     ];
+    const sanitizer = getSanitizer(keyboardType);
+    const handleChangeText = (text) =>
+      onChangeText?.(sanitizer ? sanitizer(text) : text);
 
     return (
       <View style={styles.wrap} onLayout={onLayout}>
@@ -39,7 +54,7 @@ const FormField = React.forwardRef(
             ref={ref}
             style={inputStyle}
             value={value}
-            onChangeText={onChangeText}
+            onChangeText={handleChangeText}
             placeholder={placeholder || label}
             placeholderTextColor={colors.placeholder}
             keyboardType={multiline ? "default" : keyboardType || "default"}

@@ -20,6 +20,7 @@ import apiService from "../../../services/api";
 import useConfirm from "../../../hook/useConfirm";
 import useSubmitLock from "../../../hook/useSubmitLock";
 import { getExpertTitle } from "../../../utils/expertFields";
+import { sanitizeAcademicText } from "../../../utils/inputSanitize";
 
 const InterestForm = ({ navigation }) => {
   const { t } = useTranslation();
@@ -251,7 +252,7 @@ const InterestForm = ({ navigation }) => {
               }}
               value={customInterest}
               onChangeText={(v) => {
-                setCustomInterest(v);
+                setCustomInterest(sanitizeAcademicText(v));
                 setSelectedInterest("");
               }}
               placeholder={t("research.interest.placeholder")}

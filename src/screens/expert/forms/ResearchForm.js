@@ -19,6 +19,7 @@ import useResource from "../../../hook/useResource";
 import useConfirm from "../../../hook/useConfirm";
 import useSubmitLock from "../../../hook/useSubmitLock";
 import useRefs from "../../../hook/useRefs";
+import { sanitizeAcademicText } from "../../../utils/inputSanitize";
 
 const BASE_YEAR_LIST = Array.from({ length: 2569 - 2533 + 1 }, (_, i) => {
   const y = 2569 - i;
@@ -503,7 +504,7 @@ const ResearchForm = ({ navigation }) => {
               placeholder={t("research.researchForm.placeholderTitle")}
               placeholderTextColor="#9aa6b1"
               value={form.title}
-              onChangeText={(v) => setField("title", v)}
+              onChangeText={(v) => setField("title", sanitizeAcademicText(v))}
               maxLength={500}
               returnKeyType="done"
               blurOnSubmit

@@ -20,6 +20,7 @@ import useConfirm from "../../../hook/useConfirm";
 import useSubmitLock from "../../../hook/useSubmitLock";
 import useRefs from "../../../hook/useRefs";
 import { getExpertLink, getExpertTitle, getExpertYear } from "../../../utils/expertFields";
+import { sanitizeAcademicText, sanitizeLinkInput } from "../../../utils/inputSanitize";
 import { normalizeOptionalUrl } from "../../../utils/url";
 
 const BASE_YEAR_LIST = Array.from({ length: 2569 - 2533 + 1 }, (_, i) => ({
@@ -360,7 +361,7 @@ const JournalForm = ({ navigation }) => {
             <TextInput
               className="bg-white border border-[#e3e7eb] rounded-[10px] px-[14px] py-[12px] text-[14px] text-[#1f2a2e]"
               value={form.reference}
-              onChangeText={(v) => setField("reference", v)}
+              onChangeText={(v) => setField("reference", sanitizeAcademicText(v))}
               placeholder={t("research.journal.placeholderRef")}
               placeholderTextColor="#9aa6b1"
               maxLength={500}
@@ -377,7 +378,7 @@ const JournalForm = ({ navigation }) => {
               ref={urlRef}
               className="bg-white border border-[#e3e7eb] rounded-[10px] px-[14px] py-[12px] text-[14px] text-[#1f2a2e]"
               value={form.url}
-              onChangeText={(v) => setField("url", v)}
+              onChangeText={(v) => setField("url", sanitizeLinkInput(v))}
               placeholder="https://..."
               placeholderTextColor="#9aa6b1"
               autoCapitalize="none"

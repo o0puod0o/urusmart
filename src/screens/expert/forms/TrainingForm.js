@@ -19,6 +19,7 @@ import useResource from "../../../hook/useResource";
 import useConfirm from "../../../hook/useConfirm";
 import useSubmitLock from "../../../hook/useSubmitLock";
 import { getExpertTitle, getExpertYear } from "../../../utils/expertFields";
+import { sanitizeAcademicText } from "../../../utils/inputSanitize";
 
 const currentThaiYear = new Date().getFullYear() + 543;
 const BASE_YEAR_LIST = Array.from(
@@ -315,7 +316,7 @@ const TrainingForm = ({ navigation }) => {
               className="bg-white border border-[#e3e7eb] rounded-[10px] px-[14px] py-[10px] text-[14px] text-[#1f2a2e]"
               style={{ minHeight: 46 }}
               value={form.title}
-              onChangeText={(v) => setField("title", v)}
+              onChangeText={(v) => setField("title", sanitizeAcademicText(v))}
               placeholder={t("research.training.placeholder")}
               placeholderTextColor="#9aa6b1"
               returnKeyType="done"

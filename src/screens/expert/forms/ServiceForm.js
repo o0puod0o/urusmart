@@ -20,6 +20,7 @@ import useConfirm from "../../../hook/useConfirm";
 import useSubmitLock from "../../../hook/useSubmitLock";
 import { getExpertLink, getExpertTitle, getExpertYear } from "../../../utils/expertFields";
 import { normalizeOptionalUrl } from "../../../utils/url";
+import { sanitizeAcademicText, sanitizeLinkInput } from "../../../utils/inputSanitize";
 
 const currentThaiYear = new Date().getFullYear() + 543;
 const BASE_YEAR_LIST = Array.from(
@@ -344,7 +345,7 @@ const ServiceForm = ({ navigation }) => {
               className="bg-white border border-[#e3e7eb] rounded-[10px] px-[14px] py-[10px] text-[14px] text-[#1f2a2e]"
               style={{ minHeight: 46 }}
               value={form.name}
-              onChangeText={(v) => setField("name", v)}
+              onChangeText={(v) => setField("name", sanitizeAcademicText(v))}
               placeholder={t("research.service.placeholder")}
               placeholderTextColor="#9aa6b1"
               returnKeyType="next"
@@ -361,7 +362,7 @@ const ServiceForm = ({ navigation }) => {
               className="bg-white border border-[#e3e7eb] rounded-[10px] px-[14px] py-[10px] text-[14px] text-[#1f2a2e]"
               style={{ minHeight: 46 }}
               value={form.link}
-              onChangeText={(v) => setField("link", v)}
+              onChangeText={(v) => setField("link", sanitizeLinkInput(v))}
               placeholder="http://"
               placeholderTextColor="#9aa6b1"
               autoCapitalize="none"

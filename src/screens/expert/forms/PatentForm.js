@@ -18,6 +18,7 @@ import InlineDropdown from "../../../components/expert/InlineDropdown";
 import useResource from "../../../hook/useResource";
 import useConfirm from "../../../hook/useConfirm";
 import useSubmitLock from "../../../hook/useSubmitLock";
+import { sanitizeAcademicText, sanitizeLinkInput } from "../../../utils/inputSanitize";
 import { getExpertLink, getExpertTitle, getExpertYear } from "../../../utils/expertFields";
 import { normalizeOptionalUrl } from "../../../utils/url";
 
@@ -336,7 +337,7 @@ const PatentForm = ({ navigation }) => {
               className="bg-white border border-[#e3e7eb] rounded-[10px] px-[14px] py-[10px] text-[14px] text-[#1f2a2e]"
               style={{ minHeight: 46 }}
               value={form.title}
-              onChangeText={(v) => setField("title", v)}
+              onChangeText={(v) => setField("title", sanitizeAcademicText(v))}
               placeholder={t("research.patent.placeholderTitle")}
               placeholderTextColor="#9aa6b1"
               returnKeyType="next"
@@ -354,7 +355,7 @@ const PatentForm = ({ navigation }) => {
               className="bg-white border border-[#e3e7eb] rounded-[10px] px-[14px] py-[10px] text-[14px] text-[#1f2a2e]"
               style={{ minHeight: 52 }}
               value={form.fileUrl}
-              onChangeText={(v) => setField("fileUrl", v)}
+              onChangeText={(v) => setField("fileUrl", sanitizeLinkInput(v))}
               placeholder="https://..."
               placeholderTextColor="#9aa6b1"
               autoCapitalize="none"
