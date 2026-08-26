@@ -23,6 +23,7 @@ function loadModule(relativePath) {
 const thaiDate = loadModule("src/utils/thaiDate.js");
 const image = loadModule("src/utils/image.js");
 const name = loadModule("src/utils/name.js");
+const inputSanitize = loadModule("src/utils/inputSanitize.js");
 
 const parsed = thaiDate.parseISOToDate("2024-10-26");
 assert.equal(parsed.getFullYear(), 2024);
@@ -47,5 +48,26 @@ assert.equal(name.stripNamePrefix("นางสาว สมใจ ทดสอ�
 assert.equal(name.stripNamePrefix("นายธรานนท์ ไชยโสภา"), "ธรานนท์ ไชยโสภา");
 assert.equal(name.stripNamePrefix("ดร. ตัวอย่าง ทดสอบ"), "ตัวอย่าง ทดสอบ");
 assert.equal(name.stripNamePrefix("ไม่มีคำนำหน้า"), "ไม่มีคำนำหน้า");
+
+assert.equal(
+  inputSanitize.sanitizeAcademicText("O'Reilly: E=mc²; Smith [2026]"),
+  "O'Reilly: E=mc²; Smith [2026]",
+);
+assert.equal(
+  inputSanitize.sanitizeAcademicText("Universite\u0301 de Paris\r\nResearch"),
+  "Université de Paris\nResearch",
+);
+assert.equal(
+  inputSanitize.sanitizeAcademicText("Thai\u0000 text\u0007"),
+  "Thai text",
+);
+assert.equal(
+  inputSanitize.sanitizeAcademicText("University 🫶 of Oxford"),
+  "University of Oxford",
+);
+assert.equal(
+  inputSanitize.sanitizeLinkInput(" https://example.org/a b?q=1 <tag> 😄 "),
+  "https://example.org/ab?q=1tag",
+);
 
 console.log("Tests OK");
