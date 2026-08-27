@@ -170,10 +170,11 @@ const SearchSection = ({ onSearch }) => {
             returnKeyType="search"
           />
           <TouchableOpacity
-            className="flex-row items-center justify-center px-4"
+            className="flex-row items-center justify-center gap-2 px-4"
             style={{ backgroundColor: colors.primary, borderRadius: radius.md, minHeight: 48 }}
             onPress={runKeywordSearch}
           >
+            <Ionicons name="search-outline" size={16} color="#fff" />
             <Text className="text-white text-[13px] font-semibold">{t("research.screen.search")}</Text>
           </TouchableOpacity>
         </View>
