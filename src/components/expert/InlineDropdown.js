@@ -43,6 +43,10 @@ const InlineDropdown = ({
   const [dropPos, setDropPos] = useState(null);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const triggerRef = useRef(null);
+  // ตำแหน่งจาก measure() ครั้งล่าสุด — ใช้เปิดทันทีในครั้งถัดไปโดยไม่ต้องรอ
+  // native bridge round-trip ซ้ำ แล้วค่อย re-measure เบื้องหลังให้แม่นยำ
+  const lastMeasureRef = useRef(null);
+  const openRef = useRef(false);
 
   // animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -51,6 +55,15 @@ const InlineDropdown = ({
 
   const selected = options.find((o) => String(o.id) === String(value) && o.id !== "");
   const hasValue = !!selected;
+
+  useEffect(() => {
+    openRef.current = open;
+  }, [open]);
+
+  // เช่น หมุนจอ/split-screen — ตำแหน่งเก่าอาจใช้ไม่ได้แล้ว ต้อง measure ใหม่
+  useEffect(() => {
+    lastMeasureRef.current = null;
+  }, [screenHeight]);
 
   useEffect(() => {
     Animated.parallel([
@@ -78,20 +91,48 @@ const InlineDropdown = ({
     ]).start(() => cb?.());
   };
 
+  const computeDropPos = (width, height, pageX, pageY) => {
+    const usable = screenHeight;
+    const spaceBelow = usable - (pageY + height);
+    const spaceAbove = pageY;
+    const flipUp = spaceBelow < 220 && spaceAbove > spaceBelow;
+    const listH = flipUp
+      ? Math.max(120, Math.min(MAX_LIST_H, spaceAbove - 24))
+      : Math.max(120, Math.min(MAX_LIST_H, spaceBelow - 16));
+    const top = flipUp
+      ? Math.max(16, pageY - listH - 4)
+      : pageY + height + 4;
+    return { top, left: pageX, width, maxHeight: listH };
+  };
+
+  const measureAndSetPos = () =>
+    new Promise((resolve) => {
+      triggerRef.current?.measure((x, y, width, height, pageX, pageY) => {
+        const pos = computeDropPos(width, height, pageX, pageY);
+        lastMeasureRef.current = pos;
+        resolve(pos);
+      });
+    });
+
   const handleOpen = () => {
     const openDropdown = () => {
-      triggerRef.current?.measure((x, y, width, height, pageX, pageY) => {
-        const usable = screenHeight;
-        const spaceBelow = usable - (pageY + height);
-        const spaceAbove = pageY;
-        const flipUp = spaceBelow < 220 && spaceAbove > spaceBelow;
-        const listH = flipUp
-          ? Math.max(120, Math.min(MAX_LIST_H, spaceAbove - 24))
-          : Math.max(120, Math.min(MAX_LIST_H, spaceBelow - 16));
-        const top = flipUp
-          ? Math.max(16, pageY - listH - 4)
-          : pageY + height + 4;
-        setDropPos({ top, left: pageX, width, maxHeight: listH });
+      const cachedPos = lastMeasureRef.current;
+      if (cachedPos) {
+        // เปิดทันทีด้วยตำแหน่งครั้งก่อน ไม่ต้องรอ native bridge round-trip
+        // แล้วค่อย re-measure เบื้องหลังเผื่อ layout ขยับ (เช่น scroll)
+        setDropPos(cachedPos);
+        setOpen(true);
+        setSearch("");
+        animateIn();
+        measureAndSetPos().then((freshPos) => {
+          // ถ้าผู้ใช้ปิดไปแล้วก่อน measure กลับมา ไม่ต้อง apply ตำแหน่งทับ
+          if (openRef.current) setDropPos(freshPos);
+        });
+        return;
+      }
+
+      measureAndSetPos().then((pos) => {
+        setDropPos(pos);
         setOpen(true);
         setSearch("");
         animateIn();
