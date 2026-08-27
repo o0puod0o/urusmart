@@ -14,7 +14,7 @@ import { useTranslation } from "react-i18next";
 import AppHeader from "../../../components/AppHeader";
 import FormContainer from "../../../components/expert/FormContainer";
 import KeyboardAwareScrollView from "../../../components/expert/KeyboardAwareScrollView";
-import InlineDropdown from "../../../components/expert/InlineDropdown";
+import SheetDropdown from "../../../components/expert/SheetDropdown";
 import useResource from "../../../hook/useResource";
 import useInterestOptions from "../../../hook/useInterestOptions";
 import useConfirm from "../../../hook/useConfirm";
@@ -203,7 +203,7 @@ const InterestForm = ({ navigation }) => {
               {t("research.interest.addHeader")}
             </Text>
           </View>
-          <InlineDropdown
+          <SheetDropdown
             label={t("research.interest.selectExisting")}
             value={selectedInterest}
             options={interestOptions}
