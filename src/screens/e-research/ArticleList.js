@@ -6,6 +6,7 @@ import useLrdResource from "../../hook/useLrdResource";
 import useLrdSession from "../../hook/useLrdSession";
 import useConfirm from "../../hook/useConfirm";
 import { LRD_ENDPOINTS } from "../../services/lrdApi";
+import { sanitizeAcademicText } from "../../utils/inputSanitize";
 import { useEResearchText } from "./i18n";
 
 export default function ArticleList({ navigation }) {
@@ -64,7 +65,7 @@ export default function ArticleList({ navigation }) {
           <TextInput
             className="flex-1 min-h-[44px] text-[14px] text-[#17352a] px-3"
             value={searchText}
-            onChangeText={setSearchText}
+            onChangeText={(text) => setSearchText(sanitizeAcademicText(text))}
             onSubmitEditing={submitSearch}
             placeholder={te("article.searchPlaceholder")}
             placeholderTextColor="#91a79e"

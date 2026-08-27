@@ -24,6 +24,7 @@ import {
   getExpertGroupSearchOptions,
   normalizeExpertGroupRows,
 } from "../../constants/expertGroups";
+import { sanitizeAcademicText } from "../../utils/inputSanitize";
 
 const getSearchByOptions = (t) => [
   { id: "", label: t("research.screen.from") },
@@ -210,7 +211,7 @@ const ResearchDropdown = ({
                   placeholder={t("research.common.search")}
                   placeholderTextColor="#aab8b2"
                   value={search}
-                  onChangeText={setSearch}
+                  onChangeText={(text) => setSearch(sanitizeAcademicText(text))}
                   autoCorrect={false}
                   clearButtonMode="while-editing"
                 />
@@ -363,7 +364,7 @@ const SearchSection = ({ onSearch }) => {
               placeholder={t("research.screen.keyword")}
               placeholderTextColor="#aaa"
               value={keyword}
-              onChangeText={setKeyword}
+              onChangeText={(text) => setKeyword(sanitizeAcademicText(text))}
               onSubmitEditing={runKeywordSearch}
               returnKeyType="search"
             />

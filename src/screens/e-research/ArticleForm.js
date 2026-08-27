@@ -9,24 +9,9 @@ import KeyboardAwareScrollView from "../../components/expert/KeyboardAwareScroll
 import useLrdResource from "../../hook/useLrdResource";
 import useLrdSession from "../../hook/useLrdSession";
 import { LRD_ENDPOINTS } from "../../services/lrdApi";
+import { normalizeOptionalUrl } from "../../utils/url";
 import { DOCUMENT_TYPE_OPTIONS, FUNDING_SOURCE_OPTIONS, buildYearOptions } from "./mockOptions";
 import { useEResearchText, withPlaceholder } from "./i18n";
-
-const normalizeWebsiteUrl = (value) => {
-  const input = String(value || "").trim();
-  if (!input) return "";
-  return /^https?:\/\//i.test(input) ? input : `https://${input}`;
-};
-
-const isValidWebsiteUrl = (value) => {
-  if (!value) return true;
-  try {
-    const parsed = new URL(value);
-    return ["http:", "https:"].includes(parsed.protocol) && parsed.hostname.includes(".");
-  } catch (_) {
-    return false;
-  }
-};
 
 const emptyForm = {
   documentType: "",
@@ -83,8 +68,8 @@ export default function ArticleForm({ navigation, route }) {
       Alert.alert(te("common.requiredTitle"), te("article.requiredMessage"));
       return;
     }
-    const normalizedUrl = normalizeWebsiteUrl(form.url);
-    if (!isValidWebsiteUrl(normalizedUrl)) {
+    const normalizedUrl = normalizeOptionalUrl(form.url);
+    if (!normalizedUrl.ok) {
       Alert.alert(
         te("article.invalidUrlTitle"),
         te("article.invalidUrlMessage"),
@@ -114,7 +99,7 @@ export default function ArticleForm({ navigation, route }) {
         ...(form.contributors.trim() ? { contributor: form.contributors.trim() } : {}),
         ...(form.journal.trim() ? { source: form.journal.trim() } : {}),
         ...(form.publishYear ? { publicyear: Number(form.publishYear) } : {}),
-        ...(normalizedUrl ? { url: normalizedUrl } : {}),
+        ...(normalizedUrl.url ? { url: normalizedUrl.url } : {}),
         ...(form.reference.trim() ? { reference: form.reference.trim() } : {}),
       };
       const payload = values;

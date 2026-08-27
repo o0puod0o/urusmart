@@ -5,12 +5,14 @@ import {
   sanitizeAcademicText,
   sanitizeLinkInput,
   sanitizeEmailInput,
+  sanitizePhoneInput,
 } from "../../utils/inputSanitize";
 
 const getSanitizer = (keyboardType) => {
   if (keyboardType === "url") return sanitizeLinkInput;
   if (keyboardType === "email-address") return sanitizeEmailInput;
-  if (keyboardType === "numeric" || keyboardType === "phone-pad") return null;
+  if (keyboardType === "phone-pad") return sanitizePhoneInput;
+  if (keyboardType === "numeric") return null;
   return sanitizeAcademicText;
 };
 

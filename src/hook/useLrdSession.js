@@ -10,12 +10,13 @@ export default function useLrdSession() {
   const [researcherId, setResearcherId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState(false);
-  const [error, setError] = useState(null);
+  const [sessionError, setSessionError] = useState(null);
+  const [connectError, setConnectError] = useState(null);
 
   useEffect(() => () => { mounted.current = false; }, []);
 
   const refetch = useCallback(async () => {
-    if (mounted.current) { setLoading(true); setError(null); }
+    if (mounted.current) { setLoading(true); setSessionError(null); }
     try {
       const response = await getLrd(LRD_ENDPOINTS.session);
       if (!response.data?.authenticated) throw new Error(response.data?.message || "ไม่พบ session ของผู้ใช้");
@@ -30,7 +31,7 @@ export default function useLrdSession() {
       }
       return response.data;
     } catch (requestError) {
-      if (mounted.current) setError(getLrdErrorMessage(requestError));
+      if (mounted.current) setSessionError(getLrdErrorMessage(requestError));
       return null;
     } finally {
       if (mounted.current) setLoading(false);
@@ -40,7 +41,7 @@ export default function useLrdSession() {
   useEffect(() => { refetch(); }, [refetch]);
 
   const connect = useCallback(async () => {
-    if (mounted.current) { setConnecting(true); setError(null); }
+    if (mounted.current) { setConnecting(true); setConnectError(null); }
     try {
       // A non-empty body avoids IIS 411 Length Required in production.
       const response = await registerLrdResearcher();
@@ -55,7 +56,7 @@ export default function useLrdSession() {
       return response.data;
     } catch (requestError) {
       const message = getLrdErrorMessage(requestError, "เชื่อมต่อข้อมูลนักวิจัยไม่สำเร็จ");
-      if (mounted.current) setError(message);
+      if (mounted.current) setConnectError(message);
       throw new Error(message);
     } finally {
       if (mounted.current) setConnecting(false);
@@ -63,5 +64,16 @@ export default function useLrdSession() {
   }, [refetch]);
 
   const connected = Boolean(researcherId);
-  return { session, registration, researcherId, connected, loading, connecting, error, refetch, connect };
+  return {
+    session,
+    registration,
+    researcherId,
+    connected,
+    loading,
+    connecting,
+    error: sessionError,
+    connectError,
+    refetch,
+    connect,
+  };
 }

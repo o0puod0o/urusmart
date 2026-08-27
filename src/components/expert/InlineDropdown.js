@@ -16,6 +16,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { colors, radius, shadows, spacing, typography } from "../../theme/tokens";
+import { sanitizeAcademicText } from "../../utils/inputSanitize";
 
 const MAX_LIST_H = 300;
 
@@ -245,7 +246,7 @@ const InlineDropdown = ({
                             placeholder={t("research.common.search") ?? "ค้นหา..."}
                             placeholderTextColor="#aab8b2"
                             value={search}
-                            onChangeText={setSearch}
+                            onChangeText={(text) => setSearch(sanitizeAcademicText(text))}
                             autoCorrect={false}
                             clearButtonMode="while-editing"
                           />

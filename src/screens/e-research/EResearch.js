@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Alert, Image, ScrollView, StatusBar, Text, TouchableOpacity, View } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
@@ -136,10 +136,45 @@ export default function EResearch({ navigation }) {
     loading: sessionLoading,
     connecting,
     error: sessionError,
+    connectError,
     refetch: retrySession,
     connect,
   } = useLrdSession();
   const canLoadLrd = Boolean(session?.authenticated && connected);
+  const autoConnectAttemptsRef = useRef(0);
+  const autoConnectRetryTimerRef = useRef(null);
+
+  useEffect(() => () => {
+    if (autoConnectRetryTimerRef.current) {
+      clearTimeout(autoConnectRetryTimerRef.current);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (sessionError || !session?.authenticated || connected || connecting || sessionLoading) return;
+    if (autoConnectAttemptsRef.current > 0) return;
+    autoConnectAttemptsRef.current = 1;
+    connect().catch(() => {});
+  }, [session, connected, connecting, sessionLoading, sessionError, connect]);
+
+  useEffect(() => {
+    if (sessionError || !connectError || connected || connecting || sessionLoading) return;
+    if (autoConnectAttemptsRef.current !== 1) return;
+
+    autoConnectAttemptsRef.current = 2;
+    autoConnectRetryTimerRef.current = setTimeout(() => {
+      autoConnectRetryTimerRef.current = null;
+      connect().catch(() => {});
+    }, 4000);
+
+    return () => {
+      if (autoConnectRetryTimerRef.current) {
+        clearTimeout(autoConnectRetryTimerRef.current);
+        autoConnectRetryTimerRef.current = null;
+      }
+    };
+  }, [sessionError, connectError, connected, connecting, sessionLoading, connect]);
+
   const [profile, setProfile] = useState({});
   const [profileLoading, setProfileLoading] = useState(false);
   const { items: education, loading: educationLoading, refetch: refetchEducation } = useLrdResource(LRD_ENDPOINTS.educations, { skip: !canLoadLrd, loadOnFocus: false });
@@ -243,6 +278,9 @@ export default function EResearch({ navigation }) {
             </View>
             <Text className="text-[15px] font-black text-[#273a32] text-center">{te("home.connectTitle")}</Text>
             <Text className="text-[12px] text-[#6b7a72] text-center mt-2">{te("home.connectDescription")}</Text>
+            {connectError ? (
+              <Text className="text-[12px] text-[#b65321] text-center mt-2">{connectError}</Text>
+            ) : null}
             <TouchableOpacity
               className="min-h-[44px] bg-[#0f7a55] rounded-xl px-5 mt-4 flex-row items-center justify-center"
               onPress={handleConnect}
