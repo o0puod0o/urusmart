@@ -79,7 +79,6 @@ const InlineDropdown = ({
   };
 
   const handleOpen = () => {
-    if (loading) return;
     const openDropdown = () => {
       triggerRef.current?.measure((x, y, width, height, pageX, pageY) => {
         const usable = screenHeight;
@@ -183,150 +182,149 @@ const InlineDropdown = ({
         </Text>
       )}
 
-      {loading ? (
-        <View style={[styles.trigger, triggerStyle]}>
-          <ActivityIndicator size="small" color={colors.primary} />
-          <Text style={styles.loadingText}>{t("research.common.loading")}</Text>
-        </View>
-      ) : (
-        <>
-          {/* Trigger */}
-          <TouchableOpacity
-            ref={triggerRef}
-            onPress={handleOpen}
-            activeOpacity={0.75}
-            style={[
-              styles.trigger,
-              triggerStyle,
-              hasValue && styles.triggerSelected,
-              open && styles.triggerOpen,
-            ]}
-          >
-            {hasValue ? (
-              <View style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 7 }}>
-                {!compact && <View style={styles.selectedDot} />}
-                <Text style={[styles.selectedText, selectedTextStyle]} numberOfLines={1}>{selected.label}</Text>
-              </View>
-            ) : (
-              <Text style={[styles.placeholderText, placeholderTextStyle]} numberOfLines={1}>
-                {displayPlaceholder}
-              </Text>
-            )}
-            <Animated.View style={{ transform: [{ rotate: chevronRotate }] }}>
-              <Ionicons name="chevron-down" size={16} color={open || hasValue ? colors.primary : colors.placeholder} />
-            </Animated.View>
-          </TouchableOpacity>
+      {/* Trigger — กดเปิดได้เสมอ แม้ options กำลังโหลดอยู่ */}
+      <TouchableOpacity
+        ref={triggerRef}
+        onPress={handleOpen}
+        activeOpacity={0.75}
+        style={[
+          styles.trigger,
+          triggerStyle,
+          hasValue && styles.triggerSelected,
+          open && styles.triggerOpen,
+        ]}
+      >
+        {hasValue ? (
+          <View style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 7 }}>
+            {!compact && <View style={styles.selectedDot} />}
+            <Text style={[styles.selectedText, selectedTextStyle]} numberOfLines={1}>{selected.label}</Text>
+          </View>
+        ) : (
+          <Text style={[styles.placeholderText, placeholderTextStyle]} numberOfLines={1}>
+            {displayPlaceholder}
+          </Text>
+        )}
+        {loading && (
+          <ActivityIndicator size="small" color={colors.primary} style={{ marginRight: 4 }} />
+        )}
+        <Animated.View style={{ transform: [{ rotate: chevronRotate }] }}>
+          <Ionicons name="chevron-down" size={16} color={open || hasValue ? colors.primary : colors.placeholder} />
+        </Animated.View>
+      </TouchableOpacity>
 
-          {/* Modal dropdown */}
-          <Modal
-            visible={open}
-            transparent
-            animationType="none"
-            statusBarTranslucent={Platform.OS === "android"}
-            onRequestClose={handleClose}
-          >
-            <TouchableWithoutFeedback onPress={handleClose}>
-              <View style={{ flex: 1, backgroundColor: "rgba(10,30,20,0.18)" }}>
-                {dropPos && (
-                  <TouchableWithoutFeedback onPress={() => {}}>
-                    <Animated.View
-                      style={[
-                        styles.panel,
-                        panelStyle,
-                        {
-                          top: dropPos.top,
-                          left: dropPos.left,
-                          width: dropPos.width,
-                          maxHeight: dropPos.maxHeight,
-                          opacity: fadeAnim,
-                          transform: [{ translateY: slideAnim }],
-                        },
-                      ]}
-                    >
-                      {/* Search bar */}
-                      {searchable && (
-                        <View style={styles.searchBar}>
-                          <View style={styles.searchIconWrap}>
-                            <Ionicons name="search-outline" size={14} color={colors.primary} />
-                          </View>
-                          <TextInput
-                            style={styles.searchInput}
-                            placeholder={t("research.common.search") ?? "ค้นหา..."}
-                            placeholderTextColor="#aab8b2"
-                            value={search}
-                            onChangeText={(text) => setSearch(sanitizeAcademicText(text))}
-                            autoCorrect={false}
-                            clearButtonMode="while-editing"
-                          />
-                          {search.length > 0 && (
-                            <TouchableOpacity onPress={() => setSearch("")} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                              <Ionicons name="close-circle" size={16} color={colors.placeholder} />
-                            </TouchableOpacity>
-                          )}
-                        </View>
+      {/* Modal dropdown */}
+      <Modal
+        visible={open}
+        transparent
+        animationType="none"
+        statusBarTranslucent={Platform.OS === "android"}
+        onRequestClose={handleClose}
+      >
+        <TouchableWithoutFeedback onPress={handleClose}>
+          <View style={{ flex: 1, backgroundColor: "rgba(10,30,20,0.18)" }}>
+            {dropPos && (
+              <TouchableWithoutFeedback onPress={() => {}}>
+                <Animated.View
+                  style={[
+                    styles.panel,
+                    panelStyle,
+                    {
+                      top: dropPos.top,
+                      left: dropPos.left,
+                      width: dropPos.width,
+                      maxHeight: dropPos.maxHeight,
+                      opacity: fadeAnim,
+                      transform: [{ translateY: slideAnim }],
+                    },
+                  ]}
+                >
+                  {/* Search bar */}
+                  {searchable && (
+                    <View style={styles.searchBar}>
+                      <View style={styles.searchIconWrap}>
+                        <Ionicons name="search-outline" size={14} color={colors.primary} />
+                      </View>
+                      <TextInput
+                        style={styles.searchInput}
+                        placeholder={t("research.common.search") ?? "ค้นหา..."}
+                        placeholderTextColor="#aab8b2"
+                        value={search}
+                        onChangeText={(text) => setSearch(sanitizeAcademicText(text))}
+                        autoCorrect={false}
+                        clearButtonMode="while-editing"
+                      />
+                      {search.length > 0 && (
+                        <TouchableOpacity onPress={() => setSearch("")} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                          <Ionicons name="close-circle" size={16} color={colors.placeholder} />
+                        </TouchableOpacity>
                       )}
+                    </View>
+                  )}
 
-                      <ScrollView
-                        bounces={false}
-                        keyboardShouldPersistTaps="always"
-                        showsVerticalScrollIndicator={false}
-                      >
-                        {filteredOptions.length > 0 ? (
-                          filteredOptions.map((opt, i) => {
-                            const isSelected = String(opt.id) === String(value);
-                            const isPlaceholder = opt.id === "" || opt.id === null;
-                            return (
-                              <TouchableOpacity
-                                key={`${opt.id}-${i}`}
-                                onPress={() => handleSelect(opt.id)}
-                                activeOpacity={0.65}
-                                style={[
-                                  styles.optionRow,
-                                  compact && styles.optionRowCompact,
-                                  isSelected && styles.optionRowSelected,
-                                  i === filteredOptions.length - 1 && { borderBottomWidth: 0 },
-                                ]}
-                              >
-                                {!compact && (
-                                  <View style={styles.checkCircle}>
-                                    {isSelected && (
-                                      <View style={styles.checkCircleFilled}>
-                                        <Ionicons name="checkmark" size={10} color="#fff" />
-                                      </View>
-                                    )}
+                  <ScrollView
+                    bounces={false}
+                    keyboardShouldPersistTaps="always"
+                    showsVerticalScrollIndicator={false}
+                  >
+                    {loading ? (
+                      <View style={styles.emptyState}>
+                        <ActivityIndicator size="small" color={colors.primary} />
+                        <Text style={styles.emptyText}>{t("research.common.loading")}</Text>
+                      </View>
+                    ) : filteredOptions.length > 0 ? (
+                      filteredOptions.map((opt, i) => {
+                        const isSelected = String(opt.id) === String(value);
+                        const isPlaceholder = opt.id === "" || opt.id === null;
+                        return (
+                          <TouchableOpacity
+                            key={`${opt.id}-${i}`}
+                            onPress={() => handleSelect(opt.id)}
+                            activeOpacity={0.65}
+                            style={[
+                              styles.optionRow,
+                              compact && styles.optionRowCompact,
+                              isSelected && styles.optionRowSelected,
+                              i === filteredOptions.length - 1 && { borderBottomWidth: 0 },
+                            ]}
+                          >
+                            {!compact && (
+                              <View style={styles.checkCircle}>
+                                {isSelected && (
+                                  <View style={styles.checkCircleFilled}>
+                                    <Ionicons name="checkmark" size={10} color="#fff" />
                                   </View>
                                 )}
-                                <Text
-                                  style={[
-                                    styles.optionText,
-                                    isSelected && styles.optionTextSelected,
-                                    isPlaceholder && styles.optionTextPlaceholder,
-                                  ]}
-                                  numberOfLines={2}
-                                >
-                                  {opt.label}
-                                </Text>
-                                {compact && isSelected && (
-                                  <Ionicons name="checkmark" size={16} color={colors.primary} />
-                                )}
-                              </TouchableOpacity>
-                            );
-                          })
-                        ) : (
-                          <View style={styles.emptyState}>
-                            <Ionicons name="search-outline" size={24} color="#c4d4cc" />
-                            <Text style={styles.emptyText}>{t("research.common.notFound") ?? "ไม่พบรายการ"}</Text>
-                          </View>
-                        )}
-                      </ScrollView>
-                    </Animated.View>
-                  </TouchableWithoutFeedback>
-                )}
-              </View>
-            </TouchableWithoutFeedback>
-          </Modal>
-        </>
-      )}
+                              </View>
+                            )}
+                            <Text
+                              style={[
+                                styles.optionText,
+                                isSelected && styles.optionTextSelected,
+                                isPlaceholder && styles.optionTextPlaceholder,
+                              ]}
+                              numberOfLines={2}
+                            >
+                              {opt.label}
+                            </Text>
+                            {compact && isSelected && (
+                              <Ionicons name="checkmark" size={16} color={colors.primary} />
+                            )}
+                          </TouchableOpacity>
+                        );
+                      })
+                    ) : (
+                      <View style={styles.emptyState}>
+                        <Ionicons name="search-outline" size={24} color="#c4d4cc" />
+                        <Text style={styles.emptyText}>{t("research.common.notFound") ?? "ไม่พบรายการ"}</Text>
+                      </View>
+                    )}
+                  </ScrollView>
+                </Animated.View>
+              </TouchableWithoutFeedback>
+            )}
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
     </View>
   );
 };
@@ -346,10 +344,6 @@ const styles = {
     borderColor: colors.border,
     backgroundColor: colors.fieldBg,
     gap: 8,
-  },
-  loadingText: {
-    ...typography.caption,
-    marginLeft: 8,
   },
   triggerSelected: {
     borderColor: colors.borderStrong,

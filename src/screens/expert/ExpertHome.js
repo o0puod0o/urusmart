@@ -144,23 +144,20 @@ const ResearchDropdown = ({
             : "bg-[#f4f6f8] border border-[#e8ecf0]"
         }`}
         onPress={() => {
-          if (!loading) {
-            setSearch("");
-            setOpen((prev) => !prev);
-          }
+          setSearch("");
+          setOpen((prev) => !prev);
         }}
         activeOpacity={0.8}
       >
-        {loading ? (
-          <ActivityIndicator size="small" color="#888" style={{ flex: 1 }} />
-        ) : (
-          <Text
-            className="flex-1 text-[13px] text-[#1a1a2e]"
-            style={!selected ? { color: "#aaa" } : {}}
-            numberOfLines={1}
-          >
-            {selected ? selected.label : placeholder}
-          </Text>
+        <Text
+          className="flex-1 text-[13px] text-[#1a1a2e]"
+          style={!selected ? { color: "#aaa" } : {}}
+          numberOfLines={1}
+        >
+          {selected ? selected.label : placeholder}
+        </Text>
+        {loading && (
+          <ActivityIndicator size="small" color="#888" style={{ marginRight: 4 }} />
         )}
         <Ionicons
           name={open ? "chevron-up" : "chevron-down"}
@@ -230,12 +227,21 @@ const ResearchDropdown = ({
               keyExtractor={(item, index) => `${item.id}-${index}`}
               renderItem={({ item, index }) => renderOption(item, index)}
               ListEmptyComponent={
-                <View className="items-center py-8">
-                  <Ionicons name="search-outline" size={28} color="#c4d4cc" />
-                  <Text className="text-[13px] text-[#9aa6b1] font-semibold mt-2">
-                    {t("research.common.notFound")}
-                  </Text>
-                </View>
+                loading ? (
+                  <View className="items-center py-8">
+                    <ActivityIndicator size="small" color={colors.primary} />
+                    <Text className="text-[13px] text-[#9aa6b1] font-semibold mt-2">
+                      {t("research.common.loading")}
+                    </Text>
+                  </View>
+                ) : (
+                  <View className="items-center py-8">
+                    <Ionicons name="search-outline" size={28} color="#c4d4cc" />
+                    <Text className="text-[13px] text-[#9aa6b1] font-semibold mt-2">
+                      {t("research.common.notFound")}
+                    </Text>
+                  </View>
+                )
               }
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator
@@ -314,6 +320,7 @@ const SearchSection = ({ onSearch }) => {
       submitSearch({
         search_by: "interest",
         keyword: selectedInterestOption?.label ?? selectedInterest,
+        interest_id: selectedInterestOption?.id ?? selectedInterest,
       });
       return;
     }

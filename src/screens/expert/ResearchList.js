@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, FlatList, Image, Text, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
@@ -51,10 +51,49 @@ const Chip = ({ label, color = "#007a5a", bg = "#e6f4ef", border = "#9fd4bc" }) 
 
 const readRows = (response) => response.data?.data ?? response.data ?? [];
 
+// สถานะ HTTP ที่ถือว่า backend ปฏิเสธ filter นี้ (ไม่ใช่ "ค้นหาไม่พบ") — ต้อง fallback
+// ไปดึงข้อมูลแบบไม่ filter แล้วมากรองฝั่ง client แทน
+const FILTER_UNSUPPORTED_STATUSES = [400, 404, 422, 500];
+
 const fetchProfileSearch = async (params) => {
-  const response = await apiService.get("/profile-search", { params });
+  const response = await apiService.get("/profile-search", {
+    params,
+    suppressErrorLog: true,
+  });
   return readRows(response);
 };
+
+const toArray = (value) =>
+  Array.isArray(value) ? value : value === undefined || value === null ? [] : [value];
+
+const getInterestEntries = (item) => [
+  ...toArray(item?.interests),
+  ...toArray(item?.interest),
+  ...toArray(item?.profile?.interests),
+  ...toArray(item?.user?.interests),
+];
+
+const getInterestNames = (item) =>
+  getInterestEntries(item)
+    .map(
+      (interest) =>
+        interest?.name ??
+        interest?.label ??
+        interest?.interest_name ??
+        interest?.interest_name_th ??
+        interest?.interest_name_en ??
+        interest,
+    )
+    .filter(Boolean);
+
+const getInterestIds = (item) =>
+  getInterestEntries(item)
+    .map((interest) =>
+      interest && typeof interest === "object"
+        ? interest.id ?? interest.interest_id
+        : undefined,
+    )
+    .filter((id) => id !== undefined && id !== null && id !== "");
 
 const normalizeText = (value) =>
   String(value ?? "")
@@ -62,6 +101,23 @@ const normalizeText = (value) =>
     .replace(/^กลุ่ม/, "")
     .replace(/\s+/g, " ")
     .toLowerCase();
+
+const filterRowsByInterest = (rows, interest, interestId) => {
+  const idTarget = interestId === undefined || interestId === null ? "" : String(interestId);
+  if (idTarget) {
+    const matchedById = rows.filter((item) =>
+      getInterestIds(item).some((id) => String(id) === idTarget),
+    );
+    if (matchedById.length > 0) return matchedById;
+  }
+
+  const target = normalizeText(interest);
+  if (!target) return [];
+
+  return rows.filter((item) =>
+    getInterestNames(item).some((name) => normalizeText(name) === target),
+  );
+};
 
 const getExpertiseNames = (item) => {
   const expertises = Array.isArray(item?.expertises) ? item.expertises : [];
@@ -100,7 +156,33 @@ const filterRowsByExpertise = (rows, expertise, groupId) => {
   );
 };
 
+// ค้นหาด้วยความสนใจ: ให้ backend filter ก่อน (search_by=interest ใช้ mechanism
+// เดียวกับ keyword search ปกติ) ถ้า backend ปฏิเสธ filter นี้ (400/404/422/500)
+// ค่อย fallback ไปดึงข้อมูลทั้งหมดมากรองฝั่ง client จาก profile.interests แทน
+const fetchInterestSearch = async ({ keyword, interest_id: interestId }) => {
+  try {
+    return await fetchProfileSearch({ search_by: "interest", keyword });
+  } catch (error) {
+    const status = error?.response?.status;
+    if (!FILTER_UNSUPPORTED_STATUSES.includes(status)) throw error;
+
+    if (__DEV__) {
+      console.log(
+        "[ResearchList] interest filter unsupported by backend, falling back to client-side filter:",
+        { status, endpoint: "/profile-search" },
+      );
+    }
+
+    const allRows = await fetchProfileSearch({});
+    return filterRowsByInterest(allRows, keyword, interestId);
+  }
+};
+
 const fetchProfileSearchWithFallback = async (searchParams) => {
+  if (searchParams?.search_by === "interest" && searchParams?.keyword) {
+    return fetchInterestSearch(searchParams);
+  }
+
   const rows = await fetchProfileSearch(searchParams);
 
   if (!searchParams?.expertise && !searchParams?.expertise_group_id) {
@@ -261,23 +343,36 @@ export default function ResearchList({ navigation, route }) {
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState(null);
+  const [retryToken, setRetryToken] = useState(0);
+
+  const runSearch = useCallback(async (cancelledRef) => {
+    try {
+      setLoading(true);
+      setError(null);
+      const rows = await fetchProfileSearchWithFallback(searchParams);
+      if (!cancelledRef.current) setResults(rows);
+    } catch (e) {
+      if (__DEV__) {
+        // ห้าม log token/Authorization header — เก็บแค่ status, endpoint และ params
+        console.warn("[ResearchList] profile-search failed:", {
+          status: e?.response?.status ?? e?.code ?? "NETWORK_ERROR",
+          endpoint: "/profile-search",
+          searchParams,
+        });
+      }
+      if (!cancelledRef.current) setError(t("research.list.errorMessage"));
+    } finally {
+      if (!cancelledRef.current) setLoading(false);
+    }
+  }, [searchParams, t]);
 
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const rows = await fetchProfileSearchWithFallback(searchParams);
-        if (!cancelled) setResults(rows);
-      } catch (e) {
-        if (!cancelled) setError(e.message);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, []);
+    const cancelledRef = { current: false };
+    runSearch(cancelledRef);
+    return () => { cancelledRef.current = true; };
+  }, [runSearch, retryToken]);
+
+  const handleRetry = () => setRetryToken((prev) => prev + 1);
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.appBg }}>
@@ -287,7 +382,13 @@ export default function ResearchList({ navigation, route }) {
       {loading ? (
         <StateView type="loading" title={t("research.common.loading")} />
       ) : error ? (
-        <StateView type="error" title={t("research.list.errorTitle")} message={error} />
+        <StateView
+          type="error"
+          title={t("research.list.errorTitle")}
+          message={error}
+          actionLabel={t("research.list.retry")}
+          onAction={handleRetry}
+        />
       ) : results.length === 0 ? (
         <StateView icon="search-outline" title={t("research.list.noData")} message={t("research.list.desc")} />
       ) : (

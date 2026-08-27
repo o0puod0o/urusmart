@@ -305,7 +305,7 @@ export const th = {
       selectGroupPlaceholder: 'กรุณาเลือกกลุ่มความเชี่ยวชาญ',
       selectInterestPlaceholder: 'กรุณาเลือกความสนใจ',
     },
-    list: { title: 'ผลการค้นหา', noData: 'ไม่พบข้อมูล', desc: 'ลองปรับเงื่อนไขการค้นหาใหม่', errorTitle: 'ไม่สามารถโหลดข้อมูลได้' },
+    list: { title: 'ผลการค้นหา', noData: 'ไม่พบข้อมูล', desc: 'ลองปรับเงื่อนไขการค้นหาใหม่', errorTitle: 'ไม่สามารถโหลดข้อมูลได้', errorMessage: 'ไม่สามารถค้นหาข้อมูลได้ กรุณาลองใหม่อีกครั้ง', retry: 'ลองใหม่' },
     card: { latest: 'ล่าสุด', inApp: 'โมดูลในแอป', addNew: '+ เพิ่มผลงานใหม่' },
     empty: { message: 'ยังไม่มีข้อมูล', addNew: '+ เพิ่มข้อมูลใหม่' },
     award: {
@@ -869,7 +869,7 @@ export const en = {
       selectGroupPlaceholder: 'Please select expertise group',
       selectInterestPlaceholder: 'Please select interest',
     },
-    list: { title: 'Search Results', noData: 'No results found', desc: 'Try adjusting your search criteria', errorTitle: 'Failed to load data' },
+    list: { title: 'Search Results', noData: 'No results found', desc: 'Try adjusting your search criteria', errorTitle: 'Failed to load data', errorMessage: 'Unable to search right now. Please try again.', retry: 'Retry' },
     card: { latest: 'Latest', inApp: 'In-App Module', addNew: '+ Add New Work' },
     empty: { message: 'No data available', addNew: '+ Add New' },
     award: {
