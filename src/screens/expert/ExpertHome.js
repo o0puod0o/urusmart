@@ -161,7 +161,8 @@ const SearchSection = ({ onSearch }) => {
           />
           <View className="flex-row items-center gap-2">
             <TextInput
-              className="flex-1 bg-[#f4f6f8] border border-[#e8ecf0] rounded-xl px-3 py-3 text-[13px] text-[#1a1a2e]"
+              className="flex-1 bg-[#f4f6f8] border border-[#e8ecf0] rounded-xl px-3 text-[13px] text-[#1a1a2e]"
+              style={{ minHeight: 48 }}
               placeholder={t("research.screen.keyword")}
               placeholderTextColor="#aaa"
               value={keyword}

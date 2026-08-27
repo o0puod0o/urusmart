@@ -101,11 +101,12 @@ const SheetDropdown = ({
         </Text>
       )}
       <TouchableOpacity
-        className={`flex-row items-center rounded-xl px-[14px] py-3 gap-1 ${
+        className={`flex-row items-center rounded-xl px-[14px] gap-1 ${
           open
             ? "bg-[#e8f5ee] border-[1.5px] border-brand"
             : "bg-[#f4f6f8] border border-[#e8ecf0]"
         }`}
+        style={{ minHeight: 48 }}
         onPress={() => {
           setSearch("");
           setOpen((prev) => !prev);
