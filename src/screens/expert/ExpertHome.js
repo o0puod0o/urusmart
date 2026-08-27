@@ -19,6 +19,7 @@ import AppHeader from "../../components/AppHeader";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import apiService from "../../services/api";
 import useMenuCounts from "../../hook/useMenuCounts";
+import useInterestOptions from "../../hook/useInterestOptions";
 import { colors, radius } from "../../theme/tokens";
 import {
   getExpertGroupSearchOptions,
@@ -270,34 +271,9 @@ const SearchSection = ({ onSearch }) => {
   const [selectedGroup, setSelectedGroup] = useState("");
   const [selectedInterest, setSelectedInterest] = useState("");
   const [expertGroups, setExpertGroups] = useState(fallbackExpertGroups);
-  const [rawInterests, setRawInterests] = useState([]);
   const [loadingExpertGroups, setLoadingExpertGroups] = useState(true);
-  const [loadingInterests, setLoadingInterests] = useState(true);
+  const { options: rawInterests, loading: loadingInterests } = useInterestOptions();
   const interestOptions = [{ id: "", label: t("research.screen.selectInterestPlaceholder") }, ...rawInterests];
-
-  const normalizeInterestOptions = (rows) =>
-    (Array.isArray(rows) ? rows : [])
-      .map((interest) => {
-        if (typeof interest === "string") {
-          return { id: interest, label: interest };
-        }
-
-        const label =
-          interest?.name ??
-          interest?.label ??
-          interest?.interest_name ??
-          interest?.interest_name_th ??
-          interest?.interest_name_en ??
-          interest?.title;
-        const id =
-          interest?.id ??
-          interest?.interest_id ??
-          interest?.value ??
-          label;
-
-        return label ? { id, label } : null;
-      })
-      .filter(Boolean);
 
   const submitSearch = (params) => {
     const cleaned = cleanParams(params);
@@ -337,44 +313,27 @@ const SearchSection = ({ onSearch }) => {
   };
 
   useEffect(() => {
-    Promise.allSettled([
-      apiService.get("/ref/search-options"),
-      apiService.get("/ref/expertise-groups"),
-    ])
-      .then(([searchOptionsResult, expertiseGroupsResult]) => {
-        if (searchOptionsResult.status === "fulfilled") {
-          const r = searchOptionsResult.value;
-          const rows = r.data?.interests ?? r.data?.data ?? [];
-          const options = normalizeInterestOptions(rows);
-          if (options.length > 0) {
-            setRawInterests(options);
-          }
-        }
+    apiService
+      .get("/ref/expertise-groups")
+      .then((r) => {
+        const rows =
+          r.data?.expertise_groups ??
+          r.data?.groups ??
+          r.data?.data ??
+          r.data ??
+          [];
 
-        if (expertiseGroupsResult.status === "fulfilled") {
-          const r = expertiseGroupsResult.value;
-          const rows =
-            r.data?.expertise_groups ??
-            r.data?.groups ??
-            r.data?.data ??
-            r.data ??
-            [];
-
-          if (Array.isArray(rows) && rows.length > 0) {
-            setExpertGroups(
-              normalizeExpertGroupRows(
-                rows,
-                t("research.screen.selectGroupPlaceholder"),
-              ),
-            );
-          }
+        if (Array.isArray(rows) && rows.length > 0) {
+          setExpertGroups(
+            normalizeExpertGroupRows(
+              rows,
+              t("research.screen.selectGroupPlaceholder"),
+            ),
+          );
         }
       })
       .catch(() => {})
-      .finally(() => {
-        setLoadingExpertGroups(false);
-        setLoadingInterests(false);
-      });
+      .finally(() => setLoadingExpertGroups(false));
   }, []);
 
   return (

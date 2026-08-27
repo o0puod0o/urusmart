@@ -1,5 +1,5 @@
 //ความสนใจ
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -16,7 +16,7 @@ import FormContainer from "../../../components/expert/FormContainer";
 import KeyboardAwareScrollView from "../../../components/expert/KeyboardAwareScrollView";
 import InlineDropdown from "../../../components/expert/InlineDropdown";
 import useResource from "../../../hook/useResource";
-import apiService from "../../../services/api";
+import useInterestOptions from "../../../hook/useInterestOptions";
 import useConfirm from "../../../hook/useConfirm";
 import useSubmitLock from "../../../hook/useSubmitLock";
 import { getExpertTitle } from "../../../utils/expertFields";
@@ -29,43 +29,11 @@ const InterestForm = ({ navigation }) => {
   const submitOnce = useSubmitLock();
   const [selectedInterest, setSelectedInterest] = useState("");
   const [customInterest, setCustomInterest] = useState("");
-  const [interestOptions, setInterestOptions] = useState([
+  const { options: rawInterestOptions, loading: loadingOptions } = useInterestOptions();
+  const interestOptions = [
     { id: "", label: t("research.interest.selectPlaceholder") },
-  ]);
-  const [loadingOptions, setLoadingOptions] = useState(true);
-
-  useEffect(() => {
-    apiService
-      .get("/ref/search-options")
-      .then((r) => {
-        const rows = r.data?.interests ?? r.data?.data ?? [];
-        const options = (Array.isArray(rows) ? rows : [])
-          .map((interest) => {
-            if (typeof interest === "string") {
-              return { id: interest, label: interest };
-            }
-
-            const label =
-              interest?.name ??
-              interest?.label ??
-              interest?.interest_name ??
-              interest?.interest_name_th ??
-              interest?.interest_name_en ??
-              interest?.title;
-
-            return label ? { id: label, label } : null;
-          })
-          .filter(Boolean);
-        if (options.length > 0) {
-          setInterestOptions([
-            { id: "", label: t("research.interest.selectPlaceholder") },
-            ...options,
-          ]);
-        }
-      })
-      .catch(() => {})
-      .finally(() => setLoadingOptions(false));
-  }, []);
+    ...rawInterestOptions,
+  ];
 
   const handleAdd = () => submitOnce(async () => {
     const title = selectedInterest || customInterest.trim();
