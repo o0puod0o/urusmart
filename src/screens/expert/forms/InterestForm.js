@@ -39,10 +39,27 @@ const InterestForm = ({ navigation }) => {
       .get("/ref/search-options")
       .then((r) => {
         const rows = r.data?.interests ?? r.data?.data ?? [];
-        if (rows.length > 0) {
+        const options = (Array.isArray(rows) ? rows : [])
+          .map((interest) => {
+            if (typeof interest === "string") {
+              return { id: interest, label: interest };
+            }
+
+            const label =
+              interest?.name ??
+              interest?.label ??
+              interest?.interest_name ??
+              interest?.interest_name_th ??
+              interest?.interest_name_en ??
+              interest?.title;
+
+            return label ? { id: label, label } : null;
+          })
+          .filter(Boolean);
+        if (options.length > 0) {
           setInterestOptions([
             { id: "", label: t("research.interest.selectPlaceholder") },
-            ...rows.map((i) => ({ id: i.name ?? i.id, label: i.name })),
+            ...options,
           ]);
         }
       })

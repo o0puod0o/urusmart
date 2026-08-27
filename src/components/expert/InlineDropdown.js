@@ -80,10 +80,7 @@ const InlineDropdown = ({
 
   const handleOpen = () => {
     if (loading) return;
-    Keyboard.dismiss();
-    setKeyboardHeight(0);
-
-    setTimeout(() => {
+    const openDropdown = () => {
       triggerRef.current?.measure((x, y, width, height, pageX, pageY) => {
         const usable = screenHeight;
         const spaceBelow = usable - (pageY + height);
@@ -100,7 +97,18 @@ const InlineDropdown = ({
         setSearch("");
         animateIn();
       });
-    }, Platform.OS === "ios" ? 80 : 0);
+    };
+
+    // Opening immediately keeps ordinary dropdowns responsive. Only wait for
+    // iOS when an existing keyboard needs time to finish dismissing.
+    if (keyboardHeight > 0) {
+      Keyboard.dismiss();
+      setKeyboardHeight(0);
+      setTimeout(openDropdown, Platform.OS === "ios" ? 80 : 0);
+      return;
+    }
+
+    openDropdown();
   };
 
   // ปรับ dropdown ให้ขึ้นเมื่อ keyboard โผล่

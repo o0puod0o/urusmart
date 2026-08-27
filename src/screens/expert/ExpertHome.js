@@ -269,6 +269,30 @@ const SearchSection = ({ onSearch }) => {
   const [loadingInterests, setLoadingInterests] = useState(true);
   const interestOptions = [{ id: "", label: t("research.screen.selectInterestPlaceholder") }, ...rawInterests];
 
+  const normalizeInterestOptions = (rows) =>
+    (Array.isArray(rows) ? rows : [])
+      .map((interest) => {
+        if (typeof interest === "string") {
+          return { id: interest, label: interest };
+        }
+
+        const label =
+          interest?.name ??
+          interest?.label ??
+          interest?.interest_name ??
+          interest?.interest_name_th ??
+          interest?.interest_name_en ??
+          interest?.title;
+        const id =
+          interest?.id ??
+          interest?.interest_id ??
+          interest?.value ??
+          label;
+
+        return label ? { id, label } : null;
+      })
+      .filter(Boolean);
+
   const submitSearch = (params) => {
     const cleaned = cleanParams(params);
     if (__DEV__) console.log("[Research] profile-search params:", cleaned);
@@ -284,7 +308,13 @@ const SearchSection = ({ onSearch }) => {
 
   const runGroupSearch = () => {
     if (selectedInterest) {
-      submitSearch({ interest: selectedInterest });
+      const selectedInterestOption = rawInterests.find(
+        (interest) => String(interest.id) === String(selectedInterest),
+      );
+      submitSearch({
+        search_by: "interest",
+        keyword: selectedInterestOption?.label ?? selectedInterest,
+      });
       return;
     }
 
@@ -308,8 +338,9 @@ const SearchSection = ({ onSearch }) => {
         if (searchOptionsResult.status === "fulfilled") {
           const r = searchOptionsResult.value;
           const rows = r.data?.interests ?? r.data?.data ?? [];
-          if (rows.length > 0) {
-            setRawInterests(rows.map((i) => ({ id: i.name ?? i.id, label: i.name })));
+          const options = normalizeInterestOptions(rows);
+          if (options.length > 0) {
+            setRawInterests(options);
           }
         }
 

@@ -102,7 +102,10 @@ const filterRowsByExpertise = (rows, expertise, groupId) => {
 
 const fetchProfileSearchWithFallback = async (searchParams) => {
   const rows = await fetchProfileSearch(searchParams);
-  if (!searchParams?.expertise && !searchParams?.expertise_group_id) return rows;
+
+  if (!searchParams?.expertise && !searchParams?.expertise_group_id) {
+    return rows;
+  }
 
   const filteredRows = filterRowsByExpertise(
     rows,
