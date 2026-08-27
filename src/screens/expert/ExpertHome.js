@@ -208,7 +208,8 @@ const SearchSection = ({ onSearch }) => {
             searchable
           />
           <TouchableOpacity
-            className="flex-row items-center justify-center gap-2 bg-brand rounded-xl py-[13px]"
+            className="flex-row items-center justify-center gap-2 px-4"
+            style={{ backgroundColor: colors.primary, borderRadius: radius.md, minHeight: 48 }}
             onPress={runGroupSearch}
           >
             <Ionicons name="search-outline" size={16} color="#fff" />
