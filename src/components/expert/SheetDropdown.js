@@ -26,6 +26,8 @@ const SheetDropdown = ({
   loading = false,
   searchable = false,
   required = false,
+  containerClassName = "px-4 py-2",
+  triggerStyle,
 }) => {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
@@ -93,7 +95,7 @@ const SheetDropdown = ({
   const displayPlaceholder = placeholder ?? options[0]?.label ?? "เลือก...";
 
   return (
-    <View className="px-4 py-2">
+    <View className={containerClassName}>
       {!!label && (
         <Text className="text-[13px] font-semibold text-brand mb-[6px]">
           {label}
@@ -101,12 +103,12 @@ const SheetDropdown = ({
         </Text>
       )}
       <TouchableOpacity
-        className={`flex-row items-center rounded-xl px-[14px] gap-1 ${
+        className={`flex-row items-center gap-1 ${
           open
             ? "bg-[#e8f5ee] border-[1.5px] border-brand"
             : "bg-[#f4f6f8] border border-[#e8ecf0]"
         }`}
-        style={{ minHeight: 48 }}
+        style={[{ minHeight: 48, paddingHorizontal: 14, borderRadius: 12 }, triggerStyle]}
         onPress={() => {
           setSearch("");
           setOpen((prev) => !prev);

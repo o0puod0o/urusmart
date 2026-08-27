@@ -64,6 +64,15 @@ const cleanParams = (params) =>
 
 const ResearchDropdown = SheetDropdown;
 
+// Shared style ให้ dropdown ทั้ง 3 ช่องและ TextInput คำค้นมีขนาด/ระยะห่างตรงกันเป๊ะ
+// ไม่ให้แต่ละช่องพึ่ง padding ของตัวเองแยกกันจนสูง/กว้างไม่เท่ากัน
+const SEARCH_FIELD_CONTAINER_CLASS = "";
+const searchFieldStyle = {
+  borderRadius: 12,
+  minHeight: 48,
+  paddingHorizontal: 12,
+};
+
 const SearchSection = ({ onSearch }) => {
   const { t } = useTranslation();
   const SEARCH_BY_OPTIONS = getSearchByOptions(t);
@@ -158,10 +167,12 @@ const SearchSection = ({ onSearch }) => {
             options={SEARCH_BY_OPTIONS}
             placeholder={t("research.screen.selectSearchType")}
             onSelect={setSearchBy}
+            containerClassName={SEARCH_FIELD_CONTAINER_CLASS}
+            triggerStyle={searchFieldStyle}
           />
           <TextInput
-            className="bg-[#f4f6f8] border border-[#e8ecf0] rounded-xl px-3 text-[13px] text-[#1a1a2e]"
-            style={{ minHeight: 48 }}
+            className="bg-[#f4f6f8] border border-[#e8ecf0] text-[13px] text-[#1a1a2e]"
+            style={searchFieldStyle}
             placeholder={t("research.screen.keyword")}
             placeholderTextColor="#aaa"
             value={keyword}
@@ -195,6 +206,8 @@ const SearchSection = ({ onSearch }) => {
             }}
             loading={loadingExpertGroups}
             searchable
+            containerClassName={SEARCH_FIELD_CONTAINER_CLASS}
+            triggerStyle={searchFieldStyle}
           />
           <ResearchDropdown
             value={selectedInterest}
@@ -206,6 +219,8 @@ const SearchSection = ({ onSearch }) => {
             }}
             loading={loadingInterests}
             searchable
+            containerClassName={SEARCH_FIELD_CONTAINER_CLASS}
+            triggerStyle={searchFieldStyle}
           />
           <TouchableOpacity
             className="flex-row items-center justify-center gap-2 px-4"
