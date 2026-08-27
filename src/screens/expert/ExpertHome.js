@@ -159,25 +159,23 @@ const SearchSection = ({ onSearch }) => {
             placeholder={t("research.screen.selectSearchType")}
             onSelect={setSearchBy}
           />
-          <View className="flex-row items-center gap-2">
-            <TextInput
-              className="flex-1 bg-[#f4f6f8] border border-[#e8ecf0] rounded-xl px-3 text-[13px] text-[#1a1a2e]"
-              style={{ minHeight: 48 }}
-              placeholder={t("research.screen.keyword")}
-              placeholderTextColor="#aaa"
-              value={keyword}
-              onChangeText={(text) => setKeyword(sanitizeAcademicText(text))}
-              onSubmitEditing={runKeywordSearch}
-              returnKeyType="search"
-            />
-            <TouchableOpacity
-              className="px-4 py-3"
-              style={{ backgroundColor: colors.primary, borderRadius: radius.md, minHeight: 48, justifyContent: "center" }}
-              onPress={runKeywordSearch}
-            >
-              <Text className="text-white text-[13px] font-semibold">{t("research.screen.search")}</Text>
-            </TouchableOpacity>
-          </View>
+          <TextInput
+            className="bg-[#f4f6f8] border border-[#e8ecf0] rounded-xl px-3 text-[13px] text-[#1a1a2e]"
+            style={{ minHeight: 48 }}
+            placeholder={t("research.screen.keyword")}
+            placeholderTextColor="#aaa"
+            value={keyword}
+            onChangeText={(text) => setKeyword(sanitizeAcademicText(text))}
+            onSubmitEditing={runKeywordSearch}
+            returnKeyType="search"
+          />
+          <TouchableOpacity
+            className="flex-row items-center justify-center px-4"
+            style={{ backgroundColor: colors.primary, borderRadius: radius.md, minHeight: 48 }}
+            onPress={runKeywordSearch}
+          >
+            <Text className="text-white text-[13px] font-semibold">{t("research.screen.search")}</Text>
+          </TouchableOpacity>
         </View>
         <View className="flex-row items-center gap-2">
           <View className="flex-1 h-px bg-[#e8ecf0]" />
