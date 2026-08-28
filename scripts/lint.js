@@ -82,9 +82,18 @@ function checkRelativeImports(files) {
   return failures;
 }
 
-function checkAppAssets() {
+function loadAppConfig() {
   const appJsonPath = path.join(ROOT, "app.json");
-  const config = JSON.parse(fs.readFileSync(appJsonPath, "utf8")).expo;
+  if (fs.existsSync(appJsonPath)) {
+    return JSON.parse(fs.readFileSync(appJsonPath, "utf8")).expo;
+  }
+  // app.config.js (dynamic config) — googleServicesFile references
+  // process.env, which is fine here since we only read static asset paths.
+  return require(path.join(ROOT, "app.config.js")).expo;
+}
+
+function checkAppAssets() {
+  const config = loadAppConfig();
   const assetPaths = [
     config.icon,
     config.splash?.image,
