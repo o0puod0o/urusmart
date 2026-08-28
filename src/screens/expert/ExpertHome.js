@@ -17,7 +17,7 @@ import apiService from "../../services/api";
 import useMenuCounts from "../../hook/useMenuCounts";
 import useInterestOptions from "../../hook/useInterestOptions";
 import SheetDropdown from "../../components/expert/SheetDropdown";
-import { colors, radius } from "../../theme/tokens";
+import { colors } from "../../theme/tokens";
 import {
   getExpertGroupSearchOptions,
   normalizeExpertGroupRows,
@@ -69,8 +69,8 @@ const ResearchDropdown = SheetDropdown;
 const SEARCH_FIELD_CONTAINER_CLASS = "";
 const searchFieldStyle = {
   borderRadius: 12,
-  minHeight: 48,
-  paddingHorizontal: 12,
+  minHeight: 46,
+  paddingHorizontal: 14,
 };
 
 const SearchSection = ({ onSearch }) => {
@@ -150,29 +150,54 @@ const SearchSection = ({ onSearch }) => {
   }, []);
 
   return (
-    <View className="bg-white rounded-2xl overflow-hidden border border-[#e8ecf0]">
-      <LinearGradient colors={["#f0faf5", "#e8f5ee"]} style={{ paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: "#d4ece2" }}>
-        <View className="flex-row items-center gap-2">
-          <View className="w-7 h-7 rounded-[9px] bg-brand items-center justify-center">
-            <Ionicons name="search-outline" size={15} color="#fff" />
+    <View
+      className="bg-white overflow-hidden border border-[#e5edf0]"
+      style={{ borderRadius: 18 }}
+    >
+      <LinearGradient
+        colors={["#f1fbf6", "#e7f5ee"]}
+        style={{
+          paddingHorizontal: 14,
+          paddingVertical: 11,
+          borderBottomWidth: 1,
+          borderBottomColor: "#d5ebdf",
+        }}
+      >
+        <View className="flex-row items-center gap-[7px]">
+          <View
+            className="items-center justify-center"
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: 10,
+              backgroundColor: colors.primary,
+            }}
+          >
+            <Ionicons name="search-outline" size={18} color="#fff" />
           </View>
-          <Text className="text-[13px] font-bold text-[#0a3d2a]">{t("research.screen.searchTitle")}</Text>
+          <Text className="text-[15px] font-bold text-[#0a4d35]">
+            {t("research.screen.searchTitle")}
+          </Text>
         </View>
       </LinearGradient>
-      <View className="p-[14px] gap-[10px]">
-        <View className="gap-2">
-          <Text className="text-[11px] font-bold text-[#888] uppercase tracking-[0.5px]">{t("research.screen.searchByKeyword")}</Text>
-          <ResearchDropdown
-            value={searchBy}
-            options={SEARCH_BY_OPTIONS}
-            placeholder={t("research.screen.selectSearchType")}
-            onSelect={setSearchBy}
-            containerClassName={SEARCH_FIELD_CONTAINER_CLASS}
-            triggerStyle={searchFieldStyle}
-          />
+
+      <View style={{ paddingHorizontal: 14, paddingTop: 14, paddingBottom: 14 }}>
+        <Text className="mb-[6px] text-[13px] font-semibold text-[#68756f]">
+          {t("research.screen.searchByKeyword")}
+        </Text>
+        <ResearchDropdown
+          value={searchBy}
+          options={SEARCH_BY_OPTIONS}
+          placeholder={t("research.screen.selectSearchType")}
+          onSelect={setSearchBy}
+          containerClassName={SEARCH_FIELD_CONTAINER_CLASS}
+          triggerStyle={searchFieldStyle}
+        />
+
+        <View className="flex-row items-center mt-[10px] gap-2">
           <TextInput
-            className="bg-[#f4f6f8] border border-[#e8ecf0] text-[13px] text-[#1a1a2e]"
-            style={searchFieldStyle}
+            className="flex-1 bg-[#f5f7f8] border border-[#e4e9ed] text-[14px] text-[#1a1a2e]"
+            style={{ ...searchFieldStyle, minWidth: 0 }}
             placeholder={t("research.screen.keyword")}
             placeholderTextColor="#aaa"
             value={keyword}
@@ -181,21 +206,33 @@ const SearchSection = ({ onSearch }) => {
             returnKeyType="search"
           />
           <TouchableOpacity
-            className="flex-row items-center justify-center gap-2 px-4"
-            style={{ backgroundColor: colors.primary, borderRadius: radius.md, minHeight: 48 }}
+            className="items-center justify-center px-4"
+            style={{
+              width: 88,
+              minHeight: 46,
+              borderRadius: 12,
+              backgroundColor: colors.primary,
+            }}
             onPress={runKeywordSearch}
           >
-            <Ionicons name="search-outline" size={16} color="#fff" />
-            <Text className="text-white text-[13px] font-semibold">{t("research.screen.search")}</Text>
+            <Text className="text-white text-[14px] font-bold">
+              {t("research.screen.search")}
+            </Text>
           </TouchableOpacity>
         </View>
-        <View className="flex-row items-center gap-2">
-          <View className="flex-1 h-px bg-[#e8ecf0]" />
-          <Text className="text-[11px] text-[#bbb] font-semibold">{t("research.screen.or")}</Text>
-          <View className="flex-1 h-px bg-[#e8ecf0]" />
+
+        <View className="flex-row items-center my-3 gap-3">
+          <View className="flex-1 h-px bg-[#e1e7e8]" />
+          <Text className="text-[13px] text-[#a9aaa9] font-semibold">
+            {t("research.screen.or")}
+          </Text>
+          <View className="flex-1 h-px bg-[#e1e7e8]" />
         </View>
-        <View className="gap-2">
-          <Text className="text-[11px] font-bold text-[#888] uppercase tracking-[0.5px]">{t("research.screen.searchByGroup")}</Text>
+
+        <Text className="mb-[6px] text-[13px] font-semibold text-[#68756f]">
+          {t("research.screen.searchByGroup")}
+        </Text>
+        <View className="gap-[7px]">
           <ResearchDropdown
             value={selectedGroup}
             options={expertGroups}
@@ -222,15 +259,22 @@ const SearchSection = ({ onSearch }) => {
             containerClassName={SEARCH_FIELD_CONTAINER_CLASS}
             triggerStyle={searchFieldStyle}
           />
-          <TouchableOpacity
-            className="flex-row items-center justify-center gap-2 px-4"
-            style={{ backgroundColor: colors.primary, borderRadius: radius.md, minHeight: 48 }}
-            onPress={runGroupSearch}
-          >
-            <Ionicons name="search-outline" size={16} color="#fff" />
-            <Text className="text-white text-[13px] font-semibold">{t("research.screen.search")}</Text>
-          </TouchableOpacity>
         </View>
+
+        <TouchableOpacity
+          className="flex-row items-center justify-center gap-2 mt-[10px] px-4"
+          style={{
+            backgroundColor: colors.primary,
+            borderRadius: 12,
+            minHeight: 48,
+          }}
+          onPress={runGroupSearch}
+        >
+          <Ionicons name="search-outline" size={18} color="#fff" />
+          <Text className="text-white text-[15px] font-bold">
+            {t("research.screen.search")}
+          </Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
