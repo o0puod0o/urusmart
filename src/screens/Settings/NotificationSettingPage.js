@@ -67,7 +67,7 @@ export default function NotificationSettingPage() {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
-        <Text className="text-[12px] font-bold text-[#8a9a90] px-5 pt-5 pb-2 uppercase tracking-[0.8px]">{t("notif.section")}</Text>
+        <Text className="text-[12px] font-bold text-[#4a5c54] px-5 pt-5 pb-2 uppercase tracking-[0.8px]">{t("notif.section")}</Text>
 
         <View className="bg-white rounded-2xl mx-4 overflow-hidden border border-[#e0ebe4]">
           {ITEMS.map((item, i) => (
@@ -77,7 +77,7 @@ export default function NotificationSettingPage() {
               </View>
               <View className="flex-1">
                 <Text className="text-[15px] font-bold text-[#101b17]">{item.title}</Text>
-                {!!item.sub && <Text className="text-[12px] font-medium text-[#5a6a60] mt-[2px]">{item.sub}</Text>}
+                {!!item.sub && <Text className="text-[12px] font-medium text-[#4a5c54] mt-[2px]">{item.sub}</Text>}
               </View>
               <Switch value={settings[item.key]} onValueChange={() => toggle(item.key)} trackColor={{ false: "#dfe8e3", true: "#1a6b3c" }} thumbColor="#fff" ios_backgroundColor="#dfe8e3" />
             </View>
@@ -92,7 +92,7 @@ export default function NotificationSettingPage() {
               </View>
               <View className="flex-1">
                 <Text className="text-[14px] font-bold text-[#101b17]">{t("notif.permissionOff")}</Text>
-                <Text className="text-[12px] text-[#5a6a60] mt-1 leading-[18px]">{t("notif.permissionOffSub")}</Text>
+                <Text className="text-[12px] text-[#4a5c54] mt-1 leading-[18px]">{t("notif.permissionOffSub")}</Text>
               </View>
             </View>
             <TouchableOpacity
@@ -108,7 +108,7 @@ export default function NotificationSettingPage() {
 
         <View className="flex-row items-start gap-2 bg-[#e8f5ee] rounded-[14px] mx-4 mt-4 p-[14px] border border-[#e0ebe4]">
           <Ionicons name="information-circle-outline" size={16} color="#1a6b3c" />
-          <Text className="flex-1 text-[12px] text-[#5a6a60] leading-[18px]">{t("notif.deviceNote")}</Text>
+          <Text className="flex-1 text-[12px] text-[#4a5c54] leading-[18px]">{t("notif.deviceNote")}</Text>
         </View>
       </ScrollView>
     </View>

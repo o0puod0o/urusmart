@@ -45,7 +45,7 @@ const MenuRow = ({ item, isLast, onPress }) => {
           </View>
           <View className="flex-1 gap-[3px]">
             <Text className="text-[15px] font-bold" style={{ color: colors.text }}>{item.label}</Text>
-            {!!item.sub && <Text className="text-[12px]" style={{ color: colors.textSoft }}>{item.sub}</Text>}
+            {!!item.sub && <Text className="text-[12px]" style={{ color: colors.secondaryText }}>{item.sub}</Text>}
           </View>
           <View className="w-8 h-8 rounded-full items-center justify-center" style={{ backgroundColor: colors.fieldBg }}>
             <Ionicons name="chevron-forward" size={14} color={colors.textSoft} />
@@ -104,7 +104,7 @@ export default function SettingPage() {
 
         {/* App version */}
         <View className="items-center py-2">
-          <Text className="text-[11px] text-[#bbb] font-semibold">URUSmart v1.0.0</Text>
+          <Text className="text-[11px] text-[#7c8f86] font-semibold">URUSmart v1.0.0</Text>
         </View>
       </ScrollView>
     </View>

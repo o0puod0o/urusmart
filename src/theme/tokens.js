@@ -20,6 +20,14 @@ export const colors = {
   placeholder: "#aab8b2",
   danger: "#dc2626",
   warning: "#c95b05",
+
+  // ชุดสีข้อความมาตรฐาน — ใช้แทนเฉดเทาที่กระจายกันในแต่ละไฟล์เดิม
+  // (contrast ผ่าน WCAG AA บนพื้นขาว/#eaf5ef ทั้งคู่ ยกเว้น mutedText ที่ตั้งใจให้จางกว่าเพื่อ placeholder/ข้อความรองสุด)
+  primaryText: "#101b17",
+  secondaryText: "#4a5c54",
+  mutedText: "#7c8f86",
+  successText: "#0f7a55",
+  dangerText: "#dc2626",
 };
 
 export const radius = {

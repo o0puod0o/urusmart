@@ -7,6 +7,8 @@ import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import LoginScreen from "../screens/Login";
+import SetPinScreen from "../screens/PinLock/SetPinScreen";
+import ChangePinScreen from "../screens/PinLock/ChangePinScreen";
 import Homepage from "../screens/Homepage";
 import Cardpage from "../screens/Card";
 import ChatbotPage from "../screens/Chatbot";
@@ -225,6 +227,8 @@ export default function AppNavigator() {
       screenOptions={{ headerShown: false }}
     >
       <RootStack.Screen name="Login" component={LoginScreen} />
+      <RootStack.Screen name="SetPin" component={SetPinScreen} options={{ gestureEnabled: false }} />
+      <RootStack.Screen name="ChangePin" component={ChangePinScreen} />
       <RootStack.Screen name="MainTabs" component={MainTabs} />
       <RootStack.Screen name="Announcements" component={AnnouncementsScreen} />
       <RootStack.Screen name="Notifications" component={NotificationsScreen} />

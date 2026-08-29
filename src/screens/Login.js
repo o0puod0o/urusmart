@@ -28,15 +28,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { onLoginSuccess } from "../services/notificationService";
 import { API_BASE_URL, STORAGE_KEYS } from "../config";
-import { clearAuthSession, saveAuthSession } from "../services/authStorage";
-import {
-  checkSupport,
-  isBiometricEnabled,
-  getBiometricToken,
-  saveBiometricToken,
-  setBiometricEnabled,
-  clearBiometricToken,
-} from "../services/biometricService";
+import { saveAuthSession } from "../services/authStorage";
+import { checkSupport, isBiometricEnabled, hasBiometricToken, saveBiometricToken, setBiometricEnabled, clearBiometricToken } from "../services/biometricService";
+import { isPinSet } from "../services/pinService";
+import { resolveUserId, setCurrentUserId } from "../services/userSecurityKeys";
 
 const API_URL = API_BASE_URL;
 const SSO_BASE_URL =
@@ -220,10 +215,6 @@ const Login = ({ navigation, route }) => {
   const [ssoPageLoading, setSsoPageLoading] = useState(false);
   const [hideSsoContent, setHideSsoContent] = useState(false);
   const [showSsoWebView, setShowSsoWebView] = useState(false);
-  const [biometricAvailable, setBiometricAvailable] = useState(false);
-  const [biometricLabel, setBiometricLabel] = useState("Biometric");
-  const [biometricIcon, setBiometricIcon] = useState("finger-print-outline");
-  const [biometricReady, setBiometricReady] = useState(false);
   const scrollRef = useRef(null);
   const ssoWebViewRef = useRef(null);
   const ssoTimeoutRef = useRef(null);
@@ -251,31 +242,6 @@ const Login = ({ navigation, route }) => {
     cardOpacity.value = withDelay(400, withTiming(1, { duration: 400 }));
   }, []);
 
-  // ── ตรวจ Biometric ──────────────────────────────────────────
-  useEffect(() => {
-    (async () => {
-      const [enabled, support] = await Promise.all([
-        isBiometricEnabled(),
-        checkSupport(),
-      ]);
-      if (enabled && support.supported) {
-        setBiometricAvailable(true);
-        setBiometricLabel(getBiometricLabel(support));
-        setBiometricIcon(
-          support.hasFaceId ? "scan-outline" : "finger-print-outline",
-        );
-        setBiometricReady(true);
-      }
-    })();
-  }, [t]);
-
-  // ── Auto-trigger biometric ───────────────────────────────────
-  useEffect(() => {
-    if (!biometricReady) return;
-    const timer = setTimeout(() => triggerBiometric(), 700);
-    return () => clearTimeout(timer);
-  }, [biometricReady]);
-
   useEffect(
     () => () => {
       if (ssoTimeoutRef.current) clearTimeout(ssoTimeoutRef.current);
@@ -302,67 +268,88 @@ const Login = ({ navigation, route }) => {
     navigation.reset({ index: 0, routes: [{ name: "MainTabs" }] });
   };
 
-  const disableBiometricLogin = async () => {
-    setBiometricAvailable(false);
-    setBiometricReady(false);
-    await setBiometricEnabled(false);
-    await clearBiometricToken();
-  };
-
   const runPostLoginNotifications = () => {
     onLoginSuccess().catch((error) => {
       console.error("POST-LOGIN NOTIFICATION ERROR:", error);
     });
   };
 
-  const promptEnableBiometric = async (token) => {
-    const support = await checkSupport();
-    if (!support.supported) return;
-    const biometricLabelText = getBiometricLabel(support);
+  const promptEnableBiometric = (userId, token) =>
+    new Promise((resolve) => {
+      Promise.all([checkSupport(), isBiometricEnabled(userId), hasBiometricToken(userId)]).then(
+        ([support, alreadyEnabled, tokenExists]) => {
+        if (!support.supported) {
+          resolve();
+          return;
+        }
 
-    Alert.alert(
-      t("login.enableBiometricTitle", { label: biometricLabelText }),
-      t("login.enableBiometricMsg", { label: biometricLabelText }),
-      [
-        {
-          text: t("login.notNow"),
-          style: "cancel",
-          onPress: async () => {
-            await setBiometricEnabled(false);
-            await clearBiometricToken();
-          },
-        },
-        {
-          text: t("login.enable"),
-          onPress: async () => {
-            try {
-              await saveBiometricToken(
-                String(token),
-                t("login.enableBiometricPrompt", {
-                  label: biometricLabelText,
-                }),
-              );
-              await setBiometricEnabled(true);
-            } catch (_) {
-              Alert.alert(
-                t("login.enableFailedTitle"),
-                t("login.enableFailedMsg"),
-              );
-            }
-          },
-        },
-      ],
-      { cancelable: false },
-    );
-  };
+        // เคยเปิด biometric ไว้แล้วสำหรับบัญชีนี้ (logout ไม่ได้ลบ flag/token นี้)
+        // — token เดิมยังใช้ปลดล็อกได้ปกติ ไม่ต้องเขียนทับใหม่ทุกครั้งที่ login
+        // เพราะ SecureStore เขียนด้วย requireAuthentication:true เสมอ ทำให้ Face ID
+        // เด้งขึ้นมาเองโดยผู้ใช้ไม่ได้ขอ — ถือว่า alreadyEnabled=true หมายถึงมี
+        // token อยู่แล้วเสมอ (setBiometricEnabled(true) ถูกเรียกหลัง
+        // saveBiometricToken() สำเร็จเท่านั้น) แม้ tokenExists (flag ใหม่ที่เพิ่ง
+        // เพิ่ม) จะเป็น false ก็ตาม — เพราะบัญชีที่เปิด biometric ไว้ตั้งแต่ก่อน
+        // เพิ่ม flag นี้จะยังไม่มี flag ใหม่นี้เลย (migration gap) แต่ token จริง
+        // ใน SecureStore มีอยู่แล้ว เขียนทับใหม่เฉพาะกรณี alreadyEnabled=false จริงๆ
+        if (alreadyEnabled || tokenExists) {
+          resolve();
+          return;
+        }
 
-  const promptEnableBiometricAfterNavigation = (token) => {
-    setTimeout(() => {
-      promptEnableBiometric(token).catch((error) => {
-        console.error("BIOMETRIC PROMPT ERROR:", error);
+        const biometricLabelText = getBiometricLabel(support);
+
+        Alert.alert(
+          t("login.enableBiometricTitle", { label: biometricLabelText }),
+          t("login.enableBiometricMsg", { label: biometricLabelText }),
+          [
+            {
+              text: t("login.notNow"),
+              style: "cancel",
+              onPress: async () => {
+                await setBiometricEnabled(userId, false);
+                await clearBiometricToken(userId);
+                resolve();
+              },
+            },
+            {
+              text: t("login.enable"),
+              onPress: async () => {
+                try {
+                  await saveBiometricToken(
+                    userId,
+                    String(token),
+                    t("login.enableBiometricPrompt", {
+                      label: biometricLabelText,
+                    }),
+                  );
+                  await setBiometricEnabled(userId, true);
+                } catch (_) {
+                  Alert.alert(
+                    t("login.enableFailedTitle"),
+                    t("login.enableFailedMsg"),
+                  );
+                } finally {
+                  resolve();
+                }
+              },
+            },
+          ],
+          { cancelable: false },
+        );
       });
-    }, 600);
-  };
+    });
+
+  const promptEnableBiometricAfterNavigation = (userId, token) =>
+    new Promise((resolve) => {
+      setTimeout(() => {
+        promptEnableBiometric(userId, token)
+          .catch((error) => {
+            console.error("BIOMETRIC PROMPT ERROR:", error);
+          })
+          .finally(resolve);
+      }, 600);
+    });
 
   const completeBackendLogin = async (data) => {
     if (!data?.token) {
@@ -370,14 +357,45 @@ const Login = ({ navigation, route }) => {
       return;
     }
 
+    // resolve ตัวตนบัญชีจาก backend ก่อนเสมอ — PIN/biometric ทั้งหมดต้องผูกกับ
+    // userId นี้ (per-account) ไม่ใช่ device-level เพื่อไม่ให้ User B ที่ login
+    // ต่อจาก User A บนเครื่องเดียวกัน เห็น/ใช้ PIN ของ User A ได้
+    const userId = resolveUserId(data.user);
+    if (!userId) {
+      if (__DEV__) console.error("[Login] resolveUserId failed — no id/email in data.user");
+      Alert.alert(t("login.signInFailedTitle"), t("login.missingToken"));
+      return;
+    }
+
     await saveAuthSession(data.token);
+    await setCurrentUserId(userId);
     await AsyncStorage.setItem(
       STORAGE_KEYS.USER,
       JSON.stringify(data.user || {}),
     );
     runPostLoginNotifications();
-    navigateToMain();
-    promptEnableBiometricAfterNavigation(data.token);
+
+    if (await isPinSet(userId)) {
+      // บัญชีนี้เคยตั้ง PIN แล้ว (เช่นมาจาก "Sign in with SSO instead" ที่ล้างแค่
+      // session ไม่ล้าง PIN, หรือ logout แล้ว login ด้วยบัญชีเดิม) — เข้าแอปทันที
+      // ไม่ต้องรอ popup ถาม biometric ก่อน เพราะ Alert.alert เป็น native UI ที่
+      // ทำให้ AppState เข้า inactive ชั่วคราวเหมือน Face ID prompt — ถ้ายังอยู่
+      // หน้า Login ตอนนั้น (locked=false, PIN ตั้งไว้แล้ว) AppState listener ใน
+      // App.js อาจตีความผิดว่าเป็นการสลับแอปแล้วเรียก LockOverlay ขึ้นมาทับซ้ำ
+      // หลัง SSO success ทั้งที่เพิ่งยืนยันตัวตนสำเร็จไปหมาดๆ — navigate ก่อนเสมอ
+      // แล้วค่อยถาม popup ทีหลัง (เป็นแค่การตั้งค่าสำหรับปลดล็อกครั้งถัดไป)
+      navigateToMain();
+      promptEnableBiometricAfterNavigation(userId, data.token).catch((error) => {
+        console.error("BIOMETRIC PROMPT ERROR:", error);
+      });
+    } else {
+      // บัญชีนี้ยังไม่เคยตั้ง PIN — ยังไม่มี LockOverlay เกี่ยวข้องเลย (locked
+      // เป็น false เสมอตราบใดที่บัญชีนี้ยังไม่มี PIN) จึงไม่มีความเสี่ยง AppState
+      // race แบบเคสข้างบน ถาม popup biometric ก่อนได้ตามลำดับเดิม แล้วค่อยไป
+      // บังคับตั้ง PIN ของบัญชีนี้ต่อ
+      await promptEnableBiometricAfterNavigation(userId, data.token);
+      navigation.reset({ index: 0, routes: [{ name: "SetPin" }] });
+    }
   };
 
   const loginWithSsoToken = async (accessToken) => {
@@ -479,45 +497,6 @@ const Login = ({ navigation, route }) => {
     } finally {
       setSsoLoading(false);
     }
-  };
-
-  const triggerBiometric = async () => {
-    let token;
-    try {
-      token = await getBiometricToken(t("login.biometricPrompt"));
-    } catch (_) {
-      // ผู้ใช้ยกเลิกหรือระบบยืนยันตัวตนไม่สำเร็จ ยังให้ลองใหม่ได้
-      return;
-    }
-    if (!token) {
-      await disableBiometricLogin();
-      Alert.alert(
-        t("login.noBiometricTokenTitle"),
-        t("login.noBiometricTokenMsg"),
-      );
-      return;
-    }
-    let response;
-    try {
-      response = await fetch(`${API_URL}/me`, {
-        headers: {
-          Accept: "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      });
-    } catch (_) {
-      Alert.alert(t("login.errorTitle"), t("login.networkError"));
-      return;
-    }
-    if (!response.ok) {
-      await clearAuthSession();
-      await disableBiometricLogin();
-      Alert.alert(t("login.sessionExpiredTitle"), t("login.sessionExpiredMsg"));
-      return;
-    }
-    await saveAuthSession(token);
-    runPostLoginNotifications();
-    navigateToMain();
   };
 
   return (
@@ -655,22 +634,6 @@ const Login = ({ navigation, route }) => {
                 )}
               </LinearGradient>
             </TouchableOpacity>
-
-
-            {/* Biometric button */}
-            {biometricAvailable && (
-              <TouchableOpacity
-                className="flex-row items-center justify-center gap-2 mt-3 py-[14px] rounded-2xl border border-[#d4ece2]"
-                style={{ backgroundColor: "rgba(14,122,85,0.06)" }}
-                onPress={triggerBiometric}
-                activeOpacity={0.8}
-              >
-                <Ionicons name={biometricIcon} size={22} color="#0f7a55" />
-                <Text className="text-primary text-[14px] font-bold">
-                  {t("login.biometricSignIn", { label: biometricLabel })}
-                </Text>
-              </TouchableOpacity>
-            )}
           </View>
         </Animated.View>
       </ScrollView>

@@ -4,6 +4,7 @@ import { API_BASE_URL, STORAGE_KEYS } from "../config";
 import { navigate } from "../navigation/navigationRef";
 import { clearBiometricToken, setBiometricEnabled } from "./biometricService";
 import { clearAuthSession, getAuthToken } from "./authStorage";
+import { getCurrentUserId } from "./userSecurityKeys";
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -52,11 +53,14 @@ api.interceptors.response.use(
     const errorLabel = status ?? error.code ?? "NETWORK_ERROR";
 
     if (status === 401 && !error.config?.suppressAuthRedirect) {
+      const userId = await getCurrentUserId();
       await clearAuthSession();
       await AsyncStorage.removeItem(STORAGE_KEYS.USER);
-      // ลบ biometric token ด้วย ป้องกันการใช้ expired token วนซ้ำ
-      await clearBiometricToken();
-      await setBiometricEnabled(false);
+      // ลบ biometric token ของบัญชีนี้ด้วย ป้องกันการใช้ expired token วนซ้ำ
+      if (userId) {
+        await clearBiometricToken(userId);
+        await setBiometricEnabled(userId, false);
+      }
       navigate("Login");
     }
 

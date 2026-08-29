@@ -49,7 +49,7 @@ export default function ContactUsPage() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
         {SECTIONS.map((section) => (
           <View key={section.title}>
-            <Text className="text-[12px] font-bold text-[#8a9a90] px-5 pt-5 pb-2 uppercase tracking-[0.8px]">{section.title}</Text>
+            <Text className="text-[12px] font-bold text-[#4a5c54] px-5 pt-5 pb-2 uppercase tracking-[0.8px]">{section.title}</Text>
             <View className="bg-white rounded-2xl mx-4 overflow-hidden border border-[#e0ebe4]">
               {section.items.map((item, i) => (
                 <TouchableOpacity
@@ -63,7 +63,7 @@ export default function ContactUsPage() {
                     <Ionicons name={item.icon} size={20} color="#fff" />
                   </View>
                   <View className="flex-1">
-                    <Text className="text-[12px] font-semibold text-[#5a6a60]">{item.label}</Text>
+                    <Text className="text-[12px] font-semibold text-[#4a5c54]">{item.label}</Text>
                     <Text className={`text-[15px] font-bold mt-[2px] ${item.onPress ? "text-brand" : "text-[#101b17]"}`}>{item.value}</Text>
                   </View>
                   {item.onPress && <Ionicons name="chevron-forward" size={16} color="#8a9a90" />}
@@ -75,7 +75,7 @@ export default function ContactUsPage() {
 
         <View className="flex-row items-start gap-2 bg-[#e8f5ee] rounded-[14px] mx-4 mt-4 p-[14px] border border-[#e0ebe4]">
           <Ionicons name="information-circle-outline" size={16} color="#1a6b3c" />
-          <Text className="flex-1 text-[12px] text-[#5a6a60] leading-[18px]">{t("contact.helpNote")}</Text>
+          <Text className="flex-1 text-[12px] text-[#4a5c54] leading-[18px]">{t("contact.helpNote")}</Text>
         </View>
       </ScrollView>
     </View>

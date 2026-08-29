@@ -3,8 +3,9 @@ import { Alert, AppState } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useTranslation } from "react-i18next";
 import { STORAGE_KEYS } from "../config";
-import { clearBiometricToken, setBiometricEnabled } from "../services/biometricService";
+import { clearBiometricToken } from "../services/biometricService";
 import { clearAuthSession } from "../services/authStorage";
+import { getCurrentUserId, clearCurrentUserId } from "../services/userSecurityKeys";
 import { removeTokenFromBackend } from "../services/notificationService";
 import api from "../services/api";
 import { stripNamePrefix } from "../utils/name";
@@ -75,6 +76,10 @@ export default function useCurrentUser(navigation) {
         text: t("settings.logoutConfirm"),
         style: "destructive",
         onPress: async () => {
+          // อ่าน userId ก่อนล้างอะไรทั้งนั้น — ต้องใช้ scope การลบ biometric
+          // token ให้ตรงบัญชีที่กำลัง logout เท่านั้น ไม่กระทบบัญชีอื่นบนเครื่อง
+          const userId = await getCurrentUserId();
+
           const pushToken = await AsyncStorage.getItem(STORAGE_KEYS.PUSH_TOKEN);
           await removeTokenFromBackend(pushToken);
           try { await api.post("/auth/logout"); } catch (_) {}
@@ -84,9 +89,15 @@ export default function useCurrentUser(navigation) {
             STORAGE_KEYS.PUSH_TOKEN,
             STORAGE_KEYS.NOTIFICATION_INBOX,
           ]);
-          // ลบ biometric token ด้วย เพื่อป้องกัน Face ID เข้าบัญชีเก่าหลัง logout
-          await clearBiometricToken();
-          await setBiometricEnabled(false);
+          // ลบเฉพาะ biometric token ของบัญชีนี้ (ผูกกับ session ที่ logout ไปแล้ว
+          // ต้องลบ ป้องกัน Face ID เข้าบัญชีเก่า) — ไม่ลบ flag "เคยเปิด biometric
+          // ไว้" ของบัญชีนี้ เพื่อให้ login ครั้งถัดไปด้วยบัญชีเดิมไม่ต้องถาม popup ซ้ำ
+          if (userId) await clearBiometricToken(userId);
+          // ไม่ลบ PIN ของบัญชีนี้ตอน logout — PIN เป็น per-account security
+          // preference ที่ต้องคงอยู่ให้บัญชีเดิม login กลับมาแล้วเข้าแอปได้ทันที
+          // โดยไม่ต้องตั้ง PIN ซ้ำ — ไม่กระทบบัญชีอื่นเพราะ key แยกตาม userId แล้ว
+          await clearCurrentUserId();
+          await AsyncStorage.multiRemove([STORAGE_KEYS.PIN_ATTEMPTS, STORAGE_KEYS.LAST_BACKGROUND_AT]);
           getRootNavigation(navigation).reset({ index: 0, routes: [{ name: "Login" }] });
         },
       },

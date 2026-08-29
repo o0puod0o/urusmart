@@ -34,7 +34,7 @@ export default function LanguagePage() {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
-        <Text className="text-[12px] font-bold text-[#8a9a90] px-5 pt-5 pb-2 uppercase tracking-[0.8px]">{t("language.select")}</Text>
+        <Text className="text-[12px] font-bold text-[#4a5c54] px-5 pt-5 pb-2 uppercase tracking-[0.8px]">{t("language.select")}</Text>
 
         <View className="bg-white rounded-2xl mx-4 overflow-hidden border border-[#e0ebe4]">
           {LANGUAGES.map((lang, i) => {
@@ -49,7 +49,7 @@ export default function LanguagePage() {
                 <Text className="text-[32px]">{lang.flag}</Text>
                 <View className="flex-1">
                   <Text className={`text-[16px] font-bold ${active ? "text-brand" : "text-[#1a1a2e]"}`}>{lang.label}</Text>
-                  <Text className="text-[12px] text-[#5a6a60] mt-[2px]">{lang.nativeLabel}</Text>
+                  <Text className="text-[12px] text-[#4a5c54] mt-[2px]">{lang.nativeLabel}</Text>
                 </View>
                 {active
                   ? <Ionicons name="checkmark-circle" size={24} color="#1a6b3c" />
@@ -62,7 +62,7 @@ export default function LanguagePage() {
 
         <View className="flex-row items-start gap-2 bg-[#e8f5ee] rounded-[14px] mx-4 mt-4 p-[14px] border border-[#e0ebe4]">
           <Ionicons name="information-circle-outline" size={16} color="#1a6b3c" />
-          <Text className="flex-1 text-[12px] text-[#5a6a60] leading-[18px]">{t("language.note")}</Text>
+          <Text className="flex-1 text-[12px] text-[#4a5c54] leading-[18px]">{t("language.note")}</Text>
         </View>
       </ScrollView>
     </View>
