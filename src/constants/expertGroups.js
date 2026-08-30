@@ -1,41 +1,16 @@
-export const EXPERT_GROUP_OPTIONS = [
-  { id: "600", label: "Software Engineering" },
-  { id: "601", label: "Educational Technology" },
-  { id: "602", label: "Community Information System" },
-  { id: "603", label: "Smart Campus and IoT" },
-  { id: "604", label: "Artificial Intelligence" },
-  { id: "605", label: "Public Health Informatics" },
-  { id: "606", label: "Tourism Data Platform" },
-  { id: "607", label: "Smart Farming" },
-  { id: "608", label: "Digital Business" },
-  { id: "609", label: "Research Information System" },
-  { id: "1", label: "วิทยาศาสตร์และเทคโนโลยี" },
-  { id: "2", label: "มนุษยศาสตร์และสังคมศาสตร์" },
-  { id: "3", label: "บริหารธุรกิจและการจัดการ" },
-  { id: "4", label: "ครุศาสตร์และศึกษาศาสตร์" },
-  { id: "5", label: "เกษตรและสิ่งแวดล้อม" },
-  { id: "6", label: "วิศวกรรมศาสตร์" },
-  { id: "7", label: "นิติศาสตร์และรัฐศาสตร์" },
-  { id: "8", label: "ศิลปะและการออกแบบ" },
-];
+// รายการกลุ่มความเชี่ยวชาญมาจาก GET /expertise-groups เท่านั้น (ดู
+// src/hook/useExpertGroupOptions.js) — ไฟล์นี้เหลือแค่ helper สำหรับแปลง
+// group_id เป็นชื่อกลุ่มในโค้ดที่ไม่ใช่ React component (เช่น sort/format
+// รายการก่อน render) และ normalizer สำหรับ response ที่ไม่ตรง shape มาตรฐาน
+import { getCachedExpertGroupOptions } from "../hook/useExpertGroupOptions";
 
 export const getExpertGroupLabel = (groupId) => {
   if (!groupId && groupId !== 0) return "-";
-  return (
-    EXPERT_GROUP_OPTIONS.find((g) => g.id === String(groupId))?.label ??
-    String(groupId)
+  const match = getCachedExpertGroupOptions().find(
+    (g) => g.id === String(groupId),
   );
+  return match?.label ?? String(groupId);
 };
-
-export const getExpertGroupSelectOptions = (placeholder) => [
-  { id: "", label: placeholder },
-  ...EXPERT_GROUP_OPTIONS,
-];
-
-export const getExpertGroupSearchOptions = (placeholder) => [
-  { id: "", label: placeholder },
-  ...EXPERT_GROUP_OPTIONS,
-];
 
 export const normalizeExpertGroupRows = (rows = [], placeholder) => {
   const options = rows

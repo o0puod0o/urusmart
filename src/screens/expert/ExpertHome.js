@@ -13,15 +13,11 @@ import { useFocusEffect } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import AppHeader from "../../components/AppHeader";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import apiService from "../../services/api";
 import useMenuCounts from "../../hook/useMenuCounts";
 import useInterestOptions from "../../hook/useInterestOptions";
+import useExpertGroupOptions from "../../hook/useExpertGroupOptions";
 import SheetDropdown from "../../components/expert/SheetDropdown";
 import { colors } from "../../theme/tokens";
-import {
-  getExpertGroupSearchOptions,
-  normalizeExpertGroupRows,
-} from "../../constants/expertGroups";
 import { sanitizeAcademicText } from "../../utils/inputSanitize";
 
 const getSearchByOptions = (t) => [
@@ -76,15 +72,12 @@ const searchFieldStyle = {
 const SearchSection = ({ onSearch }) => {
   const { t } = useTranslation();
   const SEARCH_BY_OPTIONS = getSearchByOptions(t);
-  const fallbackExpertGroups = getExpertGroupSearchOptions(
-    t("research.screen.selectGroupPlaceholder"),
-  );
   const [searchBy, setSearchBy] = useState("");
   const [keyword, setKeyword] = useState("");
   const [selectedGroup, setSelectedGroup] = useState("");
   const [selectedInterest, setSelectedInterest] = useState("");
-  const [expertGroups, setExpertGroups] = useState(fallbackExpertGroups);
-  const [loadingExpertGroups, setLoadingExpertGroups] = useState(true);
+  const { options: rawExpertGroups, loading: loadingExpertGroups } = useExpertGroupOptions();
+  const expertGroups = [{ id: "", label: t("research.screen.selectGroupPlaceholder") }, ...rawExpertGroups];
   const { options: rawInterests, loading: loadingInterests } = useInterestOptions();
   const interestOptions = [{ id: "", label: t("research.screen.selectInterestPlaceholder") }, ...rawInterests];
 
@@ -95,9 +88,13 @@ const SearchSection = ({ onSearch }) => {
   };
 
   const runKeywordSearch = () => {
+    const trimmedKeyword = keyword.trim();
+    // backend ปฏิเสธ (422) เมื่อส่ง search_by โดยไม่มี keyword คู่มาด้วย — ถ้า
+    // เลือกประเภทการค้นหาไว้แต่ไม่ได้พิมพ์คำค้น ให้ไม่ส่ง search_by เลย
+    // (เท่ากับเรียก /profile-search แบบไม่ระบุ filter คืนรายชื่อทั้งหมดแทน)
     submitSearch({
-      search_by: searchBy,
-      keyword: keyword.trim(),
+      search_by: trimmedKeyword ? searchBy : "",
+      keyword: trimmedKeyword,
     });
   };
 
@@ -124,30 +121,6 @@ const SearchSection = ({ onSearch }) => {
       expertise: selectedGroupOption?.label ?? "",
     });
   };
-
-  useEffect(() => {
-    apiService
-      .get("/ref/expertise-groups")
-      .then((r) => {
-        const rows =
-          r.data?.expertise_groups ??
-          r.data?.groups ??
-          r.data?.data ??
-          r.data ??
-          [];
-
-        if (Array.isArray(rows) && rows.length > 0) {
-          setExpertGroups(
-            normalizeExpertGroupRows(
-              rows,
-              t("research.screen.selectGroupPlaceholder"),
-            ),
-          );
-        }
-      })
-      .catch(() => {})
-      .finally(() => setLoadingExpertGroups(false));
-  }, []);
 
   return (
     <View

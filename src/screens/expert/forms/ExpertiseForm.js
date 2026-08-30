@@ -16,19 +16,15 @@ import InlineDropdown from "../../../components/expert/InlineDropdown";
 import useResource from "../../../hook/useResource";
 import useConfirm from "../../../hook/useConfirm";
 import useSubmitLock from "../../../hook/useSubmitLock";
-import {
-  getExpertGroupLabel,
-  getExpertGroupSelectOptions,
-} from "../../../constants/expertGroups";
-
-const getGroupLabel = getExpertGroupLabel;
+import useExpertGroupOptions from "../../../hook/useExpertGroupOptions";
 
 const ExpertiseForm = ({ navigation, route }) => {
   const { t } = useTranslation();
   const item = route?.params?.item || null;
+  const { options: rawExpertGroups, loading: loadingExpertGroups } = useExpertGroupOptions();
   const expertGroups = useMemo(
-    () => getExpertGroupSelectOptions(t("research.expertise.selectGroup")),
-    [t],
+    () => [{ id: "", label: t("research.expertise.selectGroup") }, ...rawExpertGroups],
+    [t, rawExpertGroups],
   );
   const {
     items,
@@ -237,6 +233,7 @@ const ExpertiseForm = ({ navigation, route }) => {
             value={form.group_id}
             options={expertGroups}
             onSelect={(v) => setForm((p) => ({ ...p, group_id: v }))}
+            loading={loadingExpertGroups}
             required
             searchable
           />
