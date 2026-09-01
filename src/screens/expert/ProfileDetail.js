@@ -1,9 +1,10 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import {
   ActivityIndicator, Alert, Animated, Image, Linking,
   Platform, ScrollView, Text, TouchableOpacity, View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useFocusEffect } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as FileSystem from "expo-file-system/legacy";
 import * as Print from "expo-print";
@@ -14,8 +15,8 @@ import StateView from "../../components/StateView";
 import { stripNamePrefix } from "../../utils/name";
 import { fixPhotoUrl } from "../../utils/image";
 import { getExpertLink, getExpertTitle, getExpertYear } from "../../utils/expertFields";
-import api from "../../services/api";
-import { API_BASE_URL, STORAGE_KEYS } from "../../config";
+import infoApi from "../../services/infoApi";
+import { API_BASE_URL, INFO_API_BASE_URL, STORAGE_KEYS } from "../../config";
 import { getAuthToken } from "../../services/authStorage";
 import useRefs from "../../hook/useRefs";
 import { colors } from "../../theme/tokens";
@@ -501,8 +502,8 @@ export default function ProfileDetail({ navigation, route }) {
         const me = raw ? JSON.parse(raw) : {};
         console.log("=== [ProfileDetail] profile id:", id, "| login id:", me.id ?? me.user_id ?? "N/A", "===");
       }
-      const res = await api.get(`/profile/${id}`);
-      const data = res.data?.data ?? res.data;
+      const res = await infoApi.get(`/info/expert/profile/${id}`);
+      const data = res.data?.data?.profile ?? res.data?.data ?? res.data;
       if (__DEV__) {
         const rels = ["expertises","interests","educations","workexes","boardexes",
           "researches","journals","proceedings","hsps","books","patents",
@@ -524,7 +525,14 @@ export default function ProfileDetail({ navigation, route }) {
     } finally { setLoading(false); }
   }, [id, t]);
 
-  useEffect(() => { fetchProfile(); }, [fetchProfile]);
+  // refetch ทุกครั้งที่กลับมาโฟกัสหน้านี้ (เช่น goBack จากหน้าแก้ไข
+  // ความเชี่ยวชาญ/การศึกษา) ไม่ใช่แค่ตอน mount ครั้งแรก — เหมือน pattern
+  // ที่ ExpertHome.js ใช้กับ useMenuCounts
+  useFocusEffect(
+    useCallback(() => {
+      fetchProfile();
+    }, [fetchProfile]),
+  );
 
   if (loading) return (
     <View style={{ flex: 1, backgroundColor: colors.appBg }}>
@@ -558,7 +566,15 @@ export default function ProfileDetail({ navigation, route }) {
   const position  = profile.position ?? profile.academic_position ?? "";
   const faculty   = profile.faculty_name_th ?? profile.faculty ?? "";
   const dept      = profile.department_name_th ?? profile.unit_name_th ?? "";
-  const photoUrl  = fixPhotoUrl(profile.picture ?? profile.photo_url ?? profile.avatar ?? profile.profile_picture ?? "");
+  const rawPhoto = [
+    profile.picture_url, profile.photo_url, profile.photoUrl, profile.photo,
+    profile.profile_photo_url, profile.profile_image, profile.image_url,
+    profile.picture, profile.avatar, profile.profile_picture,
+    profile.profile?.picture_url, profile.profile?.photo_url, profile.profile?.picture,
+    profile.user?.picture_url, profile.user?.photo_url, profile.user?.picture, profile.user?.photo,
+  ].find((value) => /^https?:\/\//i.test(String(value ?? "").trim())) ?? "";
+  const photoUrl = fixPhotoUrl(rawPhoto, INFO_API_BASE_URL);
+  if (__DEV__) console.log("[ProfileDetail] photo URL:", photoUrl || "<default-avatar>");
   const email     = profile.email ?? "";
   const phone     = profile.phone ?? profile.phone_work ?? profile.phone_number ?? profile.tel ?? "";
   const affil     = [faculty, dept && dept !== faculty ? dept : ""].filter(Boolean).join(" · ");

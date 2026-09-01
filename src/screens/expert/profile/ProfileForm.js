@@ -23,7 +23,8 @@ import * as ImagePicker from "expo-image-picker";
 import * as FileSystem from "expo-file-system/legacy";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import api from "../../../services/api";
-import { STORAGE_KEYS } from "../../../config";
+import infoApi from "../../../services/infoApi";
+import { INFO_API_BASE_URL, STORAGE_KEYS } from "../../../config";
 import { fixPhotoUrl } from "../../../utils/image";
 import useConfirm from "../../../hook/useConfirm";
 import {
@@ -218,60 +219,37 @@ const ProfileForm = ({ navigation, route }) => {
   const toOptions = (placeholder, rows) => [
     { id: "", label: placeholder },
     ...rows.map((r, i) => ({
-      id: String(r.id ?? i + 1),
-      label: r.name ?? r.label ?? "",
+      id: String(
+        r.id ?? r.dep_id ?? r.sub_dep_id ?? r.department_id ??
+          r.main_unit_id ?? r.sub_unit_id ?? i + 1,
+      ),
+      label:
+        r.name ?? r.label ?? r.title ?? r.name_th ?? r.name_en ??
+        r.position_name ?? r.line_name ?? r.main_unit_name ?? r.sub_unit_name ?? "",
     })),
   ];
 
-  // โหลด reference data ทั้งหมดจาก /ref/profile-options ในครั้งเดียว
+  // Info API แยก master data ของ profile เป็นแต่ละ endpoint
   useEffect(() => {
     const loadAll = async () => {
+      const safe = (res) => {
+        const body = res.value?.data;
+        if (Array.isArray(body)) return body;
+        if (Array.isArray(body?.data)) return body.data;
+        return [];
+      };
       try {
-        // ลอง endpoint รวมก่อน
-        const r = await api.get("/ref/profile-options");
-        const d = r.data?.data ?? r.data;
-        if (__DEV__)
-          console.log(
-            "[ProfileForm] /ref/profile-options keys:",
-            Object.keys(d ?? {}),
-          );
-        setOptions({
-          positions: toOptions(
-            t("research.profile.positionPlaceholder"),
-            Array.isArray(d?.positions) ? d.positions : [],
-          ),
-          lines: toOptions(
-            t("research.profile.linePlaceholder"),
-            Array.isArray(d?.lines) ? d.lines : [],
-          ),
-          mainUnits: toOptions(
-            t("research.profile.mainUnitPlaceholder"),
-            Array.isArray(d?.main_units) ? d.main_units : [],
-          ),
-          subUnits: toOptions(
-            t("research.profile.subUnitPlaceholder"),
-            Array.isArray(d?.sub_units) ? d.sub_units : [],
-          ),
-        });
-      } catch {
-        const safe = (res) => {
-          const body = res.value?.data;
-          if (Array.isArray(body)) return body;
-          if (Array.isArray(body?.data)) return body.data;
-          return [];
-        };
-        const [pos, ln, mu, su] = await Promise.allSettled([
-          api.get("/positions"),
-          api.get("/lines"),
-          api.get("/main-units"),
-          api.get("/sub-units"),
+        const [pos, ln, mu] = await Promise.allSettled([
+          infoApi.get("/info/expert/positions"),
+          infoApi.get("/info/expert/lines"),
+          infoApi.get("/info/expert/main-units"),
         ]).then((results) => results.map(safe));
-
         setOptions({
           positions: toOptions(t("research.profile.positionPlaceholder"), pos),
           lines: toOptions(t("research.profile.linePlaceholder"), ln),
           mainUnits: toOptions(t("research.profile.mainUnitPlaceholder"), mu),
-          subUnits: toOptions(t("research.profile.subUnitPlaceholder"), su),
+          // ต้องโหลดหลังรู้ main_unit เพราะ backend filter ตาม main_unit_id
+          subUnits: [],
         });
       } finally {
         setLoadingOptions(false);
@@ -341,8 +319,14 @@ const ProfileForm = ({ navigation, route }) => {
           email: data.email ?? "",
           birthdate: data.birthdate ?? "", // ISO YYYY-MM-DD (ค.ศ.)
           // main_unit / sub_unit จาก GET /me เป็น integer
-          main_unit: String(data.main_unit ?? ""),
-          sub_unit: String(data.sub_unit ?? data.sub_unit_id ?? ""),
+          main_unit: String(
+            data.main_unit ?? data.main_unit_id ?? data.department_id ??
+              data.dep_id ?? "",
+          ),
+          sub_unit: String(
+            data.sub_unit ?? data.sub_unit_id ?? data.sub_department_id ??
+              data.sub_dep_id ?? "",
+          ),
         });
       })
       .catch((err) => {
@@ -367,6 +351,31 @@ const ProfileForm = ({ navigation, route }) => {
       sub_unit: resolveId(options.subUnits, prev.sub_unit),
     }));
   }, [loadingOptions, loadingProfile]);
+
+  // เมื่อเปิดหน้าใหม่ ให้โหลดหน่วยงานรองของหน่วยงานหลักที่บันทึกไว้
+  useEffect(() => {
+    if (loadingProfile || !form.main_unit) return;
+    let cancelled = false;
+    infoApi
+      .get("/info/expert/sub-units", {
+        params: { main_unit_id: form.main_unit },
+      })
+      .then((r) => {
+        if (cancelled) return;
+        const rows = Array.isArray(r.data) ? r.data : (r.data?.data ?? []);
+        if (rows.length > 0) {
+          setOptions((p) => ({
+            ...p,
+            subUnits: toOptions(t("research.profile.subUnitPlaceholder"), rows),
+          }));
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        cancelled = true;
+      });
+    return () => { cancelled = true; };
+  }, [loadingProfile, form.main_unit, t]);
 
   const set = (key, val) => setForm((p) => ({ ...p, [key]: val }));
 
@@ -429,7 +438,9 @@ const ProfileForm = ({ navigation, route }) => {
         name: pickedImage.name,
       });
 
-      const res = await api.post("/me/photo", formData, {
+      // รูป Expert ต้องอัปโหลดเข้า Info API เพื่อให้ backend ผูกเจ้าของจาก
+      // Bearer token และบันทึก URL ลง expert2.users.picture
+      const res = await infoApi.post("/info/expert/profile/photo", formData, {
         headers: { "Content-Type": "multipart/form-data" },
         transformRequest: (data) => data,
       });
@@ -441,10 +452,12 @@ const ProfileForm = ({ navigation, route }) => {
           "→ extracted:",
           serverUrl,
           "→ fixed:",
-          fixPhotoUrl(serverUrl),
+          fixPhotoUrl(serverUrl, INFO_API_BASE_URL),
         );
       }
-      const fixedServerUrl = withCacheBust(fixPhotoUrl(serverUrl));
+      const fixedServerUrl = withCacheBust(
+        fixPhotoUrl(serverUrl, INFO_API_BASE_URL),
+      );
       const finalUrl = isDisplayableImageUri(fixedServerUrl)
         ? fixedServerUrl
         : pickedImage.uri;
@@ -479,11 +492,59 @@ const ProfileForm = ({ navigation, route }) => {
   };
 
   const handleChangePhoto = () => {
-    Alert.alert(t("research.profile.changePhotoTitle"), t("research.profile.changePhotoMsg"), [
+    const actions = [
       { text: t("research.common.cancel"), style: "cancel" },
       { text: t("research.profile.photoCamera"), onPress: () => pickImage("camera") },
       { text: t("research.profile.photoGallery"), onPress: () => pickImage("gallery") },
-    ]);
+    ];
+    if (photoUrl) {
+      actions.push({
+        text: t("research.profile.removePhoto"),
+        style: "destructive",
+        onPress: removePhoto,
+      });
+    }
+    Alert.alert(t("research.profile.changePhotoTitle"), t("research.profile.changePhotoMsg"), actions);
+  };
+
+  const removePhoto = async () => {
+    setPhotoLoading(true);
+    try {
+      const res = await infoApi.post(
+        "/info/expert/profile/photo",
+        { _method: "DELETE" },
+        {
+          headers: {
+            "Content-Type": "application/json",
+            "X-HTTP-Method-Override": "DELETE",
+          },
+        },
+      );
+      const fallbackUrl = getUploadedPhotoUrl(res.data);
+      const resolvedFallback = fallbackUrl
+        ? fixPhotoUrl(fallbackUrl, INFO_API_BASE_URL)
+        : "";
+      setPhotoUrl(resolvedFallback);
+      lastLocalPhotoUri.current = "";
+      try {
+        const raw = await AsyncStorage.getItem(STORAGE_KEYS.USER);
+        if (raw) {
+          const stored = JSON.parse(raw);
+          stored.picture = resolvedFallback;
+          stored.photo_url = resolvedFallback;
+          await AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(stored));
+        }
+      } catch (_) {}
+      Alert.alert(
+        t("research.profile.photoDeleteSuccessTitle"),
+        t("research.profile.photoDeleteSuccessMsg"),
+      );
+    } catch (e) {
+      console.warn("[ProfileForm] Photo delete:", e?.message, e?.response?.data);
+      Alert.alert(t("research.profile.photoErrorTitle"), t("research.profile.photoDeleteErrorMsg"));
+    } finally {
+      setPhotoLoading(false);
+    }
   };
 
   const handleSave = async () => {
@@ -1050,7 +1111,7 @@ const ProfileForm = ({ navigation, route }) => {
                 set("sub_unit", "");
                 if (v) {
                   try {
-                    const r = await api.get("/sub-units", {
+                    const r = await infoApi.get("/info/expert/sub-units", {
                       params: { main_unit_id: v },
                     });
                     const rows = Array.isArray(r.data)

@@ -87,6 +87,9 @@ const ServiceForm = ({ navigation }) => {
       year: form.year,
       name: form.name.trim(),
       link: normalizedUrl.url,
+      // has_academic.picture เป็น NOT NULL ใน schema expert2 แม้ฟอร์มนี้ยัง
+      // ไม่รองรับอัปโหลดรูป จึงส่งค่าว่างตอนสร้าง record ใหม่
+      ...(!editingItem ? { picture: "" } : {}),
     };
     try {
       editingItem

@@ -1,9 +1,12 @@
 // Generic CRUD hook — ใช้กับทุก expert form
 // const { items, loading, saving, create, update, remove, refetch } = useResource("/awards")
-// year ต้องเป็น string ทุก endpoint ยกเว้น /researches ที่ต้องเป็น integer
+// year ต้องเป็น string ทุก endpoint รวมถึง /researches — ยืนยันจากตัวอย่าง
+// POST body ของ /info/expert/researches ที่ backend ส่งมา (year: "2567")
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import api from "../services/api";
+import infoApi from "../services/infoApi";
+
+const expertEndpoint = (endpoint) => `/info/expert${endpoint}`;
 
 const useResource = (endpoint, options = {}) => {
   const { params = {}, skip = false } = options;
@@ -28,7 +31,7 @@ const useResource = (endpoint, options = {}) => {
     if (skip) return;
     try {
       if (mounted.current) { setLoading(true); setError(null); }
-      const res = await api.get(endpoint, { params });
+      const res = await infoApi.get(expertEndpoint(endpoint), { params });
       const result = res.data?.data ?? res.data;
       const sorted = Array.isArray(result)
         ? [...result].sort((a, b) => Number(a.id ?? 0) - Number(b.id ?? 0))
@@ -71,7 +74,7 @@ const useResource = (endpoint, options = {}) => {
     createLock.current = true;
     setSaving(true);
     try {
-      const res = await api.post(endpoint, normalizePayload(data));
+      const res = await infoApi.post(expertEndpoint(endpoint), normalizePayload(data));
       await refetch();
       return res.data?.data ?? res.data;
     } catch (err) {
@@ -88,7 +91,7 @@ const useResource = (endpoint, options = {}) => {
     updateLock.current = true;
     setSaving(true);
     try {
-      const res = await api.put(`${endpoint}/${id}`, normalizePayload(data));
+      const res = await infoApi.put(`${expertEndpoint(endpoint)}/${id}`, normalizePayload(data));
       await refetch();
       return res.data?.data ?? res.data;
     } catch (err) {
@@ -105,7 +108,7 @@ const useResource = (endpoint, options = {}) => {
     removeLock.current = true;
     setRemoving(true);
     try {
-      await api.delete(`${endpoint}/${id}`);
+      await infoApi.delete(`${expertEndpoint(endpoint)}/${id}`);
       await refetch();
     } catch (err) {
       throw new Error(extractMessage(err, "ลบไม่สำเร็จ"));

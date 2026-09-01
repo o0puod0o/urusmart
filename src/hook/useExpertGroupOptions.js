@@ -3,7 +3,7 @@
 // id ที่ endpoint นี้คืนมาคือค่าเดียวกับ group_id ที่ /expertises และ
 // /profile-search ใช้ — cache ไว้ใน module กัน fetch ซ้ำเหมือน useInterestOptions
 import { useEffect, useRef, useState } from "react";
-import apiService from "../services/api";
+import infoApi from "../services/infoApi";
 
 let cache = null;
 let inflight = null;
@@ -22,8 +22,8 @@ const normalizeExpertGroupOptions = (rows) =>
 const fetchExpertGroupOptions = async () => {
   if (cache) return cache;
   if (!inflight) {
-    inflight = apiService
-      .get("/expertise-groups")
+    inflight = infoApi
+      .get("/info/expert/expertise-groups")
       .then((res) => {
         const rows = res.data?.data ?? res.data ?? [];
         cache = normalizeExpertGroupOptions(rows);

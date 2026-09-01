@@ -1,7 +1,7 @@
 // รายการความสนใจจาก /ref/search-options ไม่ค่อยเปลี่ยน — cache ไว้ใน module
 // เพื่อไม่ให้หน้า ExpertHome (ค้นหา) กับ InterestForm (จัดการข้อมูล) ต้อง fetch ซ้ำ
 import { useEffect, useRef, useState } from "react";
-import apiService from "../services/api";
+import infoApi from "../services/infoApi";
 
 let cache = null;
 let inflight = null;
@@ -33,10 +33,11 @@ const normalizeInterestOptions = (rows) =>
 const fetchInterestOptions = async () => {
   if (cache) return cache;
   if (!inflight) {
-    inflight = apiService
-      .get("/ref/search-options")
+    inflight = infoApi
+      .get("/info/expert/ref/search-options")
       .then((res) => {
-        const rows = res.data?.interests ?? res.data?.data ?? [];
+        const body = res.data ?? {};
+        const rows = body.interests ?? body.data?.interests ?? body.data ?? [];
         cache = normalizeInterestOptions(rows);
         return cache;
       })

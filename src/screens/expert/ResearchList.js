@@ -6,7 +6,8 @@ import AppHeader from "../../components/AppHeader";
 import StateView from "../../components/StateView";
 import { stripNamePrefix } from "../../utils/name";
 import { fixPhotoUrl } from "../../utils/image";
-import apiService from "../../services/api";
+import { INFO_API_BASE_URL } from "../../config";
+import infoApi from "../../services/infoApi";
 import { colors, radius, shadows } from "../../theme/tokens";
 import { getExpertGroupLabel } from "../../constants/expertGroups";
 
@@ -56,7 +57,7 @@ const readRows = (response) => response.data?.data ?? response.data ?? [];
 const FILTER_UNSUPPORTED_STATUSES = [400, 404, 422, 500];
 
 const fetchProfileSearch = async (params) => {
-  const response = await apiService.get("/profile-search", {
+  const response = await infoApi.get("/info/expert/profile-search", {
     params,
     suppressErrorLog: true,
   });
@@ -69,7 +70,9 @@ const toArray = (value) =>
 const getInterestEntries = (item) => [
   ...toArray(item?.interests),
   ...toArray(item?.interest),
+  ...toArray(item?.interest_names),
   ...toArray(item?.profile?.interests),
+  ...toArray(item?.profile?.interest_names),
   ...toArray(item?.user?.interests),
 ];
 
@@ -161,7 +164,11 @@ const filterRowsByExpertise = (rows, expertise, groupId) => {
 // ค่อย fallback ไปดึงข้อมูลทั้งหมดมากรองฝั่ง client จาก profile.interests แทน
 const fetchInterestSearch = async ({ keyword, interest_id: interestId }) => {
   try {
-    return await fetchProfileSearch({ search_by: "interest", keyword });
+    return await fetchProfileSearch({
+      search_by: "interest",
+      keyword,
+      ...(interestId ? { interest_id: interestId } : {}),
+    });
   } catch (error) {
     const status = error?.response?.status;
     if (!FILTER_UNSUPPORTED_STATUSES.includes(status)) throw error;
@@ -232,7 +239,29 @@ const ExpertCard = ({ item, index, onPress }) => {
   const position  = item.position ?? item.academic_position ?? "";
   const faculty   = item.faculty_name_th ?? item.department_name_th ?? item.faculty ?? item.faculty_name ?? "";
   const dept      = item.department_name_th ?? item.unit_name_th ?? "";
-  const photoUrl  = fixPhotoUrl(item.picture ?? item.photoUrl ?? item.photo_url ?? item.avatar ?? "");
+  // profile-search ต้องใช้เฉพาะ URL เต็มที่ backend ส่งกลับมาเท่านั้น
+  // ค่า legacy ที่เป็นชื่อไฟล์ล้วนจะถูกละทิ้งและแสดง avatar เริ่มต้น
+  const rawPhoto = [
+    item.picture_url, item.photo_url, item.photoUrl, item.photo,
+    item.profile_photo_url, item.profile_image, item.profile_picture,
+    item.image_url, item.image, item.picture, item.avatar,
+    item.profile?.picture_url, item.profile?.photo_url, item.profile?.picture,
+    item.user?.picture_url, item.user?.photo_url, item.user?.profile_picture,
+    item.user?.image_url, item.user?.picture, item.user?.photo,
+  ].find((value) => /^https?:\/\//i.test(String(value ?? "").trim())) ?? "";
+  const photoUrl = fixPhotoUrl(rawPhoto, INFO_API_BASE_URL);
+  if (__DEV__) {
+    console.log("[ResearchList] photo URL:", photoUrl || "<default-avatar>");
+    if (!photoUrl) {
+      console.log("[ResearchList] photo fields:", {
+        picture: item.picture ?? null,
+        photo_url: item.photo_url ?? null,
+        picture_url: item.picture_url ?? null,
+        profile_picture: item.profile_picture ?? null,
+        user_picture: item.user?.picture ?? null,
+      });
+    }
+  }
   const expertises = (item.expertises ?? []).map((e) => e.name ?? e.label ?? String(e)).filter(Boolean);
   const interests  = (item.interests  ?? []).map((e) => e.name ?? e.label ?? String(e)).filter(Boolean);
 

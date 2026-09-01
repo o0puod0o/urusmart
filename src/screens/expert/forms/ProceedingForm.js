@@ -82,8 +82,6 @@ const ProceedingForm = ({ navigation }) => {
     const payload = {
       year: form.year,
       name: reference,
-      reference,
-      title: reference,
       url: normalizedUrl.url,
     };
     try {

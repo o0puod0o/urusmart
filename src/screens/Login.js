@@ -32,6 +32,7 @@ import { saveAuthSession } from "../services/authStorage";
 import { checkSupport, isBiometricEnabled, hasBiometricToken, saveBiometricToken, setBiometricEnabled, clearBiometricToken } from "../services/biometricService";
 import { isPinSet } from "../services/pinService";
 import { resolveUserId, setCurrentUserId } from "../services/userSecurityKeys";
+import { ensureExpertProfile } from "../services/infoApi";
 
 const API_URL = API_BASE_URL;
 const SSO_BASE_URL =
@@ -261,8 +262,14 @@ const Login = ({ navigation, route }) => {
     transform: [{ translateY: cardY.value }],
     opacity: cardOpacity.value,
   }));
+  // Android: ใช้ "ลายนิ้วมือ" เสมอ ไม่พึ่ง support.hasFaceId — บาง Android มี
+  // กล้องหน้ารองรับ face unlock (report FACIAL_RECOGNITION) แม้ผู้ใช้ enroll
+  // แค่ลายนิ้วมือเป็นหลัก ต่างจาก iOS ที่ hasFaceId บอก Face ID ตรงตัวได้จริง
+  // (เหมือน pattern เดียวกับที่ LockOverlay.js ใช้เลือก icon)
   const getBiometricLabel = (support) =>
-    support?.hasFaceId ? t("login.faceId") : t("login.fingerprint");
+    Platform.OS === "android"
+      ? t("login.fingerprint")
+      : support?.hasFaceId ? t("login.faceId") : t("login.fingerprint");
 
   const navigateToMain = () => {
     navigation.reset({ index: 0, routes: [{ name: "MainTabs" }] });
@@ -373,6 +380,23 @@ const Login = ({ navigation, route }) => {
       STORAGE_KEYS.USER,
       JSON.stringify(data.user || {}),
     );
+
+    // สร้าง/ตรวจ Expert profile ก่อนเปิด session หลัก เพื่อให้หน้า Expert
+    // และ profile-search มองเห็นผู้ใช้ได้ตั้งแต่ยังไม่เคยบันทึกผลงาน
+    // หาก Info ชั่วคราวติดต่อไม่ได้ ให้ login ต่อได้ (POST Expert มี fallback)
+    try {
+      await ensureExpertProfile();
+    } catch (error) {
+      // 401 ถูกจัดการโดย Info API interceptor และต้องหยุด flow นี้ไว้ก่อน
+      // เพื่อไม่ให้ navigation กลับเข้า MainTabs แข่งกับการพาไปหน้า Login
+      if (error?.response?.status === 401) return;
+      if (__DEV__) {
+        console.warn(
+          "[Login] ensure Expert profile failed:",
+          error?.response?.status ?? error?.message,
+        );
+      }
+    }
     runPostLoginNotifications();
 
     if (await isPinSet(userId)) {

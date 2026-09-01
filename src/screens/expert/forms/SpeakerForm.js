@@ -332,16 +332,22 @@ const SpeakerForm = ({ navigation }) => {
               disabled={saving}
               activeOpacity={0.85}
             >
-              <Ionicons
-                name={editingItem ? "checkmark-circle" : "add-circle"}
-                size={18}
-                color="#fff"
-              />
-              <Text className="text-white text-[14px] font-black">
-                {editingItem
-                  ? t("research.common.save")
-                  : t("research.common.addData")}
-              </Text>
+              {saving ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <>
+                  <Ionicons
+                    name={editingItem ? "checkmark-circle" : "add-circle"}
+                    size={18}
+                    color="#fff"
+                  />
+                  <Text className="text-white text-[14px] font-black">
+                    {editingItem
+                      ? t("research.common.save")
+                      : t("research.common.addData")}
+                  </Text>
+                </>
+              )}
             </TouchableOpacity>
             <TouchableOpacity
               className="flex-row items-center gap-[6px] bg-[#fef2f2] border-[1.5px] border-[#dc2626] rounded-xl min-h-[50px] px-[18px]"

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Alert, ScrollView, StatusBar, Switch, Text, TouchableOpacity, View } from "react-native";
+import { Alert, Platform, ScrollView, StatusBar, Switch, Text, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
@@ -134,8 +134,13 @@ export default function SecurityPage() {
     }
   };
 
-  const biometricLabel = biometricInfo?.hasFaceId ? "Face ID" : t("security.biometricFinger");
-  const biometricIcon  = biometricInfo?.hasFaceId ? "scan-outline" : "finger-print-outline";
+  // Android: ใช้ "ลายนิ้วมือ" เสมอ ไม่พึ่ง hasFaceId — บาง Android มีกล้องหน้า
+  // รองรับ face unlock (report FACIAL_RECOGNITION) แม้ผู้ใช้ enroll แค่
+  // ลายนิ้วมือเป็นหลัก ต่างจาก iOS ที่ hasFaceId บอก Face ID ตรงตัวได้จริง
+  // (pattern เดียวกับ Login.js/LockOverlay.js)
+  const isAndroidBiometric = Platform.OS === "android";
+  const biometricLabel = isAndroidBiometric || !biometricInfo?.hasFaceId ? t("security.biometricFinger") : "Face ID";
+  const biometricIcon  = isAndroidBiometric || !biometricInfo?.hasFaceId ? "finger-print-outline" : "scan-outline";
 
   return (
     <View className="flex-1 bg-[#eaf5ef]">

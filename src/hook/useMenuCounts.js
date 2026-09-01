@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import api from "../services/api";
+import infoApi from "../services/infoApi";
 
 const MENU_ENDPOINTS = [
   { key: "education",     path: "/educations"  },
@@ -41,14 +41,24 @@ const useMenuCounts = () => {
   const refetch = useCallback(async () => {
     if (mounted.current) setLoading(true);
     const results = await Promise.allSettled(
-      MENU_ENDPOINTS.map((e) => api.get(e.path))
+      MENU_ENDPOINTS.map((e) => infoApi.get(`/info/expert${e.path}`))
     );
     const newCounts = {};
     results.forEach((result, i) => {
       const key = MENU_ENDPOINTS[i].key;
-      newCounts[key] = result.status === "fulfilled"
-        ? extractCount(result.value.data)
-        : null;
+      if (result.status === "fulfilled") {
+        newCounts[key] = extractCount(result.value.data);
+      } else {
+        newCounts[key] = null;
+        if (__DEV__) {
+          const error = result.reason;
+          console.warn(
+            `[useMenuCounts] ${MENU_ENDPOINTS[i].path} failed:`,
+            error?.response?.status ?? error?.code ?? "NETWORK_ERROR",
+            error?.response?.data?.message ?? error?.message,
+          );
+        }
+      }
     });
     if (mounted.current) {
       setCounts(newCounts);

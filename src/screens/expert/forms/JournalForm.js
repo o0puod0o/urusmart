@@ -50,7 +50,9 @@ const JournalForm = ({ navigation }) => {
       { id: "", label: t("research.journal.dbPlaceholder") },
       ...journalTypes.map((d, i) => ({
         id: String(d.id || d.journal_type_id || d.type_id || i + 1),
-        label: d.name || d.label || "",
+        label:
+          d.name || d.label || d.journal_type_name || d.type_name ||
+          d.name_th || d.name_en || d.title || "",
       })),
     ],
     [journalTypes, t],

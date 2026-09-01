@@ -10,6 +10,7 @@ import InlineDropdown from "../../../components/expert/InlineDropdown";
 import useResource from "../../../hook/useResource";
 import useConfirm from "../../../hook/useConfirm";
 import useSubmitLock from "../../../hook/useSubmitLock";
+import useRefs from "../../../hook/useRefs";
 
 const currentYear = new Date().getFullYear() + 543;
 const BASE_YEAR_OPTIONS = Array.from({ length: currentYear - 2499 }, (_, i) => {
@@ -20,6 +21,7 @@ const BASE_YEAR_OPTIONS = Array.from({ length: currentYear - 2499 }, (_, i) => {
 const EducationForm = ({ navigation }) => {
   const { t } = useTranslation();
   const { items, loading, saving, create, update, remove } = useResource("/educations");
+  const { degrees, loading: loadingDegrees } = useRefs();
   const sortedItems = useMemo(() => [...items].sort((a, b) => Number(a.id) - Number(b.id)), [items]);
   const { confirm, ConfirmDialog } = useConfirm();
   const submitOnce = useSubmitLock();
@@ -31,12 +33,9 @@ const EducationForm = ({ navigation }) => {
   const DEGREE_OPTIONS = useMemo(
     () => [
       { id: "", label: t("research.education.selectDegree") },
-      { id: "1", label: t("research.education.belowBachelor") },
-      { id: "2", label: t("research.education.bachelor") },
-      { id: "3", label: t("research.education.master") },
-      { id: "4", label: t("research.education.doctoral") },
+      ...degrees.map((d) => ({ id: String(d.id), label: d.name ?? d.label ?? String(d.id) })),
     ],
-    [t],
+    [t, degrees],
   );
 
   const [editingItem, setEditingItem] = useState(null);
@@ -206,7 +205,7 @@ const EducationForm = ({ navigation }) => {
           </View>
           <InlineDropdown label={t("research.education.yearGraduated")} value={form.year} options={YEAR_OPTIONS} onSelect={(v) => setField("year", v)} searchable />
           <View className="h-px bg-[#f0f4f7] my-[10px]" />
-          <InlineDropdown label={t("research.education.degree")} value={form.degree} options={DEGREE_OPTIONS} onSelect={(v) => setField("degree", v)} />
+          <InlineDropdown label={t("research.education.degree")} value={form.degree} options={DEGREE_OPTIONS} onSelect={(v) => setField("degree", v)} loading={loadingDegrees} />
           <View className="h-px bg-[#f0f4f7] my-[10px]" />
           <FormField
             label={t("research.education.course")}

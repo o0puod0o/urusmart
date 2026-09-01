@@ -2,7 +2,7 @@
 // ถ้า backend มี GET /api/expert/my-stats ให้เปลี่ยนมาใช้แทน — จะลดเหลือ 1 request
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import api from "../services/api";
+import infoApi from "../services/infoApi";
 
 const ENDPOINTS = [
   { key: "researches", path: "/researches" },
@@ -24,7 +24,7 @@ const useExpertStats = () => {
   const refetch = useCallback(async () => {
     try {
       if (mounted.current) setLoading(true);
-      const results = await Promise.allSettled(ENDPOINTS.map((e) => api.get(e.path)));
+      const results = await Promise.allSettled(ENDPOINTS.map((e) => infoApi.get(`/info/expert${e.path}`)));
       const newStats = {};
       results.forEach((result, i) => {
         const key = ENDPOINTS[i].key;

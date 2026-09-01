@@ -1,7 +1,4 @@
-import api from "./api";
-import { LRD_API_BASE_URL } from "../config";
-
-const lrdUrl = (path) => `${LRD_API_BASE_URL.replace(/\/$/, "")}${path}`;
+import infoApi from "./infoApi";
 
 const withLrdConfig = (config = {}) => ({
   ...config,
@@ -10,21 +7,21 @@ const withLrdConfig = (config = {}) => ({
 });
 
 export const LRD_ENDPOINTS = {
-  session: "/api/info/session",
-  register: "/api/info/lrd/researcher/register",
-  faculties: "/api/info/lrd/facultys",
-  branches: "/api/info/lrd/branchs",
-  paperIndexes: "/api/info/lrd/paperindexs",
-  projects: "/api/info/lrd/projects",
-  papers: "/api/info/lrd/papers",
-  researcherMe: "/api/info/lrd/researcher/me",
-  educations: "/api/info/lrd/researcher/me/educations",
-  expertises: "/api/info/lrd/researcher/me/expertises",
+  session: "/info/session",
+  register: "/info/lrd/researcher/register",
+  faculties: "/info/lrd/facultys",
+  branches: "/info/lrd/branchs",
+  paperIndexes: "/info/lrd/paperindexs",
+  projects: "/info/lrd/projects",
+  papers: "/info/lrd/papers",
+  researcherMe: "/info/lrd/researcher/me",
+  educations: "/info/lrd/researcher/me/educations",
+  expertises: "/info/lrd/researcher/me/expertises",
 };
 
-export const getLrd = (path, config) => api.get(lrdUrl(path), withLrdConfig(config));
+export const getLrd = (path, config) => infoApi.get(path, withLrdConfig(config));
 export const postLrd = (path, data, config = {}) =>
-  api.post(lrdUrl(path), data, withLrdConfig(config));
+  infoApi.post(path, data, withLrdConfig(config));
 
 export const patchLrd = (path, data, config) =>
   data instanceof FormData

@@ -19,6 +19,7 @@ import useExpertGroupOptions from "../../hook/useExpertGroupOptions";
 import SheetDropdown from "../../components/expert/SheetDropdown";
 import { colors } from "../../theme/tokens";
 import { sanitizeAcademicText } from "../../utils/inputSanitize";
+import infoApi from "../../services/infoApi";
 
 const getSearchByOptions = (t) => [
   { id: "", label: t("research.screen.from") },
@@ -328,6 +329,36 @@ const ExpertHome = ({ navigation }) => {
   const PERSONAL_MENUS = getPersonalMenus(t);
   const EXPERT_MENUS = getExpertMenus(t);
   const { counts, loading: countsLoading, refetch: refetchCounts } = useMenuCounts();
+
+  // เตรียม Expert profile ก่อนโหลดข้อมูลของโมดูลทุกครั้งที่เปิดหน้า Expert
+  // backend จะอ่านเจ้าของจาก Bearer token; frontend ไม่ส่ง owner/id_card ใด ๆ
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        await infoApi.post("/info/expert/profile/ensure", {});
+        const { data } = await infoApi.get("/info/expert/profile");
+        const profile = data?.data?.profile ?? data?.data ?? data;
+        const photoUrl = /^https:\/\//i.test(profile?.picture ?? "")
+          ? profile.picture
+          : null;
+        if (__DEV__ && !cancelled) {
+          console.log("[ExpertHome] ensured profile", {
+            hasProfile: Boolean(profile),
+            photoUrl: photoUrl ?? "<default-avatar>",
+          });
+        }
+      } catch (error) {
+        if (__DEV__ && !cancelled) {
+          console.warn(
+            "[ExpertHome] ensure profile failed:",
+            error?.response?.status ?? error?.message,
+          );
+        }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   useFocusEffect(
     useCallback(() => {

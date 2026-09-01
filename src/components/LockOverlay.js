@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Alert, StatusBar, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, Platform, StatusBar, Text, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -91,10 +91,14 @@ export default function LockOverlay({ locked, onUnlock }) {
       const [enabled, support] = await Promise.all([isBiometricEnabled(userId), checkSupport()]);
       const available = enabled && support.supported;
       setBiometricAvailable(available);
-      // เลือกไอคอนตามประเภท biometric ที่อุปกรณ์รองรับจริง (ไม่ใช้ Platform.OS เดา)
-      // รองรับ Face ID ให้ priority ก่อนเสมอ (iOS ที่มี Face ID จะมีแค่ type นี้
-      // type เดียว, Android ที่ report ทั้งคู่มักตั้ง face unlock เป็นค่า default)
-      if (support.hasFaceId) {
+      // Android: บังคับใช้ fingerprint icon เสมอ ไม่ว่าเครื่องจะ report
+      // FACIAL_RECOGNITION ด้วยหรือไม่ (บาง Android มีกล้องหน้ารองรับ face
+      // unlock แต่ผู้ใช้ enrolled แค่ลายนิ้วมือเป็นหลัก) — Android ไม่มี
+      // มาตรฐาน UI icon สำหรับ face unlock ที่ชัดเจนแบบ iOS's Face ID เลย
+      // จึงต้องยึด fingerprint เป็นสัญลักษณ์ biometric หลักบน Android เสมอ
+      if (Platform.OS === "android") {
+        setBiometricIcon(support.hasFingerprint || support.hasFaceId ? "fingerprint" : "finger-print-outline");
+      } else if (support.hasFaceId) {
         setBiometricIcon("faceid");
       } else if (support.hasFingerprint) {
         setBiometricIcon("fingerprint");

@@ -42,8 +42,15 @@ const toOpt = (d, i) => ({
     d.name ||
     d.label ||
     d.type_name ||
+    d.research_type_name ||
     d.level_name ||
+    d.research_level_name ||
     d.pmu_name ||
+    d.research_pmu_type_name ||
+    d.name_th ||
+    d.name_en ||
+    d.title_th ||
+    d.title_en ||
     d.title ||
     "",
 });
@@ -128,8 +135,6 @@ const ResearchForm = ({ navigation }) => {
   } = useResource("/researches");
   const {
     researchTypes,
-    researchLevels,
-    researchPmuTypes,
     loading: loadingTypes,
   } = useRefs();
   const tableItems = useMemo(
@@ -163,7 +168,7 @@ const ResearchForm = ({ navigation }) => {
     ],
     [researchTypes, t],
   );
-
+  /*
   const pmuOptions = useMemo(
     () => [
       { id: "", label: t("research.researchForm.pmuPlaceholder") },
@@ -179,6 +184,7 @@ const ResearchForm = ({ navigation }) => {
     ],
     [researchLevels, t],
   );
+  */
 
   const setField = (key, val) => setForm((p) => ({ ...p, [key]: val }));
   const openEdit = (entry) => {
@@ -335,8 +341,6 @@ const ResearchForm = ({ navigation }) => {
                     { w: 86, label: t("research.common.year") },
                     { w: 240, label: t("research.researchForm.colTitle") },
                     { w: 120, label: t("research.researchForm.colType") },
-                    { w: 120, label: t("research.researchForm.colPmu") },
-                    { w: 100, label: t("research.researchForm.colLevel") },
                     { w: 92, label: t("research.common.manage") },
                   ].map((col, i, columns) => (
                     <Text
@@ -355,8 +359,6 @@ const ResearchForm = ({ navigation }) => {
                   const title = getResearchTitle(entry);
                   const year = entry.year ?? entry.research_year ?? "";
                   const typeLabel = getResearchTypeLabel(entry, typeOptions);
-                  const pmuLabel = getResearchPmuLabel(entry, pmuOptions);
-                  const levelLabel = getResearchLevelLabel(entry, levelOptions);
                   return (
                     <View
                       key={entry.id ?? index}
@@ -401,28 +403,6 @@ const ResearchForm = ({ navigation }) => {
                         numberOfLines={2}
                       >
                         {typeLabel || "—"}
-                      </Text>
-                      <Text
-                        className="text-[12px] text-[#3f4d50] px-3"
-                        style={{
-                          width: 120,
-                          borderLeftWidth: 1,
-                          borderLeftColor: "#eef1f4",
-                        }}
-                        numberOfLines={2}
-                      >
-                        {pmuLabel || "—"}
-                      </Text>
-                      <Text
-                        className="text-[12px] text-[#3f4d50] px-3"
-                        style={{
-                          width: 100,
-                          borderLeftWidth: 1,
-                          borderLeftColor: "#eef1f4",
-                        }}
-                        numberOfLines={2}
-                      >
-                        {levelLabel || "—"}
                       </Text>
                       <View
                         className="flex-row gap-[6px] justify-center"
@@ -525,18 +505,7 @@ const ResearchForm = ({ navigation }) => {
               onSelect={(v) => setField("type", v)}
             />
           )}
-          <InlineDropdown
-            label={t("research.researchForm.fieldPmu")}
-            value={form.pmu}
-            options={pmuOptions}
-            onSelect={(v) => setField("pmu", v)}
-          />
-          <InlineDropdown
-            label={t("research.researchForm.fieldLevel")}
-            value={form.level}
-            options={levelOptions}
-            onSelect={(v) => setField("level", v)}
-          />
+          {/* ปิดไว้ชั่วคราว: dropdown PMU และระดับผลงานวิจัยยังไม่ใช้งาน */}
           <View className="flex-row gap-[10px] px-4 pt-[14px]">
             <TouchableOpacity
               className="flex-1 flex-row items-center justify-center gap-2 bg-[#007a5a] rounded-xl py-[13px]"

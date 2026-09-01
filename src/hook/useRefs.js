@@ -1,17 +1,16 @@
-// Hook สำหรับ dropdown reference data (degrees, departments, journalTypes ฯลฯ)
+// Hook สำหรับ dropdown reference data (degrees, journalTypes ฯลฯ)
 // ข้อมูลพวกนี้ไม่ค่อยเปลี่ยน — cache ไว้ใน module เพื่อไม่ให้ fetch ซ้ำทุกครั้งที่เปิดฟอร์ม
 //
-// Endpoints: GET /api/ref/degrees, /ref/departments, /ref/journal-types,
-//            /ref/research-types, /ref/research-levels, /ref/research-pmu-types
+// Info API reference endpoints สำหรับ dropdown ของ Expert module
 
 import { useEffect, useRef, useState } from "react";
-import api from "../services/api";
+import infoApi from "../services/infoApi";
 
 const cache = {};
 
 const fetchRef = async (path) => {
   if (cache[path]) return cache[path];
-  const res = await api.get(path);
+  const res = await infoApi.get(path);
   const data = res.data?.data ?? res.data ?? [];
   const arr = Array.isArray(data) ? data : [];
   if (__DEV__ && arr.length > 0 && arr[0].id === undefined) {
@@ -24,7 +23,6 @@ const fetchRef = async (path) => {
 const useRefs = () => {
   const [refs, setRefs] = useState({
     degrees: [],
-    departments: [],
     journalTypes: [],
     researchTypes: [],
     researchLevels: [],
@@ -40,8 +38,14 @@ const useRefs = () => {
 
   useEffect(() => {
     const load = async () => {
-      const keys = ["degrees", "departments", "journalTypes", "researchTypes", "researchLevels", "researchPmuTypes"];
-      const paths = ["/ref/degrees", "/ref/departments", "/ref/journal-types", "/ref/research-types", "/ref/research-levels", "/ref/research-pmu-types"];
+      const keys = ["degrees", "journalTypes", "researchTypes", "researchLevels", "researchPmuTypes"];
+      const paths = [
+        "/info/expert/ref/degrees",
+        "/info/expert/ref/journal-types",
+        "/info/expert/ref/research-types",
+        "/info/expert/ref/research-levels",
+        "/info/expert/ref/research-pmu-types",
+      ];
       const results = await Promise.allSettled(paths.map((p) => fetchRef(p)));
       if (!mounted.current) return;
       const merged = {};
