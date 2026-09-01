@@ -95,7 +95,11 @@ const InlineDropdown = ({
     const usable = screenHeight;
     const spaceBelow = usable - (pageY + height);
     const spaceAbove = pageY;
-    const flipUp = spaceBelow < 220 && spaceAbove > spaceBelow;
+    // ใช้ความสูง panel จริงเป็นเกณฑ์ ไม่ใช่ threshold 220 ที่ทำให้ panel
+    // เปิดลงล่างจนชิดขอบจอทั้งที่ด้านบนมีพื้นที่พอ (โดยเฉพาะฟอร์มหน่วยงาน)
+    const preferredHeight = Math.min(MAX_LIST_H, 420);
+    const flipUp =
+      spaceBelow < preferredHeight && spaceAbove > spaceBelow;
     const listH = flipUp
       ? Math.max(120, Math.min(MAX_LIST_H, spaceAbove - 24))
       : Math.max(120, Math.min(MAX_LIST_H, spaceBelow - 16));
@@ -262,7 +266,7 @@ const InlineDropdown = ({
         onRequestClose={handleClose}
       >
         <TouchableWithoutFeedback onPress={handleClose}>
-          <View style={{ flex: 1, backgroundColor: "rgba(10,30,20,0.18)" }}>
+          <View style={{ flex: 1, backgroundColor: "rgba(10,30,20,0.30)" }}>
             {dropPos && (
               <TouchableWithoutFeedback onPress={() => {}}>
                 <Animated.View
@@ -418,6 +422,7 @@ const styles = {
     borderWidth: 1,
     borderColor: "#cfe6db",
     overflow: "hidden",
+    elevation: 14,
     ...shadows.floating,
   },
   searchBar: {
@@ -425,7 +430,8 @@ const styles = {
     alignItems: "center",
     gap: 8,
     paddingHorizontal: 12,
-    paddingVertical: 10,
+    minHeight: 54,
+    paddingVertical: 11,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
     backgroundColor: colors.fieldBg,
@@ -443,13 +449,15 @@ const styles = {
     flex: 1,
     ...typography.input,
     fontWeight: "500",
+    fontSize: 15,
     paddingVertical: 0,
   },
   optionRow: {
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 14,
-    paddingVertical: 13,
+    minHeight: 56,
+    paddingVertical: 14,
     borderBottomWidth: 1,
     borderBottomColor: "#edf3f0",
     gap: 10,
