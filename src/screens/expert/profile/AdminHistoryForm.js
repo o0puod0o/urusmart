@@ -35,6 +35,9 @@ const AdminHistoryForm = ({ navigation, route }) => {
     if (!form.position || !form.workplace || !form.year_start || !form.year_end) {
       Alert.alert(t("research.adminHistory.validation")); return;
     }
+    if (form.year_end !== "ปัจจุบัน" && Number(form.year_start) > Number(form.year_end)) {
+      Alert.alert(t("research.common.warning"), t("research.adminHistory.invalidYearRange")); return;
+    }
     try {
       editingItem ? await update(editingItem.id, form) : await create(form);
       Alert.alert(editingItem ? t("research.common.editSuccess") : t("research.common.addSuccess"), t("research.common.savedMsg"));

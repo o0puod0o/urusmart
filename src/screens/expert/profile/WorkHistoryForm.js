@@ -35,6 +35,9 @@ const WorkHistoryForm = ({ navigation, route }) => {
     if (!form.position || !form.workplace || !form.year_start || !form.year_end) {
       Alert.alert(t("research.workHistory.validation")); return;
     }
+    if (form.year_end !== "ปัจจุบัน" && Number(form.year_start) > Number(form.year_end)) {
+      Alert.alert(t("research.common.warning"), t("research.workHistory.invalidYearRange")); return;
+    }
     try {
       const payload = { position: form.position, workplace: form.workplace, year_start: form.year_start, year_end: form.year_end };
       editingItem ? await update(editingItem.id, payload) : await create(payload);

@@ -455,11 +455,13 @@ export const th = {
       startLabel: 'ปีที่เริ่ม', endLabel: 'ปีที่ออก',
       noData: 'ยังไม่มีข้อมูลประวัติการทำงาน', editForm: 'แก้ไขข้อมูลประวัติการทำงาน',
       addForm: 'เพิ่มข้อมูลประวัติการทำงาน', validation: 'กรุณากรอกข้อมูลให้ครบทุกช่อง',
+      invalidYearRange: 'ปีที่เริ่มทำงานต้องไม่มากกว่าปีที่ออกจากงาน กรุณาเลือกปีใหม่อีกครั้ง',
     },
     adminHistory: {
       title: 'ประวัติการบริหาร', noData: 'ยังไม่มีข้อมูลประวัติการบริหาร',
       editForm: 'แก้ไขข้อมูลประวัติการบริหาร', addForm: 'เพิ่มข้อมูลประวัติการบริหาร',
       validation: 'กรุณากรอกข้อมูลให้ครบทุกช่อง',
+      invalidYearRange: 'ปีที่เริ่มดำรงตำแหน่งต้องไม่มากกว่าปีที่สิ้นสุด กรุณาเลือกปีใหม่อีกครั้ง',
     },
     profile: {
       title: 'ประวัติส่วนตัว', editTitle: 'แก้ไขประวัติส่วนตัว',
@@ -1041,11 +1043,13 @@ export const en = {
       startLabel: 'Started', endLabel: 'Ended',
       noData: 'No work history', editForm: 'Edit Work History',
       addForm: 'Add Work History', validation: 'Please fill in all fields',
+      invalidYearRange: 'The start year cannot be later than the end year. Please select the years again.',
     },
     adminHistory: {
       title: 'Administrative History', noData: 'No administrative history',
       editForm: 'Edit Administrative History', addForm: 'Add Administrative History',
       validation: 'Please fill in all fields',
+      invalidYearRange: 'The start year cannot be later than the end year. Please select the years again.',
     },
     profile: {
       title: 'Personal Profile', editTitle: 'Edit Personal Profile',
