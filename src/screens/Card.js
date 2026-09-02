@@ -5,7 +5,6 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
-import QRCode from "react-native-qrcode-svg";
 import { useTranslation } from "react-i18next";
 import HeaderBar from "../components/HeaderBar";
 import useCurrentUser from "../hook/useCurrentUser";
@@ -18,18 +17,6 @@ const logo = require("../assets/urusmartlogo.png");
 
 const str = (v) => (typeof v === "string" && v.trim() ? v.trim() : "");
 
-
-const buildVCard = ({ name, position, faculty, department, email, phoneWork, profileId }) => [
-  "BEGIN:VCARD",
-  "VERSION:3.0",
-  `FN:${name}`,
-  position        ? `TITLE:${position}` : "",
-  `ORG:Uttaradit Rajabhat University;${[faculty, department].filter(Boolean).join(" ")}`,
-  email           ? `EMAIL;TYPE=WORK:${email}` : "",
-  phoneWork       ? `TEL;TYPE=WORK:${phoneWork}` : "",
-  profileId       ? `URL:https://urusmart.uru.ac.th/profile/${profileId}` : "",
-  "END:VCARD",
-].filter(Boolean).join("\r\n");
 
 const normalize = (d) => {
   const firstName = str(d.firstname_th) || str(d.firstname_en) || str(d.first_name_th) || str(d.first_name_en);
@@ -90,18 +77,11 @@ const InfoRow = ({ icon, label, value }) => (
 
 const Divider = () => <View className="h-px mx-1" style={{ backgroundColor: colors.border }} />;
 
-const TAB_KEYS = [
-  { key: "info", icon: "person-circle-outline", tKey: "card.tabInfo" },
-  { key: "qr",   icon: "qr-code-outline",       tKey: "card.tabQr" },
-];
-
 const cardShadow = shadows.floating;
 const photoShadow = {
   shadowColor: "#064e35", shadowOffset: { width: 0, height: 8 },
   shadowOpacity: 0.18, shadowRadius: 16, elevation: 6,
 };
-const tabActiveShadow = shadows.card;
-
 export default function Cardpage({ navigation }) {
   const { t } = useTranslation();
   const { user, logout } = useCurrentUser(navigation);
@@ -110,7 +90,6 @@ export default function Cardpage({ navigation }) {
   const [teacher, setTeacher] = useState(null);
   const [apiLoading, setApiLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [activeTab, setActiveTab] = useState("info");
 
   // Animation เริ่มทันที ไม่รอ API
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -170,10 +149,6 @@ export default function Cardpage({ navigation }) {
 
   const ini = initial(tc.name);
   const affiliation = [tc.faculty, tc.department].filter(Boolean).join(" ");
-  const qrValue = tc.email
-    ? buildVCard({ name: displayName, position: tc.position, faculty: tc.faculty, department: tc.department, email: tc.email, phoneWork: tc.phoneWork, profileId: tc.profileId })
-    : "URUSMART:no-email";
-
   const handleShare = async () => {
     try {
       await Share.share({
@@ -284,31 +259,9 @@ export default function Cardpage({ navigation }) {
               {/* ── Divider line ── */}
               <View className="h-px mx-5 mt-4" style={{ backgroundColor: colors.border }} />
 
-              {/* ── Tab bar ── */}
-              <View className="flex-row mx-4 mt-4 p-1 gap-[3px]" style={{ backgroundColor: colors.primarySoft, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border }}>
-                {TAB_KEYS.map((tab) => {
-                  const active = activeTab === tab.key;
-                  return (
-                    <TouchableOpacity
-                      key={tab.key}
-                      className={`flex-1 flex-row items-center justify-center gap-1 py-[10px] rounded-[11px] ${active ? "bg-white" : ""}`}
-                      style={active ? tabActiveShadow : {}}
-                      onPress={() => setActiveTab(tab.key)}
-                      activeOpacity={0.75}
-                    >
-                      <Ionicons name={tab.icon} size={16} color={active ? colors.primary : colors.textSoft} />
-                      <Text className="text-[11px]" style={{ color: active ? colors.primary : colors.textSoft, fontWeight: active ? "800" : "700" }}>
-                        {t(tab.tKey)}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-
-              {/* ── Tab content ── */}
+              {/* ── Contact information ── */}
               <View className="px-5 pt-4 pb-6">
-                {activeTab === "info" && (
-                  <View>
+                <View>
                     {apiLoading ? (
                       <>
                         <SkeletonRow pulse={pulseAnim} />
@@ -329,25 +282,9 @@ export default function Cardpage({ navigation }) {
                       </>
                     )}
                   </View>
-                )}
-
-                {activeTab === "qr" && (
-                  <View className="items-center py-4">
-                    <View
-                      className="p-5"
-                      style={[{ backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border }, shadows.card]}
-                    >
-                    <QRCode value={qrValue} size={210} color={colors.primaryDark} backgroundColor={colors.surface} />
-                    </View>
-                    <Text className="text-[#111c18] text-[13px] font-extrabold mt-4 text-center">{t("card.scanToView")}</Text>
-                    <Text className="text-[#8fa89f] text-[11px] font-semibold mt-1">{tc.email || "—"}</Text>
-                  </View>
-                )}
-
+                </View>
               </View>
             </View>
-          </View>
-
           {/* ══ Share Button ══ */}
           <TouchableOpacity
             className="flex-row items-center justify-center gap-[10px] mt-4 w-full py-4"
